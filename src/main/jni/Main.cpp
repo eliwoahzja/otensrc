@@ -1,9 +1,3 @@
-// ══════════════════════════════════════════════════════════════════════════════
-//  OMNI Premium UI Redesign
-//  — Modern glassmorphism, animated gradients, premium visual effects
-//  — ALL core logic, memory addresses, and offsets preserved 100%
-// ══════════════════════════════════════════════════════════════════════════════
-
 #include "Includes/Logger.h"
 #include "Includes/Macros.h"
 #include "Includes/obfuscate.h"
@@ -14,7 +8,6 @@
 #include "Hacks/Hacks.h"
 #include "IL2CppSDKGenerator/KittyMemory/MemoryPatch.h"
 #include "foxcheats/include/ScanEngine.hpp"
-
 #include <sys/stat.h>
 #include <dirent.h>
 #include <unistd.h>
@@ -28,13 +21,12 @@
 #include <iostream>
 #include <fstream>
 #include <sstream>
-
 #include "oxorany/source/oxorany.h"
 #include "oxorany/source/oxorany.cpp"
 #include "oxorany/source/oxorany_include.h"
-
 #include "MainFeatureIncludes.h"
-
+#include "ImGui/equinox_menu.h"
+#include "ImGui/runtime_preview_menu.h"
 
 class _BYTE;
 class _BOOL4;
@@ -44,6 +36,7 @@ class _DWORD;
 class _QWORD;
 
 #define CREATE_COLOR(r, g, b, a) new float[4] {(float)(r) / 255.0f, (float)(g) / 255.0f, (float)(b) / 255.0f, (float)(a) / 255.0f}
+
 bool ClearDisplay = false;
 bool ShowFPS;
 bool SnowB = false;
@@ -55,19 +48,13 @@ float jumpHeightMultiplier = 1.0f;
 bool RedWallhackShow = false;
 char logintext[4096];
 
-// ── OMNI Camo System ────────────────────────────────────────────────────────
 static bool camoOff       = true;
 static bool camoDiamond   = false;
 static bool camoRedSprite = false;
-
 #define ID_DIAMOND    0x1D37F758
 #define ID_RED_SPRITE 0x1D37F77E
-// ────────────────────────────────────────────────────────────────────────────
 
-// ── OMNI Accent Color: Electric Cyan/Blue ──────────────────────────────────
-//   H=195 S=100% L=50%  →  R=0 G=212 B=255
 float menu[4] = { 0.0f / 255.0f, 212.0f / 255.0f, 255.0f / 255.0f, 1.0f };
-// ────────────────────────────────────────────────────────────────────────────
 
 float g_LastLogoOpacity = 1.0f;
 float g_LastLogoSize = 1.0f;
@@ -75,14 +62,13 @@ int g_LogoHideDelayFrames = 0;
 int g_LogoHideDelay = 40;
 
 #define _BYTE uint8_t
-#define _WORD  uint8_t
+#define _WORD uint8_t
 #define _DWORD uint64_t
 #define _QWORD uint64_t
 #define _BOOL4 uint8_t
 
 #include <fstream>
 using namespace std;
-
 #include <Substrate/SubstrateHook.h>
 #include <Substrate/CydiaSubstrate.h>
 
@@ -94,9 +80,9 @@ JavaVM* jvm = nullptr;
 JavaVM* VM = nullptr;
 
 namespace font {
-    ImFont* icomoon_logo = nullptr;
-    ImFont* inter_semibold = nullptr;
-    ImFont* icomoon_page = nullptr;
+ImFont* icomoon_logo = nullptr;
+ImFont* inter_semibold = nullptr;
+ImFont* icomoon_page = nullptr;
 }
 
 static int g_GlWidth, g_GlHeight;
@@ -108,7 +94,6 @@ struct My_Patches
 } Patches;
 
 float AVIWA = 119.167f;
-
 bool wallh;
 bool showKeyboard = false;
 bool active = false;
@@ -120,7 +105,6 @@ struct sRegion
 };
 
 std::chrono::steady_clock::time_point appStartTime = std::chrono::steady_clock::now();
-
 static bool windowCollapsed = false;
 static double collapseBarLastActiveTime = 0.0;
 static float collapseBarOpacityAnim = 1.0f;
@@ -137,71 +121,25 @@ static std::string err;
 static std::string storedKey = "";
 static char s[256];
 static bool g_LoginTextLoaded = false;
-
-// ── OMNI UI Timing for animations ──────────────────────────────────────────
 static float g_OmniTime = 0.0f;
-// ──────────────────────────────────────────────────────────────────────────
 
 std::vector<sRegion> trapRegions;
 uintptr_t address = 0;
 std::string md5(std::string s);
 uintptr_t g_il2cpp;
 static bool isMenuVisible = true;
-
 int TABG = 1;
 
-// ── OMNI Premium UI Helpers ────────────────────────────────────────────────
-
-// Animated gradient glow color
-static ImU32 OmniGlowColor(float t, float alpha = 1.0f)
-{
-    // Oscillates between cyan and electric blue
-    float r = 0.0f  + 0.05f * sinf(t * 0.9f);
-    float g = 0.78f + 0.15f * cosf(t * 1.1f);
-    float b = 1.0f;
-    return IM_COL32(
-        (int)(r * 255),
-        (int)(g * 255),
-        (int)(b * 255),
-        (int)(alpha * 220)
-    );
-}
-
-// Multi-layer glow effect
-static void DrawOmniGlow(ImDrawList* dl, ImVec2 min, ImVec2 max,
-                         float radius, ImU32 colorInner, ImU32 colorOuter)
-{
-    for (int i = 4; i >= 1; --i)
-    {
-        float expand = (float)i * 3.5f;
-        ImU32 col = (i == 4) ? colorOuter : colorInner;
-        int alpha = (int)(IM_COL32_A_MASK & col) * i / 5;
-        col = (col & ~IM_COL32_A_MASK) | (ImU32)(alpha);
-        dl->AddRect(
-            ImVec2(min.x - expand, min.y - expand),
-            ImVec2(max.x + expand, max.y + expand),
-            col,
-            radius + expand,
-            0,
-            1.5f
-        );
-    }
-}
-
-// Animated shimmer border
-static void DrawOmniShimmer(ImDrawList* dl, ImVec2 panelMin, ImVec2 panelMax,
-                             float radius, float t)
+static void DrawOmniShimmer(ImDrawList* dl, ImVec2 panelMin, ImVec2 panelMax, float radius, float t)
 {
     float w = panelMax.x - panelMin.x;
     float shimmerX = panelMin.x + fmodf(t * 60.0f, w + 80.0f) - 40.0f;
-
     dl->AddRectFilled(
         ImVec2(panelMin.x, panelMin.y),
         ImVec2(panelMax.x, panelMin.y + 1.5f),
         IM_COL32(0, 212, 255, 60),
         radius
     );
-
     ImVec2 shimMin(ImClamp(shimmerX - 40.0f, panelMin.x, panelMax.x), panelMin.y);
     ImVec2 shimMax(ImClamp(shimmerX + 40.0f, panelMin.x, panelMax.x), panelMin.y + 1.5f);
     if (shimMax.x > shimMin.x)
@@ -216,9 +154,87 @@ static void DrawOmniShimmer(ImDrawList* dl, ImVec2 panelMin, ImVec2 panelMax,
     }
 }
 
-// ────────────────────────────────────────────────────────────────────────────
+static void RenderSkinsTabContent(float contentWidth, float contentHeight)
+{
+    (void)contentWidth;
+    (void)contentHeight;
+    RenderSkinCategoryContent(skinSubTab, true);
+    equinox::SectionLabel("CAMO MODIFIER");
+    equinox::BeginGroupCard("eq_camo");
+    if (equinox::RowToggle(nullptr, "Default / OFF", &camoOff)) {
+        if (camoOff) {
+            camoDiamond = false;
+            camoRedSprite = false;
+            for (const auto& getitem : itemData) {
+                if (getitem.itemName.find("[MYTHIC]") != std::string::npos ||
+                    getitem.itemName.find("[LEGENDARY]") != std::string::npos) {
+                    for (auto conf : weaponConfInstance) {
+                        if (!conf) continue;
+                        weaponconfFields = (WeaponConfFields*)((uintptr_t)conf + 0x20);
+                        if (weaponconfFields->ID == getitem.WeaponConf[2])
+                            weaponconfFields->DefWeaponSkinID = 0;
+                    }
+                }
+            }
+        }
+    }
+    if (equinox::RowToggle(nullptr, "Diamond Camo", &camoDiamond)) {
+        if (camoDiamond) {
+            camoOff = false; camoRedSprite = false;
+            for (const auto& getitem : itemData) {
+                if (getitem.itemName.find("[MYTHIC]") != std::string::npos ||
+                    getitem.itemName.find("[LEGENDARY]") != std::string::npos) {
+                    for (auto conf : weaponConfInstance) {
+                        if (!conf) continue;
+                        weaponconfFields = (WeaponConfFields*)((uintptr_t)conf + 0x20);
+                        if (weaponconfFields->ID == getitem.WeaponConf[2])
+                            weaponconfFields->DefWeaponSkinID = ID_DIAMOND;
+                    }
+                }
+            }
+        } else { camoOff = true; }
+    }
+    if (equinox::RowToggle(nullptr, "Red Sprite Camo", &camoRedSprite)) {
+        if (camoRedSprite) {
+            camoOff = false; camoDiamond = false;
+            for (const auto& getitem : itemData) {
+                if (getitem.itemName.find("[MYTHIC]") != std::string::npos ||
+                    getitem.itemName.find("[LEGENDARY]") != std::string::npos) {
+                    for (auto conf : weaponConfInstance) {
+                        if (!conf) continue;
+                        weaponconfFields = (WeaponConfFields*)((uintptr_t)conf + 0x20);
+                        if (weaponconfFields->ID == getitem.WeaponConf[2])
+                            weaponconfFields->DefWeaponSkinID = ID_RED_SPRITE;
+                    }
+                }
+            }
+        } else { camoOff = true; }
+    }
+    ImGui::Dummy(ImVec2(0, 4));
+    ImGui::TextDisabled("Only applies to [M] Mythic and [L] Legendary weapon skins.");
+    equinox::EndGroupCard();
+}
+
+static void EquinoxDrawTab(int tab)
+{
+    const ImVec2 region = ImGui::GetContentRegionAvail();
+    const float columnGap = 10.0f;
+    const float childWidth = ImMax(0.0f, (region.x - columnGap) * 0.5f);
+    const float childHeight = ImMax(0.0f, region.y);
+    switch (tab)
+    {
+    case 0: runtime_preview_menu::RenderEspTab(childWidth, childHeight); break;
+    case 1: runtime_preview_menu::RenderAimTab(childWidth, childHeight); break;
+    case 2: runtime_preview_menu::RenderMemoryTab(childWidth, childHeight); break;
+    case 3: RenderSkinsTabContent(childWidth, childHeight); break;
+    case 4: runtime_preview_menu::RenderMiscTab(region.x, childHeight); break;
+    case 5: runtime_preview_menu::RenderSettingsTab(region.x, childHeight); break;
+    default: break;
+    }
+}
 
 EGLBoolean (*old_eglSwapBuffers)(EGLDisplay dpy, EGLSurface surface);
+
 EGLBoolean hook_eglSwapBuffers(EGLDisplay dpy, EGLSurface surface)
 {
     eglQuerySurface(dpy, surface, EGL_WIDTH, &g_GlWidth);
@@ -282,7 +298,7 @@ EGLBoolean hook_eglSwapBuffers(EGLDisplay dpy, EGLSurface surface)
             &iconsConfig,
             icons_ranges
         );
-        F50 = io.Fonts->AddFontFromMemoryTTF((void *)F50_data, F50_size, 30.0f, NULL, io.Fonts->GetGlyphRangesDefault());
+        F50 = io.Fonts->AddFontFromMemoryTTF((void*)F50_data, F50_size, 30.0f, NULL, io.Fonts->GetGlyphRangesDefault());
         if (!F107) {
             F107 = font::inter_semibold;
         }
@@ -293,8 +309,6 @@ EGLBoolean hook_eglSwapBuffers(EGLDisplay dpy, EGLSurface surface)
         ImGui_ImplOpenGL3_CreateFontsTexture();
 
         memset(&Config, 0, sizeof(sConfig));
-
-        // ── OMNI Color Scheme: Cyan/Blue Theme ─────────────────────────────
         Config.sColorsESPPLAYER.LinePLAYER = CREATE_COLOR(0, 212, 255, 255);
         Config.sColorsESPPLAYER.BoxPLAYER = CREATE_COLOR(0, 212, 255, 255);
         Config.sColorsESPPLAYER.NamePLAYER = CREATE_COLOR(180, 245, 255, 255);
@@ -308,23 +322,17 @@ EGLBoolean hook_eglSwapBuffers(EGLDisplay dpy, EGLSurface surface)
         Config.sColorsESPBOT.DistanceBOT = CREATE_COLOR(0, 210, 120, 160);
         Config.sColorsESPBOT.SkeletonBOT = CREATE_COLOR(0, 210, 120, 160);
         Config.sColorsESPOTHERS.PovOTHERS = CREATE_COLOR(255, 60, 80, 180);
-        // ────────────────────────────────────────────────────────────────
-
         Config.Aim.AimAssistSize = 0.0f;
         Config.Aim.Cross = 45.0f;
         Config.Aim.Target = EAimTarget::Heads;
         Config.Aim.Trigger = EAimTrigger::None;
         Config.Aim.By = EAim::Distance;
-
         Config.Bline = 2.0f;
         Config.Pline = 2.0f;
-
         g_App = true;
     }
 
-    // ── Advance OMNI UI timer ──────────────────────────────────────────────
     g_OmniTime += ImGui::GetIO().DeltaTime;
-    // ──────────────────────────────────────────────────────────────────────
 
     ImGuiIO *io = &ImGui::GetIO();
     screenWidth = (float)g_GlWidth;
@@ -334,13 +342,9 @@ EGLBoolean hook_eglSwapBuffers(EGLDisplay dpy, EGLSurface surface)
     ImGui::NewFrame();
 
     ImDrawList *draw = ImGui::GetBackgroundDrawList();
-
     DrawESP(ImGui::GetBackgroundDrawList(), screenWidth, screenHeight, get_dpi());
     floating_info::Render(draw, screenWidth, screenHeight);
 
-    // ╔════════════════════════════════════════════════════════════════════════╗
-    // ║                    OMNI COLLAPSED INDICATOR                            ║
-    // ╚════════════════════════════════════════════════════════════════════════╝
     if (windowCollapsed)
     {
         static ImVec2 collapsedLogoPos = ImVec2(-1, -1);
@@ -354,16 +358,13 @@ EGLBoolean hook_eglSwapBuffers(EGLDisplay dpy, EGLSurface surface)
         const float pill_h = 60.0f * c::scale * collapsedScaleSetting;
         float line_w = pill_w;
         float click_h = pill_h;
-
         if (!collapsedPosInitialized)
         {
             ImVec2 vp = ImGui::GetMainViewport()->Pos;
             collapsedLogoPos = ImVec2(vp.x + 10.0f * c::scale, vp.y + 10.0f * c::scale);
             collapsedPosInitialized = true;
         }
-
         collapseBarOpacityAnim = 1.0f;
-
         ImGui::SetNextWindowPos(collapsedLogoPos, ImGuiCond_Always);
         ImGui::SetNextWindowSize(ImVec2(line_w, click_h), ImGuiCond_Always);
         ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0, 0, 0, 0));
@@ -371,7 +372,6 @@ EGLBoolean hook_eglSwapBuffers(EGLDisplay dpy, EGLSurface surface)
         ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
         ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
-
         auto getCollapsedTouchPos = [&]() -> ImVec2
         {
             ImVec2 currentMousePos = ImGui::GetIO().MousePos;
@@ -387,7 +387,6 @@ EGLBoolean hook_eglSwapBuffers(EGLDisplay dpy, EGLSurface surface)
             }
             return currentMousePos;
         };
-
         if (ImGui::Begin("##indicator", nullptr,
             ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize |
             ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoCollapse |
@@ -396,19 +395,16 @@ EGLBoolean hook_eglSwapBuffers(EGLDisplay dpy, EGLSurface surface)
             ImVec2 windowPos = ImGui::GetWindowPos();
             ImGui::SetCursorPos(ImVec2(0, 0));
             ImGui::InvisibleButton("##restoreclick", ImVec2(line_w, click_h));
-
             bool barHovered = ImGui::IsItemHovered();
             bool barHeld = ImGui::IsItemActive();
             collapseBarPressAnim = ImLerp(collapseBarPressAnim, barHeld ? 1.0f : 0.0f,
                                           ImGui::GetIO().DeltaTime * 18.0f);
-
             if (ImGui::IsItemActivated())
             {
                 collapsedWasDragging = false;
                 collapsedDragDistance = 0.0f;
                 collapsedDragLastMousePos = getCollapsedTouchPos();
             }
-
             if (ImGui::IsItemActive())
             {
                 ImVec2 currentMousePos = getCollapsedTouchPos();
@@ -423,7 +419,6 @@ EGLBoolean hook_eglSwapBuffers(EGLDisplay dpy, EGLSurface surface)
                 if (collapsedDragDistance > (6.0f * c::scale))
                     collapsedWasDragging = true;
             }
-
             if (ImGui::IsItemDeactivated())
             {
                 if (!collapsedWasDragging && windowCollapsed)
@@ -435,16 +430,11 @@ EGLBoolean hook_eglSwapBuffers(EGLDisplay dpy, EGLSurface surface)
                 collapsedWasDragging = false;
                 collapsedDragDistance = 0.0f;
             }
-
             float drawAlpha = ImClamp(collapseBarOpacityAnim * collapsedAlphaSetting, 0.0f, 1.0f);
             ImDrawList* indicatorDraw = ImGui::GetWindowDrawList();
-
-            // ── OMNI Premium Pill Background ───────────────────────────────
             const float pillR = click_h * 0.5f;
             ImVec2 pillMin = windowPos;
             ImVec2 pillMax = ImVec2(windowPos.x + line_w, windowPos.y + click_h);
-
-            // Animated breathing glow
             float breathe = 0.5f + 0.5f * sinf(g_OmniTime * 1.8f);
             int glowAlpha = (int)((55.0f + 30.0f * breathe) * drawAlpha);
             indicatorDraw->AddRectFilled(
@@ -453,8 +443,6 @@ EGLBoolean hook_eglSwapBuffers(EGLDisplay dpy, EGLSurface surface)
                 IM_COL32(0, 180, 255, glowAlpha),
                 pillR + 4.0f
             );
-
-            // Pill body – dark glassy fill
             indicatorDraw->AddRectFilledMultiColor(
                 pillMin, pillMax,
                 IM_COL32(8, 18, 38, (int)(200 * drawAlpha)),
@@ -464,18 +452,12 @@ EGLBoolean hook_eglSwapBuffers(EGLDisplay dpy, EGLSurface surface)
             );
             indicatorDraw->AddRectFilled(pillMin, pillMax,
                 IM_COL32(8, 16, 32, (int)(180 * drawAlpha)), pillR);
-
-            // Shimmer effect
             DrawOmniShimmer(indicatorDraw, pillMin, pillMax, pillR, g_OmniTime);
-
-            // Border ring
             indicatorDraw->AddRect(
                 pillMin, pillMax,
                 IM_COL32(0, 180, 255, (int)(100 * drawAlpha)),
                 pillR, 0, 1.2f
             );
-
-            // Logo image
             GLuint collapsedLogo = LoadAstralTexture(astral_data, sizeof(astral_data));
             const float logoPad = 6.0f * c::scale * collapsedScaleSetting;
             const float logoSize = 48.0f * c::scale * collapsedScaleSetting;
@@ -491,8 +473,6 @@ EGLBoolean hook_eglSwapBuffers(EGLDisplay dpy, EGLSurface surface)
                     logoSize * 0.5f
                 );
             }
-
-            // FPS counter
             char fpsText[32] = {};
             std::snprintf(fpsText, sizeof(fpsText), "%d FPS",
                           (int)std::lround(ImGui::GetIO().Framerate));
@@ -500,13 +480,10 @@ EGLBoolean hook_eglSwapBuffers(EGLDisplay dpy, EGLSurface surface)
             const float fpsSize = ((fpsFont == F50) ? (16.0f * c::scale) : (18.0f * c::scale))
                                   * collapsedScaleSetting;
             const ImVec2 fpsSizeVec = fpsFont->CalcTextSizeA(fpsSize, FLT_MAX, 0.0f, fpsText);
-            
-            // FPS color based on performance
             int fpsVal = (int)std::lround(ImGui::GetIO().Framerate);
             ImU32 fpsColor = (fpsVal >= 55) ? IM_COL32(100, 220, 120, 255)
-                           : (fpsVal >= 40) ? IM_COL32(0, 212, 255, 255)
-                           : IM_COL32(255, 180, 100, 255);
-            
+                            : (fpsVal >= 40) ? IM_COL32(0, 212, 255, 255)
+                            : IM_COL32(255, 180, 100, 255);
             indicatorDraw->AddText(
                 fpsFont, fpsSize,
                 ImVec2(logoMax.x + 14.0f * c::scale * collapsedScaleSetting,
@@ -520,9 +497,6 @@ EGLBoolean hook_eglSwapBuffers(EGLDisplay dpy, EGLSurface surface)
         ImGui::PopStyleVar(3);
     }
 
-    // ╔════════════════════════════════════════════════════════════════════════╗
-    // ║                         OMNI MAIN UI                                   ║
-    // ╚════════════════════════════════════════════════════════════════════════╝
     if (isMenuVisible && !windowCollapsed)
     {
         if (!g_LoginTextLoaded && VM != nullptr)
@@ -537,22 +511,15 @@ EGLBoolean hook_eglSwapBuffers(EGLDisplay dpy, EGLSurface surface)
 
         runtime_preview_menu::EnsureTexturesLoaded();
         main_runtime_theme::ApplyThemeState();
-
         ImVec2 viewportCenter = ImGui::GetMainViewport()->GetCenter();
-        ImVec2 displaySize = ImGui::GetIO().DisplaySize;
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
 
-        // ════════════════════════════════════════════════════════════════════
-        // OMNI LOGIN SCREEN
-        // ════════════════════════════════════════════════════════════════════
         if (!isLogin && !ui_loading::IsActive())
         {
             const ImVec2 login_size = ImVec2(500, 560);
-
             ImGui::SetNextWindowPos(viewportCenter, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
             ImGui::SetNextWindowSize(login_size, ImGuiCond_Always);
             ImGui::SetNextWindowBgAlpha(0.0f);
-
             if (ImGui::Begin(OBFUSCATE("Kaelex Login"), nullptr,
                 ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoSavedSettings |
                 ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoTitleBar |
@@ -560,7 +527,6 @@ EGLBoolean hook_eglSwapBuffers(EGLDisplay dpy, EGLSurface surface)
             {
                 const ImVec2 pos = ImGui::GetWindowPos();
                 ImDrawList* dl = ImGui::GetWindowDrawList();
-
                 const float R  = 18.0f;
                 const float Ri = 14.0f;
                 const float inset = 10.0f;
@@ -568,8 +534,6 @@ EGLBoolean hook_eglSwapBuffers(EGLDisplay dpy, EGLSurface surface)
                 const ImVec2 outerMax = pos + login_size;
                 const ImVec2 innerMin = outerMin + ImVec2(inset, inset);
                 const ImVec2 innerMax = outerMax - ImVec2(inset, inset);
-
-                // ── OMNI Outer glow (breathing) ────────────────────────────
                 float breathe = 0.5f + 0.5f * sinf(g_OmniTime * 1.4f);
                 int outerGlowA = (int)(40.0f + 25.0f * breathe);
                 dl->AddRectFilled(
@@ -584,11 +548,8 @@ EGLBoolean hook_eglSwapBuffers(EGLDisplay dpy, EGLSurface surface)
                     IM_COL32(0, 190, 255, outerGlowA + 20),
                     R + 4.0f
                 );
-
-                // ── Outer panel (frosted dark glass) ───────────────────────
                 dl->AddRectFilled(outerMin, outerMax,
                     IM_COL32(8, 18, 38, 210), R);
-                // Gradient top-tint
                 dl->AddRectFilledMultiColor(
                     outerMin,
                     ImVec2(outerMax.x, outerMin.y + login_size.y * 0.55f),
@@ -597,14 +558,9 @@ EGLBoolean hook_eglSwapBuffers(EGLDisplay dpy, EGLSurface surface)
                     IM_COL32(0, 0, 0, 0),
                     IM_COL32(0, 0, 0, 0)
                 );
-                // Outer border
                 dl->AddRect(outerMin, outerMax,
                     IM_COL32(0, 180, 255, 80), R, 0, 1.5f);
-
-                // Animated shimmer
                 DrawOmniShimmer(dl, outerMin, outerMax, R, g_OmniTime);
-
-                // ── Inner card ────────────────────────────────────────────
                 dl->AddRectFilled(innerMin, innerMax,
                     IM_COL32(12, 28, 48, 240), Ri);
                 dl->AddRectFilledMultiColor(
@@ -617,19 +573,14 @@ EGLBoolean hook_eglSwapBuffers(EGLDisplay dpy, EGLSurface surface)
                 );
                 dl->AddRect(innerMin, innerMax,
                     IM_COL32(0, 200, 255, 50), Ri, 0, 1.0f);
-
-                // ── OMNI Logo icon circle ──────────────────────────────────
                 float iconCX = pos.x + login_size.x * 0.5f;
                 float iconCY = pos.y + 56.0f;
-                // Glow ring
                 dl->AddCircleFilled(ImVec2(iconCX, iconCY), 30.0f,
                     IM_COL32(0, 180, 255, (int)(40 + 20 * breathe)), 32);
                 dl->AddCircleFilled(ImVec2(iconCX, iconCY), 24.0f,
                     IM_COL32(12, 28, 48, 250), 32);
                 dl->AddCircle(ImVec2(iconCX, iconCY), 24.0f,
                     IM_COL32(0, 200, 255, 120), 32, 1.5f);
-
-                // ── Title: OMNI ────────────────────────────────────────────
                 {
                     const char* titleText = "Kaelex";
                     const float titleSize = 42.0f;
@@ -638,12 +589,9 @@ EGLBoolean hook_eglSwapBuffers(EGLDisplay dpy, EGLSurface surface)
                         : ImGui::CalcTextSize(titleText);
                     float tx = pos.x + (login_size.x - tsz.x) * 0.5f;
                     float ty = pos.y + 90.0f;
-
-                    // Shadow
                     if (F50)
                         dl->AddText(F50, titleSize, ImVec2(tx + 2, ty + 2),
                             IM_COL32(0, 100, 160, 100), titleText);
-                    // Main title
                     if (F50)
                         dl->AddText(F50, titleSize, ImVec2(tx, ty),
                             IM_COL32(200, 240, 255, 255), titleText);
@@ -651,8 +599,6 @@ EGLBoolean hook_eglSwapBuffers(EGLDisplay dpy, EGLSurface surface)
                         dl->AddText(ImVec2(tx, ty),
                             IM_COL32(200, 240, 255, 255), titleText);
                 }
-
-                // ── Subtitle ───────────────────────────────────────────────
                 {
                     const char* sub = "PREMIUM ACCESS PORTAL";
                     ImVec2 ssz = ImGui::CalcTextSize(sub);
@@ -662,8 +608,6 @@ EGLBoolean hook_eglSwapBuffers(EGLDisplay dpy, EGLSurface surface)
                         sub
                     );
                 }
-
-                // ── Helper hint ────────────────────────────────────────────
                 {
                     const char* hint1 = "Paste your license key or type it manually";
                     const char* hint2 = "to continue.";
@@ -678,13 +622,10 @@ EGLBoolean hook_eglSwapBuffers(EGLDisplay dpy, EGLSurface surface)
                         IM_COL32(160, 200, 230, 160), hint2
                     );
                 }
-
-                // ── Key input field ────────────────────────────────────────
                 {
                     const float inputW = 440.0f;
                     const float inputH = 56.0f;
                     const float inputX = (login_size.x - inputW) * 0.5f;
-
                     ImVec2 inputScreenMin = ImVec2(pos.x + inputX, pos.y + 200.0f);
                     ImVec2 inputScreenMax = inputScreenMin + ImVec2(inputW, inputH);
                     dl->AddRectFilled(
@@ -692,36 +633,29 @@ EGLBoolean hook_eglSwapBuffers(EGLDisplay dpy, EGLSurface surface)
                         inputScreenMax + ImVec2(2, 2),
                         IM_COL32(0, 180, 255, 35), 14.0f
                     );
-
                     ImGui::SetCursorPos(ImVec2(inputX, 200.0f));
                     ImGui::AstralInput("##key_login", s, sizeof(s), ImVec2(inputW, inputH));
                 }
                 bool loginInputClicked = ImGui::IsItemClicked();
                 bool loginInputActive  = ImGui::IsItemActive();
                 bool loginInputHovered = ImGui::IsItemHovered();
-
                 if (loginInputClicked || loginInputActive)
                     showKeyboard = true;
-
                 if (showKeyboard && !loginInputActive && !loginInputHovered && ImGui::IsMouseClicked(0))
                 {
                     float kbH = ImGui::GetIO().DisplaySize.y * 0.60f;
                     if (ImGui::GetMousePos().y < ImGui::GetIO().DisplaySize.y - kbH)
                         showKeyboard = false;
                 }
-
-                // ── PASTE button (OMNI style) ──────────────────────────────
                 {
                     const float btnW = 440.0f;
                     const float btnH = 52.0f;
                     const float btnX = (login_size.x - btnW) * 0.5f;
                     ImGui::SetCursorPos(ImVec2(btnX, 274.0f));
-
                     ImVec2 bMin = ImVec2(pos.x + btnX, pos.y + 274.0f);
                     ImVec2 bMax = bMin + ImVec2(btnW, btnH);
                     dl->AddRectFilled(bMin, bMax, IM_COL32(8, 24, 48, 220), 12.0f);
                     dl->AddRect(bMin, bMax, IM_COL32(0, 180, 255, 90), 12.0f, 0, 1.2f);
-
                     ImGui::PushStyleColor(ImGuiCol_Button,        ImVec4(0, 0, 0, 0));
                     ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.2f, 0.3f, 0.5f, 0.6f));
                     ImGui::PushStyleColor(ImGuiCol_ButtonActive,  ImVec4(0.25f, 0.35f, 0.55f, 0.8f));
@@ -740,18 +674,13 @@ EGLBoolean hook_eglSwapBuffers(EGLDisplay dpy, EGLSurface surface)
                     ImGui::PopStyleVar(2);
                     ImGui::PopStyleColor(5);
                 }
-
-                // ── LOGIN button (gradient, glowing) ───────────────────────
                 {
                     const float btnW = 300.0f;
                     const float btnH = 54.0f;
                     const float btnX = (login_size.x - btnW) * 0.5f;
                     ImGui::SetCursorPos(ImVec2(btnX, 342.0f));
-
                     ImVec2 bMin = ImVec2(pos.x + btnX, pos.y + 342.0f);
                     ImVec2 bMax = bMin + ImVec2(btnW, btnH);
-                    
-                    // Gradient: cyan to blue
                     dl->AddRectFilledMultiColor(
                         bMin, bMax,
                         IM_COL32(0, 200, 255, 255),
@@ -759,7 +688,6 @@ EGLBoolean hook_eglSwapBuffers(EGLDisplay dpy, EGLSurface surface)
                         IM_COL32(0, 120, 200, 255),
                         IM_COL32(0, 180, 245, 255)
                     );
-                    // Sheen
                     dl->AddRectFilledMultiColor(
                         bMin,
                         ImVec2(bMax.x, bMin.y + btnH * 0.45f),
@@ -768,14 +696,12 @@ EGLBoolean hook_eglSwapBuffers(EGLDisplay dpy, EGLSurface surface)
                         IM_COL32(255, 255, 255, 0),
                         IM_COL32(255, 255, 255, 0)
                     );
-                    // Glow
                     dl->AddRect(bMin, bMax,
                         IM_COL32(100, 240, 255, (int)(100 + 50 * breathe)), 14.0f, 0, 1.5f);
                     dl->AddRect(
                         bMin - ImVec2(2, 2), bMax + ImVec2(2, 2),
                         IM_COL32(0, 200, 255, (int)(35 + 20 * breathe)), 16.0f, 0, 1.8f
                     );
-
                     ImGui::PushStyleColor(ImGuiCol_Button,        ImVec4(0, 0, 0, 0));
                     ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(1, 1, 1, 0.1f));
                     ImGui::PushStyleColor(ImGuiCol_ButtonActive,  ImVec4(0, 0, 0, 0.15f));
@@ -802,8 +728,6 @@ EGLBoolean hook_eglSwapBuffers(EGLDisplay dpy, EGLSurface surface)
                     ImGui::PopStyleVar(2);
                     ImGui::PopStyleColor(5);
                 }
-
-                // ── Error message ──────────────────────────────────────────
                 if (!err.empty() && err != "OK")
                 {
                     ImVec2 errMin = ImVec2(pos.x + 30.0f, pos.y + 414.0f);
@@ -815,8 +739,6 @@ EGLBoolean hook_eglSwapBuffers(EGLDisplay dpy, EGLSurface surface)
                     ImGui::SetCursorPos(ImVec2(38.0f, 422.0f));
                     ImGui::TextColored(ImColor(255, 140, 160, 255), "  Error: %s", err.c_str());
                 }
-
-                // ── Footer ────────────────────────────────────────────────
                 {
                     float divY = pos.y + login_size.y - 52.0f;
                     dl->AddLine(
@@ -838,14 +760,12 @@ EGLBoolean hook_eglSwapBuffers(EGLDisplay dpy, EGLSurface surface)
                         IM_COL32(80, 140, 180, 100),
                         versionText
                     );
-                    // Online indicator
                     dl->AddCircleFilled(
                         ImVec2(pos.x + 22.0f, divY + 17.0f),
                         4.5f,
                         IM_COL32(80, 220, 140, 220), 10
                     );
                 }
-
                 if (showKeyboard)
                     RenderVirtualKeyboard("##VirtualKeyboardLogin", s, sizeof(s), &showKeyboard);
             }
@@ -858,9 +778,6 @@ EGLBoolean hook_eglSwapBuffers(EGLDisplay dpy, EGLSurface surface)
                 isLogin = true;
             }
         }
-        // ════════════════════════════════════════════════════════════════════
-        // OMNI MAIN MENU
-        // ════════════════════════════════════════════════════════════════════
         else
         {
             uncollapseOpenAnim = ImClamp(
@@ -870,644 +787,55 @@ EGLBoolean hook_eglSwapBuffers(EGLDisplay dpy, EGLSurface surface)
             float openAlpha = 0.2f + 0.8f * openEase;
             ImGui::PushStyleVar(ImGuiStyleVar_Alpha, openAlpha);
 
-            ImVec2 mainWindowSize = ImVec2(840.f, 600.f);
-            mainWindowSize.x = ImMin(mainWindowSize.x, displaySize.x);
-            mainWindowSize.y = ImMin(mainWindowSize.y, displaySize.y);
-            ImGui::SetNextWindowPos(viewportCenter, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
-            ImGui::SetNextWindowSize(mainWindowSize, ImGuiCond_Always);
-            ImGui::SetNextWindowBgAlpha(0.0f);
+            main_runtime_theme::ApplyAccentFromHue();
+            c::ApplyMainWindowStyle(ImGui::GetStyle());
+            c::UpdateTheme(dark, menu, ImGui::GetIO().DeltaTime);
+            main_runtime_theme::ApplyThemeState();
 
-            ImGui::Begin(
-                "KAELEXI",
-                nullptr,
-                ImGuiWindowFlags_NoTitleBar |
-                ImGuiWindowFlags_NoBringToFrontOnFocus |
-                ImGuiWindowFlags_NoScrollbar |
-                ImGuiWindowFlags_NoSavedSettings |
-                ImGuiWindowFlags_NoBackground
-            );
+            static equinox::MenuState eqMenu;
+            eqMenu.Backdrop = (ImTextureID)(intptr_t)runtime_preview_menu::g_menuBackground.id;
+            eqMenu.DrawTab = EquinoxDrawTab;
+            equinox::Render(eqMenu);
+
+            if (eqMenu.TrafficPressed == 0)
             {
-                runtime_preview_menu::StateRefs runtimeState{
+                runtime_preview_menu::StateRefs refs{
                     dark, tabAlpha, tabAdd, page, activeTab,
                     windowCollapsed, isMenuVisible,
                     collapseBarLastActiveTime,
                     collapseBarOpacityAnim,
                     collapseBarPressAnim
                 };
-                {
-                    using namespace runtime_preview_menu;
-                    main_runtime_theme::ApplyAccentFromHue();
-
-                    ImGuiStyle *runtimeStyle = &ImGui::GetStyle();
-                    c::ApplyMainWindowStyle(*runtimeStyle);
-                    c::UpdateTheme(runtimeState.dark, menu, ImGui::GetIO().DeltaTime);
-                    main_runtime_theme::ApplyThemeState();
-
-                    const ImVec2 runtimeWindowSize = ImGui::GetWindowSize();
-                    const ImVec2 runtimeWindowPos  = ImGui::GetWindowPos();
-                    ImDrawList *runtimeDrawList     = ImGui::GetWindowDrawList();
-
-                    const float outerPad      = 18.0f;
-                    const float layoutGap     = 5.0f;
-                    const float contentPadding = main_runtime_theme::GetContentPadding();
-                    const float columnGap      = main_runtime_theme::GetColumnGap();
-                    const float headerHeight   = 50.0f;
-                    const float tabBarHeight   = 62.0f;
-                    const float closeHeaderWidth = 74.0f;
-                    const float sidebarWidth   = 0.0f;
-                    const float logoTileSize   = 0.0f;
-
-                    const float sidebarLeft  = runtimeWindowPos.x + outerPad;
-                    const float contentLeft  = runtimeWindowPos.x + outerPad;
-                    const float contentRight = runtimeWindowPos.x + runtimeWindowSize.x - outerPad;
-                    const float headerTop    = runtimeWindowPos.y + outerPad + 28.0f;
-                    const float headerWidth  = contentRight - contentLeft;
-                    const float headerMainWidth  = headerWidth - closeHeaderWidth - layoutGap;
-                    const float headerCardWidth  = headerMainWidth * 0.5f;
-
-                    const ImVec2 titleCardMin(contentLeft, headerTop);
-                    const ImVec2 titleCardSize(headerCardWidth, headerHeight);
-                    const ImVec2 colorCardMin(contentLeft + headerCardWidth + layoutGap, headerTop);
-                    const ImVec2 colorCardSize(headerCardWidth, headerHeight);
-                    const ImVec2 closeCardMin(colorCardMin.x + headerCardWidth + layoutGap, headerTop);
-                    const ImVec2 closeCardSize(closeHeaderWidth, headerHeight);
-
-                    const ImVec2 hostMin(contentLeft, headerTop + headerHeight + layoutGap);
-                    const ImVec2 hostMax(contentRight,
-                        runtimeWindowPos.y + runtimeWindowSize.y - outerPad - tabBarHeight - layoutGap);
-                    const ImVec2 contentInnerMin(hostMin.x + contentPadding, hostMin.y + contentPadding);
-                    const ImVec2 contentInnerSize(
-                        ImMax(0.0f, (hostMax.x - hostMin.x) - contentPadding * 2.0f),
-                        ImMax(0.0f, (hostMax.y - hostMin.y) - contentPadding * 2.0f)
-                    );
-
-                    // ── OMNI Window Glow ───────────────────────────────────
-                    float breathe = 0.5f + 0.5f * sinf(g_OmniTime * 1.2f);
-                    ImVec2 winMin = runtimeWindowPos;
-                    ImVec2 winMax = runtimeWindowPos + runtimeWindowSize;
-                    runtimeDrawList->AddRectFilled(
-                        winMin - ImVec2(6, 6), winMax + ImVec2(6, 6),
-                        IM_COL32(0, 160, 220, (int)(30 + 20 * breathe)),
-                        22.0f
-                    );
-
-                    // ── OMNI Main Window Background ────────────────────────
-                    runtimeDrawList->AddRectFilled(winMin, winMax,
-                        IM_COL32(6, 16, 32, 220), 18.0f);
-                    // Gradient tint
-                    runtimeDrawList->AddRectFilledMultiColor(
-                        winMin,
-                        ImVec2(winMax.x, winMin.y + runtimeWindowSize.y * 0.35f),
-                        IM_COL32(0, 180, 255, 22),
-                        IM_COL32(0, 140, 200, 12),
-                        IM_COL32(0, 0, 0, 0),
-                        IM_COL32(0, 0, 0, 0)
-                    );
-                    // Border
-                    runtimeDrawList->AddRect(winMin, winMax,
-                        IM_COL32(0, 180, 255, 75), 18.0f, 0, 1.8f);
-                    // Inner border
-                    runtimeDrawList->AddRect(
-                        winMin + ImVec2(2, 2), winMax - ImVec2(2, 2),
-                        IM_COL32(0, 140, 200, 30), 17.0f, 0, 1.0f);
-                    // Shimmer
-                    DrawOmniShimmer(runtimeDrawList, winMin, winMax, 18.0f, g_OmniTime);
-
-                    // ── OMNI Title Bar ─────────────────────────────────────
-                    {
-                        const char* omniTitle = "KAELEX";
-                        ImVec2 titleSz = F50
-                            ? F50->CalcTextSizeA(24.0f, FLT_MAX, 0.0f, omniTitle)
-                            : ImGui::CalcTextSize(omniTitle);
-                        float titleX = winMin.x + (runtimeWindowSize.x - titleSz.x) * 0.5f;
-                        float titleY = winMin.y + 6.0f;
-
-                        // Shadow
-                        if (F50)
-                            runtimeDrawList->AddText(F50, 24.0f,
-                                ImVec2(titleX + 1, titleY + 2),
-                                IM_COL32(0, 100, 160, 80), omniTitle);
-                        // Main text
-                        if (F50)
-                            runtimeDrawList->AddText(F50, 24.0f,
-                                ImVec2(titleX, titleY),
-                                IM_COL32(180, 240, 255, 255), omniTitle);
-                        else
-                            runtimeDrawList->AddText(
-                                ImVec2(titleX, titleY),
-                                IM_COL32(180, 240, 255, 255), omniTitle);
-
-                        // Decorative lines
-                        float lineY = titleY + titleSz.y * 0.5f + 2.0f;
-                        float lineGap = 10.0f;
-                        runtimeDrawList->AddLine(
-                            ImVec2(winMin.x + 40.0f, lineY),
-                            ImVec2(titleX - lineGap, lineY),
-                            IM_COL32(0, 180, 255, 100), 1.2f);
-                        runtimeDrawList->AddLine(
-                            ImVec2(titleX + titleSz.x + lineGap, lineY),
-                            ImVec2(winMax.x - 40.0f, lineY),
-                            IM_COL32(0, 180, 255, 100), 1.2f);
-                    }
-
-                    runtimeState.page  = ImClamp(runtimeState.page,  1, 6);
-                    runtimeState.activeTab = ImClamp(runtimeState.activeTab, 1, 6);
-
-                    const bool accentChanged = custom::shell::DrawMenuColorCard(colorCardMin, colorCardSize);
-                    if (accentChanged) {
-                        c::UpdateTheme(runtimeState.dark, menu, ImGui::GetIO().DeltaTime);
-                        main_runtime_theme::ApplyThemeState();
-                    }
-
-                    custom::shell::DrawTitleCard(titleCardMin, titleCardSize, "KAELEXI");
-                    if (custom::shell::DrawCloseCard(closeCardMin, closeCardSize)) {
-                        runtime_preview_menu::CollapseMenu(runtimeState);
-                    }
-
-                    // ── OMNI Bottom Tab Bar ────────────────────────────────
-                    {
-                        const ImVec2 tabBarMin(
-                            runtimeWindowPos.x + outerPad,
-                            runtimeWindowPos.y + runtimeWindowSize.y - outerPad - tabBarHeight);
-                        const ImVec2 tabBarMax(
-                            runtimeWindowPos.x + runtimeWindowSize.x - outerPad,
-                            runtimeWindowPos.y + runtimeWindowSize.y - outerPad);
-
-                        // Tab bar background
-                        runtimeDrawList->AddRectFilled(tabBarMin, tabBarMax,
-                            IM_COL32(4, 16, 32, 240), 12.0f);
-                        runtimeDrawList->AddRect(tabBarMin, tabBarMax,
-                            IM_COL32(0, 180, 255, 55), 12.0f, 0, 1.2f);
-                        // Top highlight
-                        runtimeDrawList->AddLine(
-                            ImVec2(tabBarMin.x + 10.0f, tabBarMin.y),
-                            ImVec2(tabBarMax.x - 10.0f, tabBarMin.y),
-                            IM_COL32(0, 200, 255, 90), 1.5f);
-
-                        static const char *tabIcons[] = {
-                            ICON_FA_EYE,
-                            ICON_FA_CROSSHAIRS,
-                            ICON_FA_MICROCHIP,
-                            ICON_FA_TH_LIST,
-                            ICON_FA_SLIDERS_H,
-                            ICON_FA_COG
-                        };
-                        const int tabCount = IM_ARRAYSIZE(tabIcons);
-                        const float tabBarWidth = tabBarMax.x - tabBarMin.x;
-                        const float tabW = tabBarWidth / (float)tabCount;
-
-                        for (int i = 0; i < tabCount; ++i)
-                        {
-                            ImVec2 tabMin(tabBarMin.x + i * tabW, tabBarMin.y);
-                            ImVec2 tabMax(tabBarMin.x + (i + 1) * tabW, tabBarMax.y);
-                            bool isActive = (runtimeState.page == (i + 1));
-
-                            // Active tab highlight
-                            if (isActive)
-                            {
-                                runtimeDrawList->AddRectFilled(
-                                    tabMin + ImVec2(2, 2), tabMax - ImVec2(2, 2),
-                                    IM_COL32(0, 180, 255, 30), 9.0f);
-                                // Top glow
-                                runtimeDrawList->AddLine(
-                                    ImVec2(tabMin.x + 6.0f, tabBarMin.y + 1.5f),
-                                    ImVec2(tabMax.x - 6.0f, tabBarMin.y + 1.5f),
-                                    IM_COL32(0, 212, 255, 240), 2.8f);
-                            }
-
-                            // Icon
-                            ImFont* iconFont = custom::shell::GetIconFont();
-                            const char* tabIcon = tabIcons[i];
-                            const float iconSize = 18.0f;
-                            ImVec2 iconSz = custom::shell::MeasureText(iconFont, iconSize, tabIcon);
-                            ImVec2 iconPos(
-                                tabMin.x + (tabW - iconSz.x) * 0.5f,
-                                tabMin.y + (tabBarHeight - iconSz.y) * 0.5f
-                            );
-                            ImU32 iconColor = isActive
-                                ? IM_COL32(0, 212, 255, 255)
-                                : IM_COL32(120, 180, 220, 180);
-                            runtimeDrawList->AddText(iconFont, iconSize, iconPos, iconColor, tabIcon);
-
-                            // Clickable button
-                            ImGui::SetCursorScreenPos(tabMin);
-                            if (ImGui::InvisibleButton(
-                                ("##omnitab_" + std::to_string(i)).c_str(),
-                                ImVec2(tabW, tabBarHeight)))
-                            {
-                                runtimeState.page = i + 1;
-                            }
-                        }
-                    }
-
-                    runtimeState.tabAlpha = ImClamp(
-                        runtimeState.tabAlpha
-                        + (4.0f * ImGui::GetIO().DeltaTime
-                           * (runtimeState.page == runtimeState.activeTab ? 1.0f : -1.0f)),
-                        0.0f, 1.0f
-                    );
-                    if (runtimeState.tabAlpha == 0.0f && runtimeState.tabAdd == 0.0f)
-                        runtimeState.activeTab = runtimeState.page;
-
-                    runtimeDrawList->AddRectFilled(hostMin, hostMax,
-                        ImGui::GetColorU32(main_runtime_theme::GetSidebarShellBackgroundColor()),
-                        11.0f);
-
-                    ImGui::SetCursorScreenPos(contentInnerMin);
-                    ImGui::BeginChild("##OmniContentHost", contentInnerSize, false,
-                        ImGuiWindowFlags_NoBackground);
-                    {
-                        const bool pushedContentFont = (font::inter_semibold != nullptr);
-                        if (pushedContentFont)
-                            ImGui::PushFont(font::inter_semibold);
-
-                        ImGui::PushStyleVar(ImGuiStyleVar_Alpha,
-                            runtimeState.tabAlpha * runtimeStyle->Alpha);
-
-                        const ImVec2 contentRegion = ImGui::GetContentRegionAvail();
-                        const float childHeight = ImMax(0.0f, contentRegion.y);
-                        const float childWidth  = ImMax(0.0f,
-                            (contentRegion.x - columnGap) * 0.5f);
-
-                        // ── TAB 1: VISUALS ─────────────────────────────────
-                        if (runtimeState.activeTab == 1)
-                        {
-                            custom::BeginGroup();
-                            {
-                                const ChildFrame left = BeginContentChild(
-                                    "ESP##OMNI_ESP", ImVec2(childWidth, childHeight));
-                                custom::Checkbox("ESP Line",        &Config.ESPMenu.isPlayerLine);
-                                custom::Checkbox("ESP Box",         &Config.ESPMenu.Box);
-                                custom::Checkbox("ESP Skeleton",    &Config.ESPMenu.Skeleton);
-                                custom::Checkbox("ESP Health",      &Config.ESPMenu.Health);
-                                custom::Checkbox("ESP Name",        &Config.ESPMenu.Name);
-                                custom::Checkbox("ESP Distance",    &Config.ESPMenu.Distance);
-                                custom::Checkbox("ESP Count",       &Config.ESPMenu.Count);
-                                custom::Checkbox("360 Alert",       &Config.ESPMenu.Alert);
-                                custom::Checkbox("Show AimLine",    &Config.ESPMenu.Aimline);
-                                custom::Checkbox("Yellow Wallhack", &Config.ExtraMenu.WallHack);
-                                custom::Checkbox("Red Wallhack",    &Config.ExtraMenu.RedWallhack);
-                                EndContentChild(left);
-                            }
-                            custom::EndGroup();
-
-                            ImGui::SameLine(0.0f, 10.0f);
-
-                            custom::BeginGroup();
-                            {
-                                const ChildFrame right = BeginContentChild(
-                                    "ESP OPTIONS", ImVec2(childWidth, childHeight));
-                                static const char *boxTypes[] = {"Fill", "Outline", "Corner", "3D"};
-                                custom::Combo("Box Type", (int*)&Config.ESPMenu.BoxType,
-                                    boxTypes, IM_ARRAYSIZE(boxTypes), -1);
-                                static const char *linePositions[] = {"Top", "Mid", "Bottom"};
-                                custom::Combo("Line Position", (int*)&Config.ESPMenu.Target,
-                                    linePositions, IM_ARRAYSIZE(linePositions), -1);
-                                static const char *healthPositions[] = {"Top", "Side"};
-                                custom::Combo("Health Position", (int*)&Config.ESPMenu.HealthPosition,
-                                    healthPositions, IM_ARRAYSIZE(healthPositions), -1);
-                                static const char *espStyles[] = {"None", "3D Sphere", "Player Signal"};
-                                custom::Combo("ESP Style", (int*)&Config.ESPMenu.EspStyle,
-                                    espStyles, IM_ARRAYSIZE(espStyles), -1);
-
-                                runtime_preview_menu::DrawRuntimeEspColorRow(
-                                    "Player ESP Color", Config.sColorsESPPLAYER.LinePLAYER);
-                                runtime_preview_menu::CopyLinkedEspColors(
-                                    Config.sColorsESPPLAYER.LinePLAYER,
-                                    Config.sColorsESPPLAYER.BoxPLAYER,
-                                    Config.sColorsESPPLAYER.NamePLAYER,
-                                    Config.sColorsESPPLAYER.HealthPLAYER,
-                                    Config.sColorsESPPLAYER.DistancePLAYER,
-                                    Config.sColorsESPPLAYER.SkeletonPLAYER
-                                );
-                                runtime_preview_menu::DrawRuntimeEspColorRow(
-                                    "Bot ESP Color", Config.sColorsESPBOT.LineBOT);
-                                runtime_preview_menu::CopyLinkedEspColors(
-                                    Config.sColorsESPBOT.LineBOT,
-                                    Config.sColorsESPBOT.BoxBOT,
-                                    Config.sColorsESPBOT.NameBOT,
-                                    Config.sColorsESPBOT.HealthBOT,
-                                    Config.sColorsESPBOT.DistanceBOT,
-                                    Config.sColorsESPBOT.SkeletonBOT
-                                );
-                                EndContentChild(right);
-                            }
-                            custom::EndGroup();
-                        }
-
-                        // ── TAB 2: AIMBOT ──────────────────────────────────
-                        if (runtimeState.activeTab == 2)
-                        {
-                            custom::BeginGroup();
-                            {
-                                const ChildFrame left = BeginContentChild(
-                                    "AIMBOT", ImVec2(childWidth, childHeight));
-                                custom::Checkbox("Aimbot 360",   &Config.Aim.Aimbot360);
-                                custom::Checkbox("Bullet Track", &Config.Aim.AimSilent);
-                                custom::SliderFloat("Aim Assist Size",
-                                    &Config.Aim.AimAssistSize, 0.0f, 100.0f, "%.0f");
-                                EndContentChild(left);
-                            }
-                            custom::EndGroup();
-
-                            ImGui::SameLine(0.0f, 10.0f);
-
-                            custom::BeginGroup();
-                            {
-                                const ChildFrame right = BeginContentChild(
-                                    "COMBAT OPTIONS", ImVec2(childWidth, childHeight));
-                                static const char *targets[]   = {"Head", "Chest", "Body"};
-                                custom::Combo("Location", (int*)&Config.Aim.Target,
-                                    targets, IM_ARRAYSIZE(targets), -1);
-                                static const char *triggers[]  = {"None", "Shooting", "Scoping"};
-                                custom::Combo("Trigger", (int*)&Config.Aim.Trigger,
-                                    triggers, IM_ARRAYSIZE(triggers), -1);
-                                static const char *targetBy[]  = {"Distance", "FOV"};
-                                custom::Combo("Target By", (int*)&Config.Aim.By,
-                                    targetBy, IM_ARRAYSIZE(targetBy), -1);
-                                custom::SliderFloat("FOV Size",
-                                    &Config.Aim.Cross, 0.0f, 100.0f, "%.0f");
-                                EndContentChild(right);
-                            }
-                            custom::EndGroup();
-                        }
-
-                        // ── TAB 3: MEMORY ──────────────────────────────────
-                        if (runtimeState.activeTab == 3)
-                        {
-                            custom::BeginGroup();
-                            {
-                                const ChildFrame left = BeginContentChild(
-                                    "MEMORY HACKS", ImVec2(childWidth, childHeight));   
-                                custom::Checkbox("Unlock Blueprint", &Config.ExtraMenu.UnlockBlueprint);                       
-                                custom::Checkbox("Hitbox",          &Config.ExtraMenu.Hit);
-                                custom::Checkbox("No Recoil",       &Config.ExtraMenu.Recoil);
-                                custom::Checkbox("No Spread",       &Config.ExtraMenu.Spread);
-                                custom::Checkbox("No Shake",        &Config.ExtraMenu.Shake);
-                                custom::Checkbox("No Overheat",     &Config.ExtraMenu.Rpd);
-                                custom::Checkbox("No Parachute",    &Config.ExtraMenu.Parachute);
-                                custom::Checkbox("Anti Flashbang",  &Config.ExtraMenu.Flash);
-                                custom::Checkbox("Firerate",        &Config.ExtraMenu.Fire);
-                                custom::Checkbox("Fast Dive",       &Config.ExtraMenu.Diving);
-                                custom::Checkbox("Fast Reload",     &Config.ExtraMenu.Reload);
-                                custom::Checkbox("Fast Scope",      &Config.ExtraMenu.Scope);
-                                custom::Checkbox("Quick Switch",    &Config.ExtraMenu.Switch);
-                                custom::Checkbox("Weapon Kinetic",  &Config.ExtraMenu.Kinetic);
-                                EndContentChild(left);
-                            }
-                            custom::EndGroup();
-
-                            ImGui::SameLine(0.0f, 10.0f);
-
-                            custom::BeginGroup();
-                            {
-                                const ChildFrame right = BeginContentChild(
-                                    "MISC FEATURES", ImVec2(childWidth, childHeight));
-                                custom::SliderFloat("Snowboard Speed",
-                                    &SnowBsize, 0.0f, 100.0f, "%.1f");
-                                custom::SliderFloat("Slide Distance",
-                                    &SlideRange, 0.0f, 30.0f, "%.1f");
-                                custom::SliderFloat("SpeedHack",
-                                    &speedHackMultiplier, 0.5f, 2.0f, "%.1fx");
-                                custom::SliderFloat("High Jump",
-                                    &jumpHeightMultiplier, 0.5f, 5.0f, "%.2fx");
-                                EndContentChild(right);
-                            }
-                            custom::EndGroup();
-                        }
-
-                        // ── TAB 4: SKINS ──────────────────────────────────
-                        if (runtimeState.activeTab == 4)
-                        {
-                            const ChildFrame skinChild = BeginContentChild(
-                                "SKINS", ImVec2(contentRegion.x, childHeight));
-                            RenderSkinCategoryContent(skinSubTab, true);
-
-                            // ── OMNI Camo Modifier ─────────────────────────
-                            ImGui::Spacing();
-                            ImGui::Separator();
-                            ImGui::Spacing();
-                            ImGui::TextColored(ImVec4(0.85f, 0.85f, 1.0f, 1.0f),
-                                "Inject Camo to Mythic/Legendary Skins");
-                            ImGui::Dummy(ImVec2(0, 6));
-
-                            if (ImGui::Checkbox("Default / OFF", &camoOff)) {
-                                if (camoOff) {
-                                    camoDiamond   = false;
-                                    camoRedSprite = false;
-                                    for (const auto& getitem : itemData) {
-                                        if (getitem.itemName.find("[MYTHIC]") != std::string::npos ||
-                                            getitem.itemName.find("[LEGENDARY]") != std::string::npos) {
-                                            for (auto conf : weaponConfInstance) {
-                                                if (!conf) continue;
-                                                weaponconfFields = (WeaponConfFields*)((uintptr_t)conf + 0x20);
-                                                if (weaponconfFields->ID == getitem.WeaponConf[2])
-                                                    weaponconfFields->DefWeaponSkinID = 0;
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-
-                            ImGui::Separator();
-
-                            if (ImGui::Checkbox("Diamond Camo", &camoDiamond)) {
-                                if (camoDiamond) {
-                                    camoOff = false; camoRedSprite = false;
-                                    for (const auto& getitem : itemData) {
-                                        if (getitem.itemName.find("[MYTHIC]") != std::string::npos ||
-                                            getitem.itemName.find("[LEGENDARY]") != std::string::npos) {
-                                            for (auto conf : weaponConfInstance) {
-                                                if (!conf) continue;
-                                                weaponconfFields = (WeaponConfFields*)((uintptr_t)conf + 0x20);
-                                                if (weaponconfFields->ID == getitem.WeaponConf[2])
-                                                    weaponconfFields->DefWeaponSkinID = ID_DIAMOND;
-                                            }
-                                        }
-                                    }
-                                } else { camoOff = true; }
-                            }
-
-                            if (ImGui::Checkbox("Red Sprite Camo", &camoRedSprite)) {
-                                if (camoRedSprite) {
-                                    camoOff = false; camoDiamond = false;
-                                    for (const auto& getitem : itemData) {
-                                        if (getitem.itemName.find("[MYTHIC]") != std::string::npos ||
-                                            getitem.itemName.find("[LEGENDARY]") != std::string::npos) {
-                                            for (auto conf : weaponConfInstance) {
-                                                if (!conf) continue;
-                                                weaponconfFields = (WeaponConfFields*)((uintptr_t)conf + 0x20);
-                                                if (weaponconfFields->ID == getitem.WeaponConf[2])
-                                                    weaponconfFields->DefWeaponSkinID = ID_RED_SPRITE;
-                                            }
-                                        }
-                                    }
-                                } else { camoOff = true; }
-                            }
-
-                            ImGui::Dummy(ImVec2(0, 8));
-                            ImGui::TextDisabled("Only applies to [M] Mythic and [L] Legendary weapon skins.");
-
-                            EndContentChild(skinChild);
-                        }
-
-                        // ── TAB 5: MISC ────────────────────────────────────
-                        if (runtimeState.activeTab == 5)
-                        {
-                            const ChildFrame misc = BeginContentChild(
-                                "MISC", ImVec2(contentRegion.x, childHeight));
-                            const misc_tab::LayoutMetrics layout = misc_tab::CalculateLayout(
-                                contentRegion.x, runtime_preview_menu::g_activeChangelogTab);
-
-                            {
-                                const ChildFrame changelog = BeginContentChild(
-                                    "CHANGELOG", ImVec2(contentRegion.x, layout.changelogHeight),
-                                    ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
-
-                                const float changelogTabGap  = 5.0f;
-                                const float changelogTabH    = 40.0f;
-                                const float changelogSafeRight = ImGui::GetStyle().ScrollbarSize + 12.0f;
-                                const float changelogAvailW  = ImMax(1.0f,
-                                    ImGui::GetContentRegionAvail().x - changelogSafeRight);
-                                const float changelogTabW    = ImMax(1.0f,
-                                    ImFloor((changelogAvailW - changelogTabGap * 2.0f) / 3.0f));
-                                for (int i = 0; i < IM_ARRAYSIZE(misc_tab::kChangelogTabs); ++i) {
-                                    char buttonId[48] = {};
-                                    std::snprintf(buttonId, sizeof(buttonId), "##changelog_%d", i);
-                                    if (i > 0) ImGui::SameLine(0.0f, changelogTabGap);
-                                    if (misc_tab::DrawChangelogTab(
-                                            buttonId,
-                                            misc_tab::kChangelogIcons[i],
-                                            misc_tab::kChangelogTabs[i],
-                                            runtime_preview_menu::g_activeChangelogTab == i,
-                                            ImVec2(changelogTabW, changelogTabH)))
-                                    {
-                                        runtime_preview_menu::g_activeChangelogTab = i;
-                                    }
-                                }
-
-                                misc_tab::ContentGap(12.0f);
-
-                                const misc_tab::ChangelogSelection activeSection =
-                                    misc_tab::GetActiveChangelogSelection(
-                                        runtime_preview_menu::g_activeChangelogTab);
-
-                                ImFont *activeIconFont = F107 ? F107 : ImGui::GetFont();
-                                ImGui::PushFont(activeIconFont);
-                                ImGui::TextColored(activeSection.color, "%s", activeSection.icon);
-                                ImGui::PopFont();
-                                ImGui::SameLine(0.0f, 8.0f);
-                                ImGui::TextColored(activeSection.color, "%s", activeSection.title);
-                                ImGui::SameLine(0.0f, 10.0f);
-                                ImGui::TextColored(c::text::text, "March 10, 2026");
-                                misc_tab::ContentGap(8.0f);
-                                misc_tab::DrawSectionItems(activeSection.items, activeSection.count);
-                                EndContentChild(changelog);
-                            }
-
-                            misc_tab::ContentGap(layout.rowGap);
-
-                            {
-                                const ChildFrame info = BeginContentChild(
-                                    "INFO", ImVec2(contentRegion.x, layout.infoHeight),
-                                    ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
-                                misc_tab::DrawInfoSummary();
-                                EndContentChild(info);
-                            }
-
-                            misc_tab::ContentGap(layout.rowGap);
-
-                            {
-                                const ChildFrame price = BeginContentChild(
-                                    "PRICELIST", ImVec2(contentRegion.x, layout.priceHeight),
-                                    ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
-                                misc_tab::DrawPriceSummary("##runtime_omni_misc_prices");
-                                EndContentChild(price);
-                            }
-
-                            EndContentChild(misc);
-                        }
-
-                        // ── TAB 6: SETTINGS ────────────────────────────────
-                        if (runtimeState.activeTab == 6)
-                        {
-                            ImGuiStyle &style = ImGui::GetStyle();
-                            const float settingsColumnGap =
-                                ImClamp(contentRegion.x * 0.022f, 12.0f, 18.0f);
-                            const float settingsRowGap = 6.0f;
-                            const float leftChildWidth =
-                                ImMax(0.0f, ImFloor((contentRegion.x - settingsColumnGap) * 0.5f));
-                            const float rightChildWidth =
-                                ImMax(0.0f, contentRegion.x - settingsColumnGap - leftChildWidth);
-                            const float topChildHeight =
-                                ImMax(0.0f, ImFloor((childHeight - settingsRowGap) * 0.5f));
-                            const float bottomChildHeight =
-                                ImMax(0.0f, childHeight - settingsRowGap - topChildHeight);
-                            const float startX = ImGui::GetCursorPosX();
-
-                            ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing,
-                                ImVec2(style.ItemSpacing.x, settingsRowGap));
-
-                            ImGui::SetCursorPosX(startX);
-                            custom::BeginGroup();
-                            {
-                                const ChildFrame licenseChild = BeginContentChild(
-                                    "LICENSE INFO", ImVec2(leftChildWidth, topChildHeight));
-                                settings_tab::RenderLicenseCard();
-                                EndContentChild(licenseChild);
-
-                                const ChildFrame logoChild = BeginContentChild(
-                                    "LOGO SETTINGS", ImVec2(leftChildWidth, bottomChildHeight));
-                                settings_tab::RenderLogoCard();
-                                EndContentChild(logoChild);
-                            }
-                            custom::EndGroup();
-
-                            ImGui::SameLine(0.0f, settingsColumnGap);
-
-                            custom::BeginGroup();
-                            {
-                                const ChildFrame configChild = BeginContentChild(
-                                    "CONFIG MANAGEMENT", ImVec2(rightChildWidth, topChildHeight));
-                                settings_tab::RenderConfigCard();
-                                EndContentChild(configChild);
-
-                                const ChildFrame enhancementChild = BeginContentChild(
-                                    "ENHANCEMENT", ImVec2(rightChildWidth, bottomChildHeight));
-                                settings_tab::RenderEnhancementCard();
-                                EndContentChild(enhancementChild);
-                            }
-                            custom::EndGroup();
-
-                            ImGui::PopStyleVar();
-                        }
-
-                        ImGui::PopStyleVar();
-                        if (pushedContentFont)
-                            ImGui::PopFont();
-                    }
-                    ImGui::EndChild();
-                    runtime_preview_menu::ResetPopupFocusWindow();
-                    runtime_preview_menu::DrawPopupBackdropFocusLayer(
-                        ImGui::GetForegroundDrawList());
-                }
-
-                if (Config.ExtraMenu.WallHack) {
-                    Patches.A1.Modify();
-                } else {
-                    Patches.A1.Restore();
-                }
+                runtime_preview_menu::CollapseMenu(refs);
             }
-            ImGui::End();
+            else if (eqMenu.TrafficPressed == 1)
+            {
+                eqMenu.ActiveTab = 0;
+            }
+            else if (eqMenu.TrafficPressed == 2)
+            {
+                dark = !dark;
+            }
+
+            switch (eqMenu.HeaderPressed)
+            {
+            case 0: eqMenu.ActiveTab = 1; break;
+            case 1: eqMenu.ActiveTab = 0; break;
+            case 2: eqMenu.ActiveTab = 3; break;
+            case 3: eqMenu.ActiveTab = 5; break;
+            default: break;
+            }
+
+            if (Config.ExtraMenu.WallHack) {
+                Patches.A1.Modify();
+            } else {
+                Patches.A1.Restore();
+            }
             ImGui::PopStyleVar();
         }
-
         ImGui::PopStyleVar();
     }
 
-    // ╔════════════════════════════════════════════════════════════════════════╗
-    // ║                        TOUCH INPUT HANDLING                            ║
-    // ╚════════════════════════════════════════════════════════════════════════╝
     auto Input_get_touchCount = (int (*)())(Class_Input_get_touchCount);
     if (Input_get_touchCount() > 0)
     {
@@ -1538,15 +866,11 @@ EGLBoolean hook_eglSwapBuffers(EGLDisplay dpy, EGLSurface surface)
         io->MouseDown[0] = false;
         io->MouseWheel = 0.0f;
         io->MouseWheelH = 0.0f;
-    } 
+    }
 
-    
     ImGui::EndFrame();
     ImGui::Render();
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-
-    
-
     return old_eglSwapBuffers(dpy, surface);
 }
 
@@ -1569,10 +893,6 @@ void Init_Thread2() {
         std::this_thread::sleep_for(std::chrono::seconds(1));
     }
     LOGI("libanogs.so: %p", m_Anogs);
-
-    // ── All bypass memory patches (PRESERVED 100%) ──────────────────────────
-    //BYPASS MO DITO POGI
-    // ──────────────────────────────────────────────────────────────────────
 }
 
 void Init_Thread()
@@ -1584,24 +904,17 @@ void Init_Thread()
     }
     LOGI("libunity.so: %p", m_unity);
     UpdateAllOffset();
-
-    // ── All memory patches (PRESERVED 100%) ────────────────────────────────
     MemoryPatch::createWithHex("libunity.so", 0x5755800, "00 00 80 D2 C0 03 5F D6").Modify();
     MemoryPatch::createWithHex("libunity.so", 0x9FEC8AC, "00 00 80 D2 C0 03 5F D6").Modify();
-
     Patches.A1 = MemoryPatch::createWithHex("libunity.so", 0x8D781DC,
         "1F 20 03 D5 E0 03 13 AA");
-
-    // ── All hooking and offsets (PRESERVED 100%) ───────────────────────────
     DobbyHook((void*)getAbsoluteAddress("libunity.so", 0xC9B6F90),
         (void*)&WeaponFireComponent_Instant_CreateBulletLine,
         (void**)&oWeaponFireComponent_Instant_CreateBulletLine);
     DobbyHook((void*)getAbsoluteAddress("libunity.so", 0xC9C33A4),
         (void*)&WeaponFireComponent_Instant_CreateBulletProjectile,
         (void**)&oWeaponFireComponent_Instant_CreateBulletProjectile);
-
     InitializeAllHooks();
-
     auto swapBuffers = ((uintptr_t)DobbySymbolResolver(
         OBFUSCATE("libunity.so"), OBFUSCATE("eglSwapBuffers")));
     KittyMemory::ProtectAddr((void*)swapBuffers, sizeof(swapBuffers),
@@ -1613,7 +926,6 @@ void Init_Thread()
         (void**)&old_eglSwapBuffers);
     if (xhook_refresh(0) == 0)
         xhook_clear();
-    // ──────────────────────────────────────────────────────────────────────
 }
 
 __attribute__((constructor))
