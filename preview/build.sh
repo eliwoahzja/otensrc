@@ -16,8 +16,6 @@ mkdir -p "$OUT" "$OBJ"
 # mirror the NDK layout. box_shadow.h lives under System/Texture.
 INCS=(
   -I"$JNI"
-  -I"$JNI/ImGui"
-  -I"$JNI/System/Texture"
 )
 
 # NDK builds with C++14 (see build.gradle / Android.mk).

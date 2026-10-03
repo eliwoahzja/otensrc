@@ -7,7 +7,9 @@
 //
 // Build: see build.sh next to this file.
 
-#include "Call_ImGui.h"
+// Include paths mirror the NDK (jni/ only) so the harness cannot paper over a
+// broken relative include the way the real Android.mk build would not.
+#include "ImGui/Call_ImGui.h"
 
 #include <EGL/egl.h>
 #include <EGL/eglext.h>
@@ -25,7 +27,7 @@
 #include "../src/main/jni/Fonts/SPECIAL.h"
 #include "../src/main/jni/Fonts/Iconcpp.h"
 
-#include "equinox_menu.h"
+#include "ImGui/equinox_menu.h"
 
 // ---- host-app symbols the menu header expects -----------------------------
 // imgui_settings.h declares these extern; Main.cpp normally defines them.
