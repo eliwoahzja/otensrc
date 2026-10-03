@@ -182,14 +182,18 @@ namespace equinox
 
     inline void EndGroupCard()
     {
+        // The card must still be the current window here: GetWindowDrawList() is
+        // only valid before EndChild(), and issuing commands afterwards draws into
+        // a child draw list the frame has already left behind. Draw the hairline
+        // border (it also makes the card read on any backdrop) while we are still
+        // inside, then close out the window and unwind the styles.
         ImDrawList* dl = ImGui::GetWindowDrawList();
         const ImVec2 wmin = ImGui::GetWindowPos();
         const ImVec2 wmax = wmin + ImGui::GetWindowSize();
+        dl->AddRect(wmin + ImVec2(0.5f, 0.5f), wmax - ImVec2(0.5f, 0.5f), EqColA(kEdge, 0.7f), 10.0f);
         ImGui::EndChild();
         ImGui::PopStyleVar(4);
         ImGui::PopStyleColor();
-        // hairline border makes the card read on any backdrop
-        dl->AddRect(wmin + ImVec2(0.5f, 0.5f), wmax - ImVec2(0.5f, 0.5f), EqColA(kEdge, 0.7f), 10.0f);
         ImGui::Dummy(ImVec2(0, 2));
     }
 

@@ -1,6 +1,8 @@
 #pragma once
 
-#include "imgui.h"
+// Resolved relative to this header (jni/System/Texture/), so it works with the
+// NDK's plain $(LOCAL_PATH) include dir and the preview harness alike.
+#include "ImGui/imgui.h"
 
 struct RectangleShadowSettings
 {

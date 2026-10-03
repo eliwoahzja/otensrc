@@ -400,6 +400,8 @@ int main(int argc, char** argv) {
         io.Fonts->GetGlyphRangesDefault());
     if (!F107) F107 = font::inter_semibold;
     if (font::inter_semibold) io.FontDefault = font::inter_semibold;
+    // Main.cpp builds the atlas explicitly; keep that order so the harness
+    // exercises the same first-frame path as the device.
     io.Fonts->Build();
     ImGui_ImplOpenGL3_CreateFontsTexture();
 
