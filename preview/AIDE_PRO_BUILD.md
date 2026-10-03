@@ -89,12 +89,29 @@ If you only touched `equinox_menu.h`, you do not need the device round-trip to
 check layout. The preview renders that exact header headlessly:
 
 ```sh
-sh preview/build.sh          # compiles ImGui + the header, writes PNGs
+sh preview/build.sh          # compiles ImGui + the header, renders the PNGs,
+                            # and derives the view crops + contact sheet
 python3 preview/inspect.py   # structural assertions over the PNGs
 ```
 
-Requires `libEGL1-mesa-dev libgles2-mesa-dev libosmesa6-dev` and `python3-pil`,
-and runs under `EGL_PLATFORM=surfaceless LIBGL_ALWAYS_SOFTWARE=1` (llvmpipe).
+Then open, in order of usefulness:
+
+| File | What it is |
+|---|---|
+| `preview/out/contact_sheet.png` | all seven states in one labelled grid — start here |
+| `preview/out/view_menu_<shot>.png` | just the 800x500 menu window, the thing to inspect |
+| `preview/out/view_full_<shot>.png` | whole 540x960 screen, for the overlay/backdrop context |
+| `preview/out/<shot>.png` | raw 1080x1920 frame from the harness (~8 MB) |
+
+The seven shots are `01_tab_aim`, `02_tab_esp`, `03_tab_memory`, `04_tab_skins`,
+`05_search_hit` (search "esp"), `06_search_none` (no-match card) and
+`07_combo_open` (a combo dropdown actually opened).
+
+`preview/make_views.py` runs automatically at the end of `build.sh`; run it on its
+own after a partial re-render. Requires `libEGL1-mesa-dev libgles2-mesa-dev
+libosmesa6-dev` and `python3-pil`, and renders under
+`EGL_PLATFORM=surfaceless LIBGL_ALWAYS_SOFTWARE=1` (llvmpipe), so no GPU or
+display is needed.
 
 ## 6. Known-good state
 

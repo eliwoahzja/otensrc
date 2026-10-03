@@ -46,3 +46,12 @@ g++ "$OBJ"/imgui.o "$OBJ"/imgui_draw.o "$OBJ"/imgui_tables.o "$OBJ"/imgui_widget
 
 echo ">> rendering to $OUT"
 EGL_PLATFORM=surfaceless LIBGL_ALWAYS_SOFTWARE=1 "$OBJ/eq_preview" "$OUT"
+
+# Derive the easy-to-open view crops and contact sheet. Skipped with a note if
+# Pillow is missing -- the PNGs above are already written either way.
+if command -v python3 >/dev/null 2>&1 && python3 -c 'import PIL' >/dev/null 2>&1; then
+    echo ">> deriving views"
+    python3 "$ROOT/preview/make_views.py"
+else
+    echo ">> skipping view generation (python3 + Pillow not available)"
+fi
