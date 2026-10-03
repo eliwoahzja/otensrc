@@ -159,8 +159,25 @@ namespace equinox
         ImGui::PushStyleVar(ImGuiStyleVar_ChildBorderSize, 0.0f);
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(10.0f, 8.0f));
         ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0.0f, 4.0f));
-        ImGui::BeginChild(id, ImVec2(ImGui::GetContentRegionAvail().x, 0.0f), false,
-                          ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoScrollbar);
+        // BeginChild() with a zero height makes this ImGui version fill the whole
+        // remaining pane: BeginChildEx() folds the 0 into the available height and
+        // then SetNextWindowSize() marks that height as API-driven, so
+        // ImGuiWindowFlags_AlwaysAutoResize never shrinks it back down. Every card
+        // then stretches to the bottom of the content pane and pushes the next
+        // section off-screen. Calling Begin() with the child flags directly keeps
+        // the auto-fit, so the card hugs its rows.
+        ImGuiWindow* parent = ImGui::GetCurrentWindow();
+        char name[160];
+        ImFormatString(name, IM_ARRAYSIZE(name), "%s/eqcard_%08X", parent->Name, parent->GetID(id));
+        // Fix the width through the API and leave the height to auto-fit: a zero Y
+        // means "height not set by the API", so AlwaysAutoResize still hugs the rows.
+        ImGui::SetNextWindowSize(ImVec2(ImGui::GetContentRegionAvail().x, 0.0f));
+        ImGui::Begin(name, nullptr,
+                     ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize |
+                     ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoBringToFrontOnFocus |
+                     ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoScrollbar |
+                     ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_ChildWindow |
+                     ImGuiWindowFlags_AlwaysAutoResize);
     }
 
     inline void EndGroupCard()
@@ -637,6 +654,10 @@ namespace equinox
         ImGui::PushStyleVar(ImGuiStyleVar_ScrollbarRounding, 4.0f);
         ImGui::PushStyleColor(ImGuiCol_ScrollbarBg, ImVec4(0, 0, 0, 0));
         ImGui::PushStyleColor(ImGuiCol_ScrollbarGrab, ImVec4(1, 1, 1, 0.22f));
+        // Anchor the child at c0. The header strip and the sidebar tabs above
+        // both call SetCursorScreenPos, so the cursor is left somewhere in the
+        // sidebar; without this the content pane renders underneath it.
+        ImGui::SetCursorScreenPos(c0);
         ImGui::BeginChild("##eq_content", c1 - c0, false, ImGuiWindowFlags_NoBackground);
         ImGui::SetCursorScreenPos(ImGui::GetCursorScreenPos() + ImVec2(0, (1.0f - fade) * 10.0f));
 
