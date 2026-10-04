@@ -252,6 +252,41 @@ namespace ethnir
         return ImGui::GetContentRegionAvail().x;
     }
 
+    // Reference: widgets::*_row() all take an explicit ImRect. Ours still drove
+    // rows off the cursor, which is why the widget code could not be lifted
+    // across. EqNextRow() hands out the rect for the next row and advances the
+    // cursor, so a widget can be written the reference way while every existing
+    // call site keeps its signature.
+    inline ImRect EqNextRow()
+    {
+        const ImVec2 p = ImGui::GetCursorScreenPos();
+        const float w = ImGui::GetContentRegionAvail().x;
+        const float h = kRowH;
+        ImGui::SetCursorScreenPos(ImVec2(p.x, p.y + h + 2.0f));
+        return ImRect(p, ImVec2(p.x + w, p.y + h));
+    }
+
+    // Reference: widgets::toggle_rect() - right-aligned, inset by box_pad_x,
+    // snapped to whole pixels so a fractional scale factor cannot produce a
+    // half-pixel track edge.
+    inline ImRect EqToggleRect(const ImRect& row)
+    {
+        const float w = ImFloor(portfolio::s(portfolio::toggle_w) + 0.5f);
+        const float h = ImFloor(portfolio::s(portfolio::toggle_h) + 0.5f);
+        const float pad = portfolio::s(portfolio::box_pad_x);
+        const float right = ImFloor(row.Max.x - pad);
+        const float top = ImFloor((row.Min.y + row.Max.y) * 0.5f - h * 0.5f);
+        return ImRect(ImVec2(right - w, top), ImVec2(right, top + h));
+    }
+
+    // Reference: widgets::draw_row_hover() - a faint wash, not a hard fill.
+    inline void EqRowHover(ImDrawList* dl, const ImRect& row, float t)
+    {
+        if (t < 0.01f) return;
+        dl->AddRectFilled(row.Min, row.Max,
+            EqColA(EqPal().text, 0.025f * t), portfolio::s(portfolio::control_round));
+    }
+
     inline void EqBeginColumns(float gap = kColGap)
     {
         ColumnState& c = EqCols();
@@ -414,29 +449,33 @@ namespace ethnir
         (void)icon;
         if (!EqPassFilter(label)) return false;
         const Palette pal = EqPal();
-        const ImVec2 p = ImGui::GetCursorScreenPos();
-        const float w = ImGui::GetContentRegionAvail().x;
-        const float h = kRowH;
 
+        const ImRect row = EqNextRow();
         char clean[128];
         EqStripId(label, clean, IM_ARRAYSIZE(clean));
-        bool hovered = false;
-        const bool pressed = EqPress(label, ImVec2(w, h), &hovered);
+
+        // Reference: the whole row owns the hit test, not the switch.
+        ImGuiID gid = ImGui::GetCurrentWindow()->GetID(label);
+        ImGui::ItemAdd(row, gid);
+        bool hovered = false, held = false;
+        const bool pressed = ImGui::ButtonBehavior(row, gid, &hovered, &held, ImGuiButtonFlags_None);
+        ImGui::KeepAliveID(gid);
+        if (hovered || held) { if (EqState()) EqState()->InputActive = true; }
         if (pressed) { *v = !*v; EqMarkDirty(); }
 
         ImDrawList* dl = ImGui::GetWindowDrawList();
-        if (EqCardRowIndex()++ > 0) EqRowSeparator(dl, p, p + ImVec2(w, h));
-        if (hovered) dl->AddRectFilled(p, p + ImVec2(w, h), EqColA(pal.text, 0.025f), portfolio::s(portfolio::control_round));
+        EqCardRowIndex()++;
+        EqRowHover(dl, row, (hovered || held) ? 0.65f : 0.0f);
+
         const float labelSize = portfolio::s(portfolio::row_label_font);
-        const float ty = p.y + (h - labelSize) * 0.5f;
-        EqDrawLabel(dl, ImVec2(p.x + portfolio::s(portfolio::box_pad_x), ty), clean,
-                    EqCol(*v || hovered ? pal.text : pal.textDim), labelSize);
+        const ImVec2 ts = EqTextFont()->CalcTextSizeA(labelSize, FLT_MAX, 0.0f, clean);
+        EqDrawLabel(dl, ImVec2(row.Min.x + portfolio::s(portfolio::box_pad_x),
+                               row.Min.y + (row.GetHeight() - ts.y) * 0.5f),
+                    clean, EqCol(*v || hovered ? pal.text : pal.textDim), labelSize);
 
-        const float tw = ImFloor(portfolio::s(portfolio::toggle_w) + 0.5f);
-        EqDrawSwitch(dl, label, *v, ImVec2(p.x + w - portfolio::s(portfolio::box_pad_x) - tw * 0.5f, p.y + h * 0.5f),
-                     ImGui::GetIO().DeltaTime, hovered);
+        const ImRect tog = EqToggleRect(row);
+        EqDrawSwitch(dl, label, *v, tog.GetCenter(), ImGui::GetIO().DeltaTime, hovered);
 
-        ImGui::SetCursorScreenPos(ImVec2(p.x, p.y + h + 2.0f));
         return pressed;
     }
 
