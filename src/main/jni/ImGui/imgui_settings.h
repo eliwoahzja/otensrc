@@ -239,6 +239,13 @@ namespace main_runtime_theme
     // iOS system blue (#0A84FF) everywhere the shell draws its accent
     inline float g_menuHue = 0.5833f;
 
+    // Exact-RGB accent override. The hue pipeline pins S=0.96/V=1.0, which cannot
+    // express softer preset colours like the Ethnir indigo (#615DCE) — its hue at
+    // that saturation renders as #130AFF. When this is non-zero,
+    // ApplyAccentFromHue() copies the RGB straight into menu[] so every accent
+    // consumer agrees on one colour.
+    inline ImU32 g_accentRgbOverride = 0;
+
     inline ImVec4 GetAccentVec4(float alpha = 1.0f)
     {
         return ImVec4(menu[0], menu[1], menu[2], alpha);
@@ -261,8 +268,18 @@ namespace main_runtime_theme
 
     inline void ApplyAccentFromHue()
     {
-        // 0.96 saturation keeps the iOS system blue at hue 0.5833 (#0A84FF)
-        ImGui::ColorConvertHSVtoRGB(g_menuHue, 0.96f, 1.0f, menu[0], menu[1], menu[2]);
+        if (g_accentRgbOverride != 0)
+        {
+            const ImVec4 rgb = ImGui::ColorConvertU32ToFloat4(g_accentRgbOverride);
+            menu[0] = rgb.x;
+            menu[1] = rgb.y;
+            menu[2] = rgb.z;
+        }
+        else
+        {
+            // 0.96 saturation keeps the iOS system blue at hue 0.5833 (#0A84FF)
+            ImGui::ColorConvertHSVtoRGB(g_menuHue, 0.96f, 1.0f, menu[0], menu[1], menu[2]);
+        }
         menu[3] = 1.0f;
     }
 

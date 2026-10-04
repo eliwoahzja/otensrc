@@ -32,7 +32,7 @@ namespace ethnir
         bool  ShowSettingsPanel = true;
         bool  HelpOpen          = false;
         float AnimSpeed         = 1.0f;         // 0.5 .. 2.0, scales every damped rate
-        int   AccentIndex       = 0;            // index into kAccents
+        int   AccentIndex       = 6;            // index into kAccents; boots on Indigo (kAccentDefaultIndex)
         int   MenuBind          = 0;            // index into kMenuBinds
 
         bool  AutoSave          = true;
@@ -90,17 +90,23 @@ namespace ethnir
     // iOS system colours
     constexpr ImVec4 kSwitchOn(0.204f, 0.780f, 0.349f, 1.0f);   // #34C759 green switches
 
-    struct AccentDef { const char* name; float hue; };
+    // rgb == 0: derived from hue through the shared theme (S=0.96/V=1.0).
+    // rgb != 0: exact preset colour the hue pipeline cannot express — #615DCE's
+    // hue at that saturation would render as #130AFF. Indigo is the accent of
+    // the imgui-portfolio-8 reference UI the shell is themed after.
+    struct AccentDef { const char* name; float hue; ImU32 rgb; };
     static const AccentDef kAccents[] =
     {
-        { "Blue",   0.5833f },      // #0A84FF with ApplyAccentFromHue()'s saturation
-        { "Teal",   0.4900f },
-        { "Green",  0.3600f },
-        { "Gold",   0.1150f },
-        { "Pink",   0.9300f },
-        { "Violet", 0.7400f },
+        { "Blue",   0.5833f, 0 },      // #0A84FF with ApplyAccentFromHue()'s saturation
+        { "Teal",   0.4900f, 0 },
+        { "Green",  0.3600f, 0 },
+        { "Gold",   0.1150f, 0 },
+        { "Pink",   0.9300f, 0 },
+        { "Violet", 0.7400f, 0 },
+        { "Indigo", 0.6726f, IM_COL32(0x61, 0x5D, 0xCE, 0xFF) },   // #615DCE
     };
     static const int kAccentCount = IM_ARRAYSIZE(kAccents);
+    static const int kAccentDefaultIndex = kAccentCount - 1;   // boot on Indigo
 
     static const char* kMenuBinds[] = { "Num 0", "Num 1", "F1", "F4", "Home", "None" };
     static const int kMenuBindCount = IM_ARRAYSIZE(kMenuBinds);
@@ -114,8 +120,10 @@ namespace ethnir
     inline Palette EqPalDark()
     {
         Palette p;
-        p.base      = ImVec4(0.035f, 0.040f, 0.055f, 0.88f);
-        p.scrim     = ImVec4(0.010f, 0.012f, 0.020f, 0.46f);
+        // Reference (imgui-portfolio-8 night theme): black @ 0.5 panels over a
+        // blurred wallpaper, black @ 0.4 sidebar, black @ 0.7 dropdowns.
+        p.base      = ImVec4(0.000f, 0.000f, 0.000f, 0.60f);
+        p.scrim     = ImVec4(0.000f, 0.000f, 0.000f, 0.46f);
         p.text      = ImVec4(0.965f, 0.972f, 0.985f, 1.00f);
         p.textDim   = ImVec4(0.760f, 0.785f, 0.840f, 1.00f);
         p.textFaint = ImVec4(0.550f, 0.580f, 0.645f, 1.00f);
@@ -123,11 +131,11 @@ namespace ethnir
         p.cardEdge  = ImVec4(1.000f, 1.000f, 1.000f, 0.070f);
         p.glassRim  = ImVec4(1.000f, 1.000f, 1.000f, 1.00f);
         p.hover     = ImVec4(1.000f, 1.000f, 1.000f, 0.070f);
-        p.side      = ImVec4(0.000f, 0.000f, 0.000f, 0.180f);
+        p.side      = ImVec4(0.000f, 0.000f, 0.000f, 0.280f);
         p.sideEdge  = ImVec4(1.000f, 1.000f, 1.000f, 0.055f);
         p.switchOff = ImVec4(1.000f, 1.000f, 1.000f, 0.170f);
         p.track     = ImVec4(1.000f, 1.000f, 1.000f, 0.150f);
-        p.popupBg   = ImVec4(0.075f, 0.082f, 0.098f, 0.97f);
+        p.popupBg   = ImVec4(0.000f, 0.000f, 0.000f, 0.78f);
         p.sep       = ImVec4(1.000f, 1.000f, 1.000f, 0.050f);
         return p;
     }
@@ -191,7 +199,12 @@ namespace ethnir
     // painted twice and never doubles up its alpha.
     inline void EqDrawGlassRim(ImDrawList* dl, const ImVec2& p0, const ImVec2& p1, float R, const Palette& pal)
     {
-        const float t = 1.6f;
+        const float w = p1.x - p0.x, h = p1.y - p0.y;
+        // Degenerate/inverted rects can occur transiently (auto-resized panels,
+        // scaled shell mid-spring). Skip the rim instead of emitting zero or
+        // negative bars — the draw list's asserts abort the app on device.
+        if (w < 2.0f || h < 2.0f) return;
+        const float t = ImMin(1.6f, ImMin(w, h) * 0.5f);
         const float x0 = p0.x, y0 = p0.y, x1 = p1.x, y1 = p1.y;
         const ImU32 hi  = EqColA(pal.glassRim, 0.55f);
         const ImU32 dim = EqColA(pal.glassRim, 0.16f);
@@ -210,7 +223,17 @@ namespace ethnir
         MenuState* s = EqState();
         index = ImClamp(index, 0, kAccentCount - 1);
         if (s) s->AccentIndex = index;
-        main_runtime_theme::g_menuHue = kAccents[index].hue;
+        if (kAccents[index].rgb != 0)
+        {
+            // Exact RGB preset: feed the shared pipeline the colour directly so
+            // the menu and every shared-theme consumer agree on one accent.
+            main_runtime_theme::g_accentRgbOverride = kAccents[index].rgb;
+        }
+        else
+        {
+            main_runtime_theme::g_accentRgbOverride = 0;
+            main_runtime_theme::g_menuHue = kAccents[index].hue;
+        }
         main_runtime_theme::ApplyAccentFromHue();
         if (s) s->Dirty = true;
     }
@@ -268,7 +291,7 @@ namespace ethnir
         const ImVec2 p = ImGui::GetCursorScreenPos();
         const float avail = ImGui::GetContentRegionAvail().x;
         c.Active = true;
-        c.W = ImFloor((avail - gap) * 0.5f);
+        c.W = ImMax(1.0f, ImFloor((avail - gap) * 0.5f));   // never a zero-width column
         c.X0 = p.x;
         c.X1 = p.x + c.W + gap;
         c.TopY = p.y;
@@ -939,7 +962,15 @@ namespace ethnir
             {
                 const ImVec2 c(x0 + i * (sw + gap) + sw * 0.5f, p.y + h * 0.5f);
                 float r = 0, g = 0, b = 0;
-                ImGui::ColorConvertHSVtoRGB(kAccents[i].hue, 0.96f, 1.0f, r, g, b);
+                if (kAccents[i].rgb != 0)
+                {
+                    const ImVec4 rc = ImGui::ColorConvertU32ToFloat4(kAccents[i].rgb);
+                    r = rc.x; g = rc.y; b = rc.z;
+                }
+                else
+                {
+                    ImGui::ColorConvertHSVtoRGB(kAccents[i].hue, 0.96f, 1.0f, r, g, b);
+                }
                 char aid[32];
                 ImFormatString(aid, IM_ARRAYSIZE(aid), "##accent%d", i);
                 ImGui::SetCursorScreenPos(c - ImVec2(9, 9));

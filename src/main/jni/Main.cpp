@@ -798,11 +798,25 @@ EGLBoolean hook_eglSwapBuffers(EGLDisplay dpy, EGLSurface surface)
             main_runtime_theme::ApplyThemeState();
 
             static ethnir::MenuState menuState;
+            // One-shot: boot the menu on the reference indigo accent (#615DCE).
+            // AccentIndex is runtime-only, so re-apply it every launch before the
+            // first frame paints.
+            static bool sEthnirAccentBoot = false;
+            if (!sEthnirAccentBoot)
+            {
+                sEthnirAccentBoot = true;
+                ethnir::EqApplyAccentIndex(ethnir::kAccentDefaultIndex);
+            }
             // forces the floating info overlay off every frame
             Config.ExtraMenu.ClearDisplay = true;
 
-            // the shell paints its own backdrop instead of the game's wallpaper art
-            menuState.Backdrop = nullptr;
+            // Liquid-glass shell: the reference wallpaper is baked into the
+            // binary pre-blurred (IMAGE/glass_bg.h) and uploaded once at startup,
+            // so the shell draws real frosted glass with zero per-frame blur
+            // cost. If the upload ever fails, fall back to the painted shell.
+            menuState.Backdrop = runtime_preview_menu::g_ethnirGlassBackdrop.id
+                ? (ImTextureID)(intptr_t)runtime_preview_menu::g_ethnirGlassBackdrop.id
+                : nullptr;
             menuState.DrawTab = EthnirDrawTab;
             // debounced 500ms auto save, never mid-drag; writes are atomic
             menuState.OnSave = []() { SaveConfiguration("ethnir"); };
@@ -811,8 +825,18 @@ EGLBoolean hook_eglSwapBuffers(EGLDisplay dpy, EGLSurface surface)
             // Screen size), while io.DisplaySize is the raw EGL surface. Where
             // those disagree a raw MouseDelta moves the window less far than the
             // finger travels, so feed the shell the measured per-axis ratio.
-            menuState.DragScaleX = g_GlWidth  > 0 ? (float)get_width()  / (float)g_GlWidth  : 1.0f;
-            menuState.DragScaleY = g_GlHeight > 0 ? (float)get_height() / (float)g_GlHeight : 1.0f;
+            // Guard both sides of the ratio: a 0 from either the Unity Screen
+            // size or the EGL surface collapsed DragScale to 0 and froze the
+            // window in place, and a nonsense ratio would over-swing it. Anything
+            // outside 0.25..8 falls back to 1.0 (the pre-scaling behaviour).
+            const float screenW = (float)get_width();
+            const float screenH = (float)get_height();
+            float dragScaleX = (g_GlWidth  > 0 && screenW > 0) ? screenW / (float)g_GlWidth  : 1.0f;
+            float dragScaleY = (g_GlHeight > 0 && screenH > 0) ? screenH / (float)g_GlHeight : 1.0f;
+            if (dragScaleX < 0.25f || dragScaleX > 8.0f) dragScaleX = 1.0f;
+            if (dragScaleY < 0.25f || dragScaleY > 8.0f) dragScaleY = 1.0f;
+            menuState.DragScaleX = dragScaleX;
+            menuState.DragScaleY = dragScaleY;
 
             ethnir::EqRender(menuState);
 

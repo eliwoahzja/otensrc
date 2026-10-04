@@ -8,6 +8,7 @@
 #include "../System/UI/SkinTab.h"
 #include "../Fonts/Icon.h"
 #include "../IMAGE/bg.h"
+#include "../IMAGE/glass_bg.h"
 
 extern ImFont* F50;
 extern ImFont* F107;
@@ -41,6 +42,7 @@ struct StateRefs {
 };
 
 static Texture g_menuBackground;
+static Texture g_ethnirGlassBackdrop;   // baked blurred wallpaper for the Ethnir shell
 static bool g_infoPopupRequested = false;
 static bool g_priceListPopupRequested = false;
 static bool g_popupFocusVisible = false;
@@ -62,6 +64,7 @@ inline void EnsureTexture(Texture &texture, const unsigned char *bytes, int size
 
 inline void EnsureTexturesLoaded() {
     EnsureTexture(g_menuBackground, bg_data, (int)sizeof(bg_data));
+    EnsureTexture(g_ethnirGlassBackdrop, glass_bg_data, (int)sizeof(glass_bg_data));
 }
 
 inline std::string ToUpperAscii(std::string text) {
