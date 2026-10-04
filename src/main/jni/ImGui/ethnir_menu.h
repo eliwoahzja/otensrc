@@ -365,49 +365,72 @@ namespace ethnir
         return hit;
     }
 
-    // iOS switch; the row around it owns the hit test
+    // Reference: widgets::checkbox_row(). Dark pill track (colors::control),
+    // accent wash + glow when on, knob lerping muted -> accent. Not the iOS
+    // white-knob switch the previous version drew.
     inline void EqDrawSwitch(ImDrawList* dl, const char* id, bool on, ImVec2 center, float dt, bool hovered)
     {
-        const float t = EqAnim(id, on ? 1.0f : 0.0f, 18.0f, dt, on ? 1.0f : 0.0f);
+        const float active = EqAnim(id, on ? 1.0f : 0.0f, 16.0f, dt, on ? 1.0f : 0.0f);
         const Palette pal = EqPal();
-        const ImVec2 size(portfolio::s(portfolio::toggle_w), portfolio::s(portfolio::toggle_h));
-        const ImVec2 mn(center.x - size.x * 0.5f, center.y - size.y * 0.5f);
-        dl->AddRectFilled(mn, mn + size, EqCol(EqMix(pal.switchOff, portfolio::toggle_on, t)), size.y * 0.5f);
-        if (hovered)
-            dl->AddRect(mn + ImVec2(0.5f, 0.5f), mn + size - ImVec2(0.5f, 0.5f), EqColA(pal.cardEdge, 1.6f), size.y * 0.5f);
-        const float kr = portfolio::s(portfolio::toggle_knob_r);
-        const ImVec2 kc(ImLerp(mn.x + size.y * 0.5f, mn.x + size.x - size.y * 0.5f, t), center.y);
-        dl->AddCircleFilled(kc + ImVec2(0.0f, 0.6f), kr, IM_COL32(0, 0, 0, 70), 24);
-        dl->AddCircleFilled(kc, kr, IM_COL32(252, 253, 255, 255), 24);
+
+        // Snapped to whole pixels, as the reference does — a half-pixel track
+        // edge reads as lopsided at fractional scale factors.
+        const float w = ImFloor(portfolio::s(portfolio::toggle_w) + 0.5f);
+        const float h = ImFloor(portfolio::s(portfolio::toggle_h) + 0.5f);
+        const ImVec2 mn(ImFloor(center.x - w * 0.5f), ImFloor(center.y - h * 0.5f));
+        const ImVec2 mx(mn.x + w, mn.y + h);
+        const float round = portfolio::s(portfolio::toggle_round);
+
+        const ImVec4 track = on ? portfolio::control
+                                : EqMix(pal.track, portfolio::control_hover, hovered ? 1.0f : 0.0f);
+        dl->AddRectFilled(mn, mx, EqCol(track), round);
+
+        if (active > 0.01f)
+        {
+            dl->AddRectFilled(mn, mx, EqAccentA(0.10f * active), round);
+            portfolio::draw_accent_rect(dl, mn, mx, round, active * 0.55f);
+        }
+
+        const ImVec4 knob = EqMix(EqMix(pal.textDim, portfolio::circle_checkbox_hover, hovered ? 1.0f : 0.0f),
+                                  portfolio::accent_vec4(), active);
+        const float knob_x = mn.x + portfolio::s(portfolio::toggle_knob_inset)
+                           + portfolio::s(portfolio::toggle_knob_travel) * active;
+        dl->AddCircleFilled(ImVec2(knob_x, center.y),
+                            portfolio::s(portfolio::toggle_knob_r), EqCol(knob), 24);
     }
 
     // hairline derived from the row rects, never hand-placed
     inline int& EqCardRowIndex() { static int i = 0; return i; }
 
-    inline void EqRowSeparator(ImDrawList* dl, const ImVec2& rowMin, const ImVec2& rowMax)
-    {
-        const Palette pal = EqPal();
-        const float inset = 13.0f;
-        dl->AddLine(ImVec2(rowMin.x + inset, rowMin.y - 1.0f), ImVec2(rowMax.x - 2.0f, rowMin.y - 1.0f), EqCol(pal.sep), 1.0f);
-    }
+    // The reference stacks rows inside one continuous box with no separators
+    // (theme/layout.h has no row separator), so this is now a no-op. Kept as a
+    // function because the settings panel still calls it between rows.
+    inline void EqRowSeparator(ImDrawList*, const ImVec2&, const ImVec2&) {}
 
+    // Reference: widgets::draw_section_header() — small bold caps in
+    // colors::header_text, sitting just above its column box.
     inline void SectionLabel(const char* text)
     {
-        ImVec2 p = ImGui::GetCursorScreenPos();
+        const ImVec2 p = ImGui::GetCursorScreenPos();
         ImDrawList* dl = ImGui::GetWindowDrawList();
         const Palette pal = EqPal();
-        EqDrawTracked(dl, EqTextFont(), 10.0f, ImVec2(p.x + 2.0f, p.y + 3.0f), EqCol(pal.textFaint), text, 1.1f);
-        ImGui::SetCursorScreenPos(ImVec2(p.x, p.y + 21.0f));
+        const float size = portfolio::s(portfolio::section_header_h);
+        dl->AddText(EqTextFont(), size, ImVec2(p.x, p.y), EqCol(pal.textFaint), text);
+        ImGui::SetCursorScreenPos(ImVec2(p.x, p.y + size + portfolio::s(6.f)));
     }
 
-    // Inset card that hugs its rows: Begin() with the child flags keeps the
-    // auto-fit, BeginChild() with a zero height would stretch to the pane.
+    // Reference: widgets::draw_settings_box() — one flat rounded box
+    // (colors::box, box_round) per group, padding box_pad_x / box_pad_y, and
+    // no border. Still a child window here because the Android pages add rows
+    // one at a time and never know the count upfront, so the height cannot be
+    // precomputed the way settings_box_height(rows) needs.
     inline void BeginGroupCard(const char* id)
     {
-        ImGui::PushStyleColor(ImGuiCol_ChildBg, EqPal().cardBg);
-        ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 14.0f);
+        ImGui::PushStyleColor(ImGuiCol_ChildBg, portfolio::box);
+        ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, portfolio::s(portfolio::box_round));
         ImGui::PushStyleVar(ImGuiStyleVar_ChildBorderSize, 0.0f);
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(10.0f, 9.0f));
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding,
+            ImVec2(portfolio::s(portfolio::box_pad_x), portfolio::s(portfolio::box_pad_y)));
         ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0.0f, 0.0f));
         ImGuiWindow* parent = ImGui::GetCurrentWindow();
         char name[160];
@@ -424,14 +447,10 @@ namespace ethnir
 
     inline void EndGroupCard()
     {
-        ImDrawList* dl = ImGui::GetWindowDrawList();
-        const ImVec2 wmin = ImGui::GetWindowPos();
-        const ImVec2 wmax = wmin + ImGui::GetWindowSize();
-        dl->AddRect(wmin + ImVec2(0.5f, 0.5f), wmax - ImVec2(0.5f, 0.5f), EqCol(EqPal().cardEdge), 14.0f);
         ImGui::EndChild();
         ImGui::PopStyleVar(4);
         ImGui::PopStyleColor();
-        ImGui::SetCursorScreenPos(ImGui::GetCursorScreenPos() + ImVec2(0.0f, 12.0f));
+        ImGui::SetCursorScreenPos(ImGui::GetCursorScreenPos() + ImVec2(0.0f, portfolio::s(12.f)));
     }
 
     inline bool RowToggle(const char* icon, const char* label, bool* v)
@@ -451,10 +470,15 @@ namespace ethnir
 
         ImDrawList* dl = ImGui::GetWindowDrawList();
         if (EqCardRowIndex()++ > 0) EqRowSeparator(dl, p, p + ImVec2(w, h));
-        if (hovered) dl->AddRectFilled(p, p + ImVec2(w, h), EqCol(pal.hover), 9.0f);
-        const float ty = p.y + (h - 13.0f) * 0.5f;
-        EqDrawLabel(dl, ImVec2(p.x + 3.0f, ty), clean, EqCol(pal.text), 13.0f);
-        EqDrawSwitch(dl, label, *v, ImVec2(p.x + w - 20.0f, p.y + h * 0.5f), ImGui::GetIO().DeltaTime, hovered);
+        if (hovered) dl->AddRectFilled(p, p + ImVec2(w, h), EqColA(pal.text, 0.025f), portfolio::s(portfolio::control_round));
+        const float labelSize = portfolio::s(portfolio::row_label_font);
+        const float ty = p.y + (h - labelSize) * 0.5f;
+        EqDrawLabel(dl, ImVec2(p.x + portfolio::s(portfolio::box_pad_x), ty), clean,
+                    EqCol(*v || hovered ? pal.text : pal.textDim), labelSize);
+        // toggle_rect(): snapped to whole pixels, inset by box_pad_x from the right
+        const float tw = ImFloor(portfolio::s(portfolio::toggle_w) + 0.5f);
+        EqDrawSwitch(dl, label, *v, ImVec2(p.x + w - portfolio::s(portfolio::box_pad_x) - tw * 0.5f, p.y + h * 0.5f),
+                     ImGui::GetIO().DeltaTime, hovered);
 
         ImGui::SetCursorScreenPos(ImVec2(p.x, p.y + h + 2.0f));
         return pressed;
@@ -494,19 +518,37 @@ namespace ethnir
 
         char buf[32];
         ImFormatString(buf, IM_ARRAYSIZE(buf), fmt, *v);
-        const ImVec2 vs = EqLabelSize(buf, 12.5f);
+        const float labelSize = portfolio::s(portfolio::row_label_font);
+        const ImVec2 vs = EqTextFont()->CalcTextSizeA(labelSize, FLT_MAX, 0.0f, buf);
         ImDrawList* dl = ImGui::GetWindowDrawList();
         if (EqCardRowIndex()++ > 0) EqRowSeparator(dl, p, p + ImVec2(w, h));
-        if (hovered) dl->AddRectFilled(p, p + ImVec2(w, h), EqCol(pal.hover), 9.0f);
-        EqDrawLabel(dl, ImVec2(p.x + 3.0f, p.y + (h - 13.0f) * 0.5f), clean,
-                    EqCol(hovered || held ? pal.text : pal.textDim), 13.0f);
-        EqDrawLabel(dl, ImVec2(trackX - 10.0f - vs.x, p.y + (h - 12.5f) * 0.5f), buf, EqAccent(), 12.5f);
+        if (hovered || held) dl->AddRectFilled(p, p + ImVec2(w, h), EqColA(pal.text, 0.025f), portfolio::s(portfolio::control_round));
+        EqDrawLabel(dl, ImVec2(p.x + portfolio::s(portfolio::box_pad_x), p.y + (h - labelSize) * 0.5f), clean,
+                    EqCol(hovered || held ? pal.text : pal.textDim), labelSize);
 
-        dl->AddRectFilled(ImVec2(trackX, trackY - portfolio::s(portfolio::slider_track_h) * 0.5f), ImVec2(trackX + trackW, trackY + portfolio::s(portfolio::slider_track_h) * 0.5f), EqCol(pal.track), portfolio::s(portfolio::slider_track_h) * 0.5f);
-        const float fill = ImSaturate((shown - v_min) / ImMax(0.0001f, v_max - v_min)) * trackW;
-        if (fill > 0.5f)
-            dl->AddRectFilled(ImVec2(trackX, trackY - portfolio::s(portfolio::slider_h) * 0.5f), ImVec2(trackX + fill, trackY + portfolio::s(portfolio::slider_h) * 0.5f), EqAccent(), portfolio::s(portfolio::slider_h) * 0.5f);
-        const ImVec2 kc(trackX + fill, trackY);
+        // Reference: value sits immediately left of the track, not in accent.
+        EqDrawLabel(dl, ImVec2(trackX - vs.x - portfolio::s(10.f), p.y + (h - labelSize) * 0.5f),
+                    buf, EqCol(hovered || held ? pal.text : pal.textDim), labelSize);
+
+        // Hairline resting track, thicker accent fill with a glow behind it.
+        const float trackH = portfolio::s(portfolio::slider_track_h);
+        const float fillH  = portfolio::s(portfolio::slider_h);
+        const float fillW  = ImSaturate((shown - v_min) / ImMax(0.0001f, v_max - v_min)) * trackW;
+
+        dl->AddRectFilled(ImVec2(trackX, trackY - trackH * 0.5f),
+                          ImVec2(trackX + trackW, trackY + trackH * 0.5f),
+                          EqCol(EqMix(pal.track, portfolio::control_hover, hovered ? 0.35f : 0.0f)),
+                          trackH * 0.5f);
+
+        if (fillW > 0.5f)
+        {
+            const ImVec2 f0(trackX, trackY - fillH * 0.5f);
+            const ImVec2 f1(trackX + fillW, trackY + fillH * 0.5f);
+            portfolio::draw_accent_rect(dl, f0, f1, fillH * 0.5f, 0.45f);
+            dl->AddRectFilled(f0, f1, EqAccent(), fillH * 0.5f);
+        }
+
+        const ImVec2 kc(trackX + fillW, trackY);
         if (hovered || held) dl->AddCircleFilled(kc, portfolio::s(portfolio::slider_knob_r), EqAccentA(0.22f), 20);
         dl->AddCircleFilled(kc, held ? portfolio::s(portfolio::slider_knob_r) * 0.85f : portfolio::s(portfolio::slider_knob_r) * 0.7f, IM_COL32(252, 253, 255, 250), 20);
 
@@ -534,21 +576,34 @@ namespace ethnir
 
         ImDrawList* dl = ImGui::GetWindowDrawList();
         if (EqCardRowIndex()++ > 0) EqRowSeparator(dl, p, p + ImVec2(w, h));
-        if (hovered) dl->AddRectFilled(p, p + ImVec2(w, h), EqCol(pal.hover), 9.0f);
-        EqDrawLabel(dl, ImVec2(p.x + 3.0f, p.y + (h - 13.0f) * 0.5f), clean, EqCol(pal.textDim), 13.0f);
-        const char* preview = items[*current];
-        const ImVec2 ps = EqLabelSize(preview, 12.5f);
-        EqDrawLabel(dl, ImVec2(p.x + w - ps.x - 24.0f, p.y + (h - 12.5f) * 0.5f), preview, EqCol(pal.text), 12.5f);
+        if (hovered) dl->AddRectFilled(p, p + ImVec2(w, h), EqColA(pal.text, 0.025f), portfolio::s(portfolio::control_round));
+        const float labelSize = portfolio::s(portfolio::row_label_font);
+        EqDrawLabel(dl, ImVec2(p.x + portfolio::s(portfolio::box_pad_x), p.y + (h - labelSize) * 0.5f),
+                    clean, EqCol(hovered ? pal.text : pal.textDim), labelSize);
 
+        // Reference: combo_row() draws a filled control button, right-aligned and
+        // inset by box_pad_x, with the current value inside it.
+        const float comboW = portfolio::s(portfolio::combo_w);
+        const float comboH = portfolio::s(portfolio::combo_h);
+        const ImVec2 bmin(p.x + w - portfolio::s(portfolio::box_pad_x) - comboW, p.y + (h - comboH) * 0.5f);
+        const ImVec2 bmax(bmin.x + comboW, bmin.y + comboH);
         const bool open = ImGui::IsPopupOpen(label);
+        dl->AddRectFilled(bmin, bmax, EqCol(hovered || open ? portfolio::control_hover : portfolio::control),
+                          portfolio::s(portfolio::combo_round));
+
+        const char* preview = items[*current];
+        EqDrawLabel(dl, ImVec2(bmin.x + portfolio::s(10.f), bmin.y + (comboH - labelSize) * 0.5f),
+                    preview, EqCol(hovered || open ? pal.text : pal.textDim), labelSize);
+
         char cid[160];
         ImFormatString(cid, IM_ARRAYSIZE(cid), "%s##chev", label);
         const float ct = EqAnim(cid, open ? 1.0f : 0.0f, 18.0f, io.DeltaTime, 0.0f);
-        const float cy = p.y + h * 0.5f;
+        const float cy = (bmin.y + bmax.y) * 0.5f;
         const float a = ImLerp(1.6f, -1.6f, ct);
-        const ImU32 chev = EqColA(pal.textFaint, 0.85f + 0.15f * ct);
-        dl->AddLine(ImVec2(p.x + w - 14.0f, cy - a), ImVec2(p.x + w - 10.0f, cy + a), chev, 1.4f);
-        dl->AddLine(ImVec2(p.x + w - 10.0f, cy + a), ImVec2(p.x + w - 6.0f, cy - a), chev, 1.4f);
+        const ImU32 chev = EqCol(EqMix(pal.textDim, portfolio::g_accent, ct * 0.6f));
+        const float chx = bmax.x - portfolio::s(8.f);
+        dl->AddLine(ImVec2(chx - 4.0f, cy - a), ImVec2(chx, cy + a), chev, 1.4f);
+        dl->AddLine(ImVec2(chx, cy + a), ImVec2(chx + 4.0f, cy - a), chev, 1.4f);
 
         if (pressed) ImGui::OpenPopup(label);
 
@@ -621,8 +676,8 @@ namespace ethnir
         const ImU32 swatch = ImGui::ColorConvertFloat4ToU32(col);
         ImDrawList* dl = ImGui::GetWindowDrawList();
         if (EqCardRowIndex()++ > 0) EqRowSeparator(dl, p, p + ImVec2(w, h));
-        if (hovered) dl->AddRectFilled(p, p + ImVec2(w, h), EqCol(pal.hover), 9.0f);
-        EqDrawLabel(dl, ImVec2(p.x + 3.0f, p.y + (h - 13.0f) * 0.5f), clean, EqCol(pal.textDim), 13.0f);
+        if (hovered) dl->AddRectFilled(p, p + ImVec2(w, h), EqColA(pal.text, 0.025f), portfolio::s(portfolio::control_round));
+        EqDrawLabel(dl, ImVec2(p.x + portfolio::s(portfolio::box_pad_x), p.y + (h - portfolio::s(portfolio::row_label_font)) * 0.5f), clean, EqCol(hovered ? pal.text : pal.textDim), portfolio::s(portfolio::row_label_font));
 
         char hexBuf[16];
         ImFormatString(hexBuf, IM_ARRAYSIZE(hexBuf), "#%02X%02X%02X", (int)rgba[0], (int)rgba[1], (int)rgba[2]);
@@ -680,8 +735,8 @@ namespace ethnir
         EqPress(label, ImVec2(rowPressW, h), &rowHovered);
         ImDrawList* dl = ImGui::GetWindowDrawList();
         if (EqCardRowIndex()++ > 0) EqRowSeparator(dl, p, p + ImVec2(w, h));
-        if (rowHovered) dl->AddRectFilled(p, p + ImVec2(rowPressW, h), EqCol(pal.hover), 9.0f);
-        EqDrawLabel(dl, ImVec2(p.x + 3.0f, p.y + (h - 13.0f) * 0.5f), clean, EqCol(pal.textDim), 13.0f);
+        if (rowHovered) dl->AddRectFilled(p, p + ImVec2(rowPressW, h), EqColA(pal.text, 0.025f), portfolio::s(portfolio::control_round));
+        EqDrawLabel(dl, ImVec2(p.x + portfolio::s(portfolio::box_pad_x), p.y + (h - portfolio::s(portfolio::row_label_font)) * 0.5f), clean, EqCol(hovered || rowHovered ? pal.text : pal.textDim), portfolio::s(portfolio::row_label_font));
 
         bool changed = false;
         const float ty = p.y + (h - segH) * 0.5f;
@@ -732,8 +787,8 @@ namespace ethnir
         const bool pressed = EqPress(label, ImVec2(w, h), &hovered);
         ImDrawList* dl = ImGui::GetWindowDrawList();
         if (EqCardRowIndex()++ > 0) EqRowSeparator(dl, p, p + ImVec2(w, h));
-        if (hovered) dl->AddRectFilled(p, p + ImVec2(w, h), EqCol(pal.hover), 9.0f);
-        EqDrawLabel(dl, ImVec2(p.x + 3.0f, p.y + (h - 13.0f) * 0.5f), clean, EqCol(pal.textDim), 13.0f);
+        if (hovered) dl->AddRectFilled(p, p + ImVec2(w, h), EqColA(pal.text, 0.025f), portfolio::s(portfolio::control_round));
+        EqDrawLabel(dl, ImVec2(p.x + portfolio::s(portfolio::box_pad_x), p.y + (h - portfolio::s(portfolio::row_label_font)) * 0.5f), clean, EqCol(hovered ? pal.text : pal.textDim), portfolio::s(portfolio::row_label_font));
         dl->AddRectFilled(c0, c1, EqColA(pal.text, hovered ? 0.14f : 0.08f), 7.0f);
         dl->AddRect(c0 + ImVec2(0.5f, 0.5f), c1 - ImVec2(0.5f, 0.5f), EqCol(pal.cardEdge), 7.0f);
         EqDrawLabel(dl, ImVec2(c0.x + 11.0f, p.y + (h - 12.0f) * 0.5f), key, EqCol(pal.text), 12.0f);
@@ -792,7 +847,7 @@ namespace ethnir
         dl->AddRect(s0 + ImVec2(0.5f, 0.5f), s1 - ImVec2(0.5f, 0.5f), EqCol(pal.sideEdge), portfolio::s(portfolio::shell_round));
 
         const float itemTop = s0.y + portfolio::s(portfolio::sidebar_tabs_y);
-        const float itemPitch = portfolio::s(portfolio::sidebar_tab_h);
+        const float itemPitch = portfolio::s(portfolio::sidebar_tab_h + portfolio::sidebar_tabs_gap);
         const float itemH = portfolio::s(portfolio::sidebar_tab_h);
 
         int activeRow = 0;
@@ -807,7 +862,9 @@ namespace ethnir
 
 for (int i = 0; i < kTabCount; ++i)
         {
-            const ImVec2 tmin(s0.x + portfolio::s(portfolio::sidebar_tab_icon_x) - portfolio::s(portfolio::sidebar_tab_icon), itemTop + i * itemPitch);
+            // Reference: sidebar_tab_rect() — full tab_w wide, anchored to the
+            // sidebar's left edge, not to the icon.
+            const ImVec2 tmin(s0.x, itemTop + i * itemPitch);
             const ImVec2 tmax(tmin.x + portfolio::s(portfolio::sidebar_tab_w), tmin.y + itemH);
             ImGui::SetCursorScreenPos(tmin);
             char id[32];
@@ -819,16 +876,35 @@ for (int i = 0; i < kTabCount; ++i)
 
             char hid[36];
             ImFormatString(hid, IM_ARRAYSIZE(hid), "##ethnir_hot%d", i);
-            const float hot = EqAnim(hid, hov ? 1.0f : 0.0f, 12.0f, ImGui::GetIO().DeltaTime, act ? 1.0f : 0.0f);
-            if (!act && hot > 0.01f)
-                dl->AddRectFilled(tmin, tmax, EqColA(pal.text, 0.05f * hot), portfolio::s(portfolio::shell_round));
+            const float dt = ImGui::GetIO().DeltaTime;
+            const float sel  = EqAnim(hid, act ? 1.0f : 0.0f, 22.0f, dt, act ? 1.0f : 0.0f);
+            const float hotA = EqAnim(hid + 1, (hov && !act) ? 1.0f : 0.0f, 24.0f, dt, 0.0f);
 
-            EqDrawGlyph(dl, kTabs[i].glyph, ImVec2(tmin.x + portfolio::s(portfolio::sidebar_tab_icon_x), (tmin.y + tmax.y) * 0.5f), portfolio::s(portfolio::sidebar_tab_icon),
-                        act ? EqAccent() : EqCol(EqMix(pal.textFaint, pal.text, hot)));
-            EqDrawLabel(dl, ImVec2(tmin.x + portfolio::s(portfolio::sidebar_tab_icon_x) + portfolio::s(portfolio::sidebar_tab_icon) + portfolio::s(portfolio::sidebar_tab_text_gap), (tmin.y + tmax.y) * 0.5f - portfolio::s(13.f)), kTabs[i].label,
-                        EqCol(act ? pal.text : EqMix(pal.textDim, pal.text, hot)), portfolio::s(13.f));
-            if (act)
-                dl->AddRectFilled(tmin, ImVec2(tmin.x + portfolio::s(3.f), tmax.y), EqAccent(), portfolio::s(portfolio::shell_round), ImDrawFlags_RoundCornersLeft);
+            // Selected tab: accent gradient fading out to the right, plus the
+            // 3px accent bar on the left edge.
+            if (sel > 0.01f)
+            {
+                const ImU32 gs = EqAccentA(0.28f * sel);
+                const ImU32 ge = EqAccentA(0.0f);
+                dl->AddRectFilledMultiColor(tmin, tmax, gs, ge, ge, gs, portfolio::s(portfolio::shell_round));
+                dl->AddRectFilled(tmin, ImVec2(tmin.x + portfolio::s(3.f), tmax.y), EqAccentA(sel));
+            }
+            if (!act && hotA > 0.01f)
+            {
+                const ImU32 hs = EqCol(portfolio::fg(0.068f * hotA));
+                const ImU32 he = EqCol(portfolio::fg(0.0f));
+                dl->AddRectFilledMultiColor(tmin, tmax, hs, he, he, hs, portfolio::s(portfolio::shell_round));
+            }
+
+            const float iconSize = portfolio::s(portfolio::sidebar_tab_icon);
+            const float iconX = tmin.x + portfolio::s(portfolio::sidebar_tab_icon_x);
+            const float iconA = 0.55f + 0.45f * ImMax(sel, hotA);
+            EqDrawGlyph(dl, kTabs[i].glyph, ImVec2(iconX + iconSize * 0.5f, (tmin.y + tmax.y) * 0.5f),
+                        iconSize, EqCol(portfolio::fg(iconA)));
+            const float textSize = portfolio::s(portfolio::row_label_font);
+            EqDrawLabel(dl, ImVec2(iconX + iconSize + portfolio::s(portfolio::sidebar_tab_text_gap),
+                                   tmin.y + (itemH - textSize) * 0.5f),
+                        kTabs[i].label, EqCol(portfolio::fg(0.6f + 0.4f * ImMax(sel, hotA))), textSize);
         }
 
         // help chip, bottom-left of the sidebar pane

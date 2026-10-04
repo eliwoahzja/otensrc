@@ -95,6 +95,25 @@ namespace portfolio
     inline constexpr float dropdown_item_h    = 28.f;
     inline constexpr float color_swatch_size  = 24.f;
     inline constexpr float button_h           = 24.f;
+    // Values below are read straight from theme/layout.h in the reference.
+    inline constexpr float sidebar_tabs_gap   = 0.f;
+    inline constexpr float row_label_y_nudge  = 0.f;
+    inline constexpr float row_label_font     = 14.f;
+    inline constexpr float section_header_h   = 13.f;
+    inline constexpr float user_avatar_size   = 60.f;
+    inline constexpr float user_avatar_x      = 35.f;
+    inline constexpr float user_bottom_margin = 36.f;
+    inline constexpr float user_text_gap      = 16.f;
+    inline constexpr float user_line_gap      = 4.f;
+    inline constexpr float user_name_font     = 14.f;
+    inline constexpr float logo_font          = 36.f;
+
+    // Reference: layout::settings_box_height(rows) = rows * settings_row_h
+    // + box_pad_y * 2. Same formula, so a column box hugs its rows exactly.
+    inline float settings_box_height(int rows)
+    {
+        return rows * settings_row_h + box_pad_y * 2.f;
+    }
 
     // ============ UI SCALE ============
     inline constexpr float ref_display_w = 1920.f;
@@ -200,6 +219,30 @@ namespace portfolio
     // ============ ACCENT HELPERS ============
     inline ImVec4 accent_vec4(float alpha = 1.f) { return { g_accent.x, g_accent.y, g_accent.z, alpha }; }
     inline ImU32 accent_u32(float alpha = 1.f) { return ImGui::GetColorU32(accent_vec4(alpha)); }
+
+    // Stand-in for the reference's glow_renderer::draw_accent_rect(), which
+    // draws through a DX11 shader. ImGui's draw list has no blur, so this fakes
+    // the halo with a few concentric rounded rects at falling alpha, expanding
+    // outward. Cheap, and visually close at these sizes.
+    inline void draw_accent_rect(ImDrawList* dl, const ImVec2& p0, const ImVec2& p1,
+        float rounding, float strength, int layers = 4)
+    {
+        if (strength <= 0.001f || p1.x <= p0.x || p1.y <= p0.y)
+            return;
+        const float w = p1.x - p0.x;
+        const float h = p1.y - p0.y;
+        for (int i = layers; i >= 1; --i)
+        {
+            const float t = (float)i / (float)layers;      // 1.0 = outermost
+            const float grow_x = w * 0.10f * t;
+            const float grow_y = h * 0.55f * t;
+            const float a = strength * 0.16f * (1.f - t * 0.55f);
+            dl->AddRectFilled(
+                { p0.x - grow_x, p0.y - grow_y },
+                { p1.x + grow_x, p1.y + grow_y },
+                accent_u32(a), rounding + grow_y);
+        }
+    }
 
     // UV window covering screen-space rect `r` inside a full-screen capture.
     // `r` is (x, y, w, h) in the same space as io.DisplaySize.
