@@ -218,9 +218,7 @@ static void RenderSkinsTabContent(float contentWidth, float contentHeight)
     ethnir::EndGroupCard();
     ethnir::EqEndColumns();
 }
-// Tab ids follow ethnir::kTabs: 0 Players, 1 AimBot, 2 World, 3 Skins,
-// 4 Misc, 5 Config. Every tab lays itself out with the shell's own column and
-// card helpers, so all six read the same.
+
 static void EthnirDrawTab(int tab)
 {
     const ImVec2 region = ImGui::GetContentRegionAvail();
@@ -313,7 +311,6 @@ EGLBoolean hook_eglSwapBuffers(EGLDisplay dpy, EGLSurface surface)
         io.Fonts->Build();
         ImGui_ImplOpenGL3_CreateFontsTexture();
 
-        // Initialize portfolio theme
         portfolio::set_display_size(ImVec2((float)g_GlWidth, (float)g_GlHeight));
         portfolio::apply_style();
 
@@ -348,14 +345,8 @@ EGLBoolean hook_eglSwapBuffers(EGLDisplay dpy, EGLSurface surface)
     screenHeight = (float)g_GlHeight;
     io->DisplaySize = ImVec2((float)g_GlWidth, (float)g_GlHeight);
 
-    // Capture the game frame for the liquid-glass backdrop. This blits into a
-    // separate downscaled FBO (see realtime_backdrop.h) rather than reading the
-    // default framebuffer we are about to draw into. Returns 0 if unsupported,
-    // in which case the shell falls back to the pre-baked wallpaper.
     backdrop::g_realtimeBackdrop = backdrop::update(g_GlWidth, g_GlHeight);
 
-    // Refresh scale-derived metrics, then reapply the style. apply_scaled_style()
-    // resets before scaling, so this is safe to run every frame.
     portfolio::set_display_size(io->DisplaySize);
     portfolio::apply_scaled_style();
     ethnir::RefreshMetrics();
@@ -387,8 +378,7 @@ EGLBoolean hook_eglSwapBuffers(EGLDisplay dpy, EGLSurface surface)
             collapsedPosInitialized = true;
         }
         collapseBarOpacityAnim = 1.0f;
-        
-        // Add hitbox margin for easier tapping
+
         const float hitboxMargin = portfolio::s(20.f);
         ImGui::SetNextWindowPos(collapsedLogoPos - ImVec2(hitboxMargin, hitboxMargin), ImGuiCond_Always);
         ImGui::SetNextWindowSize(ImVec2(line_w + 2*hitboxMargin, click_h + 2*hitboxMargin), ImGuiCond_Always);
@@ -397,12 +387,12 @@ EGLBoolean hook_eglSwapBuffers(EGLDisplay dpy, EGLSurface surface)
         ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
         ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
-        
+
         auto getCollapsedTouchPos = [&]() -> ImVec2
         {
             return ImGui::GetIO().MousePos;
         };
-        
+
         if (ImGui::Begin("##indicator", nullptr,
             ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize |
             ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoCollapse |
@@ -451,18 +441,14 @@ EGLBoolean hook_eglSwapBuffers(EGLDisplay dpy, EGLSurface surface)
             const float pillR = click_h * 0.5f;
             ImVec2 pillMin = windowPos + ImVec2(hitboxMargin, hitboxMargin);
             ImVec2 pillMax = ImVec2(pillMin.x + line_w, pillMin.y + click_h);
-            
-            // Liquid glass collapsed pill. Uses the live game frame when the
-            // capture path is available, otherwise the pre-baked wallpaper.
+
             const ImTextureID pillBackdrop = backdrop::g_realtimeBackdrop
                 ? (ImTextureID)(intptr_t)backdrop::g_realtimeBackdrop
                 : (runtime_preview_menu::g_ethnirGlassBackdrop.id
                     ? (ImTextureID)(intptr_t)runtime_preview_menu::g_ethnirGlassBackdrop.id
                     : nullptr);
             portfolio::DrawLiquidGlassPanel(indicatorDraw, pillMin, pillMax, pillR, pillBackdrop);
-            
-            // Upload the logo once. LoadAstralTexture() creates a new GL texture
-            // on every call, so calling it per frame leaks one texture a frame.
+
             static GLuint collapsedLogo = 0;
             if (collapsedLogo == 0)
                 collapsedLogo = LoadAstralTexture(astral_data, sizeof(astral_data));
@@ -518,7 +504,7 @@ EGLBoolean hook_eglSwapBuffers(EGLDisplay dpy, EGLSurface surface)
         }
 
         runtime_preview_menu::EnsureTexturesLoaded();
-        // Portfolio theme applied per-frame in render loop
+
         ImVec2 viewportCenter = ImGui::GetMainViewport()->GetCenter();
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
 
@@ -795,42 +781,28 @@ EGLBoolean hook_eglSwapBuffers(EGLDisplay dpy, EGLSurface surface)
             float openAlpha = 0.2f + 0.8f * openEase;
             ImGui::PushStyleVar(ImGuiStyleVar_Alpha, openAlpha);
 
-            // Portfolio theme applied per-frame in render loop
             main_runtime_theme::ApplyAccentFromHue();
 
             static ethnir::MenuState menuState;
-            // One-shot: boot the menu on the reference indigo accent (#615DCE).
-            // AccentIndex is runtime-only, so re-apply it every launch before the
-            // first frame paints.
+
             static bool sEthnirAccentBoot = false;
             if (!sEthnirAccentBoot)
             {
                 sEthnirAccentBoot = true;
                 ethnir::EqApplyAccentIndex(0);
             }
-            // forces the floating info overlay off every frame
+
             Config.ExtraMenu.ClearDisplay = true;
 
-            // Glass shell backdrop: prefer the live game-frame capture, fall
-            // back to the pre-blurred wallpaper baked into the binary when the
-            // device cannot give us a capture texture.
             menuState.Backdrop = backdrop::g_realtimeBackdrop
                 ? (ImTextureID)(intptr_t)backdrop::g_realtimeBackdrop
                 : (runtime_preview_menu::g_ethnirGlassBackdrop.id
                     ? (ImTextureID)(intptr_t)runtime_preview_menu::g_ethnirGlassBackdrop.id
                     : nullptr);
             menuState.DrawTab = EthnirDrawTab;
-            // debounced 500ms auto save, never mid-drag; writes are atomic
+
             menuState.OnSave = []() { SaveConfiguration("ethnir"); };
 
-            // Touch positions arrive in the game's own pixel space (Unity's
-            // Screen size), while io.DisplaySize is the raw EGL surface. Where
-            // those disagree a raw MouseDelta moves the window less far than the
-            // finger travels, so feed the shell the measured per-axis ratio.
-            // Guard both sides of the ratio: a 0 from either the Unity Screen
-            // size or the EGL surface collapsed DragScale to 0 and froze the
-            // window in place, and a nonsense ratio would over-swing it. Anything
-            // outside 0.25..8 falls back to 1.0 (the pre-scaling behaviour).
             const float screenW = (float)get_width();
             const float screenH = (float)get_height();
             float dragScaleX = (g_GlWidth  > 0 && screenW > 0) ? screenW / (float)g_GlWidth  : 1.0f;

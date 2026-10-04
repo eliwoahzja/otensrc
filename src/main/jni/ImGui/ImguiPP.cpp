@@ -2,11 +2,6 @@
 #include <string>
 #include "imgui_internal.h"
 
-/**
- * @autor SPraditya
- * email help : foxcheatsid@gmail.com
- */
-
 namespace ImguiPP
 {
 

@@ -4,22 +4,19 @@
 #include <sstream>
 #include <ctime>
 #include <cstdio>
-// std::fstream and mkdir() are used below, so include them rather than rely on
-// the includer having pulled them in.
+
 #include <fstream>
 #include <sys/stat.h>
 
-// vendored JSON parser is two levels up from System/Core/
 #include "../../foxcheats/include/json.hpp"
 
 std::string androidFilesDir = "/storage/emulated/0/Android/data/com.garena.game.codm/files/";
 
-// bump when the file layout changes; older files still load via the getters
 constexpr int kConfigVersion = 2;
 
 namespace ethcfg
 {
-    // missing or wrong-typed keys fall back to the default
+
     inline bool GetBool(const nlohmann::json& j, const char* key, bool dflt)
     {
         const auto it = j.find(key);
@@ -91,8 +88,6 @@ void SaveConfiguration(const std::string& filename) {
     std::string configDir = androidFilesDir + "configs";
     mkdir(configDir.c_str(), 0777);
 
-    // stream to "<name>.json.tmp" then rename, so a crash mid-write can never
-    // leave a truncated config
     const std::string filePath = configDir + "/" + filename + ".json";
     const std::string tmpPath = filePath + ".tmp";
     {
@@ -125,9 +120,6 @@ bool LoadConfiguration(const std::string& filename) {
 
         nlohmann::json config;
         file >> config;
-        // informational only: unknown fields are ignored, missing ones keep the
-        // current in-memory value
-        // const int version = ethcfg::GetInt(config, "version", 1);
 
         if (config.contains("ESPMenu")) {
             const nlohmann::json& e = config["ESPMenu"];

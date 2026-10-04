@@ -20,24 +20,14 @@ struct Quaternion
         float data[4];
     };
 
-
-    /**
-     * Constructors.
-     */
     inline Quaternion();
     inline Quaternion(float data[]);
     inline Quaternion(Vector3 vector, float scalar);
     inline Quaternion(float x, float y, float z, float w);
     inline Quaternion(float Pitch, float Yaw, float Roll);
 
-    /**
-     * Constants for common quaternions.
-     */
     static inline Quaternion Identity();
 
-    /**
-     * The following let you quickly get a direction vector from a quat.
-     */
     static inline Vector3 Up(Quaternion q);
     static inline Vector3 Down(Quaternion q);
     static inline Vector3 Left(Quaternion q);
@@ -45,182 +35,49 @@ struct Quaternion
     static inline Vector3 Forward(Quaternion q);
     static inline Vector3 Back(Quaternion q);
 
-
-    /**
-     * Returns the angle between two quaternions.
-     * The quaternions must be normalized.
-     * @param a: The first quaternion.
-     * @param b: The second quaternion.
-     * @return: A scalar value.
-     */
     static inline float Angle(Quaternion a, Quaternion b);
 
-    /**
-     * Returns the conjugate of a quaternion.
-     * @param rotation: The quaternion in question.
-     * @return: A new quaternion.
-     */
     static inline Quaternion Conjugate(Quaternion rotation);
 
-    /**
-     * Returns the dot product of two quaternions.
-     * @param lhs: The left side of the multiplication.
-     * @param rhs: The right side of the multiplication.
-     * @return: A scalar value.
-     */
     static inline float Dot(Quaternion lhs, Quaternion rhs);
 
-    /**
-     * Creates a new quaternion from the angle-axis representation of
-     * a rotation.
-     * @param angle: The rotation angle in radians.
-     * @param axis: The vector about which the rotation occurs.
-     * @return: A new quaternion.
-     */
     static inline Quaternion FromAngleAxis(float angle, Vector3 axis);
 
-    /**
-     * Create a new quaternion from the euler angle representation of
-     * a rotation. The z, x and y values represent rotations about those
-     * axis in that respective order.
-     * @param rotation: The x, y and z rotations.
-     * @return: A new quaternion.
-     */
     static inline Quaternion FromEuler(Vector3 rotation);
 
-    /**
-     * Create a new quaternion from the euler angle representation of
-     * a rotation. The z, x and y values represent rotations about those
-     * axis in that respective order.
-     * @param x: The rotation about the x-axis in radians.
-     * @param y: The rotation about the y-axis in radians.
-     * @param z: The rotation about the z-axis in radians.
-     * @return: A new quaternion.
-     */
     static inline Quaternion FromEuler(float x, float y, float z);
 
-    /**
-     * Create a quaternion rotation which rotates "fromVector" to "toVector".
-     * @param fromVector: The vector from which to start the rotation.
-     * @param toVector: The vector at which to end the rotation.
-     * @return: A new quaternion.
-     */
     static inline Quaternion FromToRotation(Vector3 fromVector,
                                             Vector3 toVector);
 
-    /**
-     * Returns the inverse of a rotation.
-     * @param rotation: The quaternion in question.
-     * @return: A new quaternion.
-     */
     static inline Quaternion Inverse(Quaternion rotation);
 
-    /**
-     * Interpolates between a and b by t, which is clamped to the range [0-1].
-     * The result is normalized before being returned.
-     * @param a: The starting rotation.
-     * @param b: The ending rotation.
-     * @return: A new quaternion.
-     */
     static inline Quaternion Lerp(Quaternion a, Quaternion b, float t);
 
-    /**
-     * Interpolates between a and b by t. This normalizes the result when
-     * complete.
-     * @param a: The starting rotation.
-     * @param b: The ending rotation.
-     * @param t: The interpolation value.
-     * @return: A new quaternion.
-     */
     static inline Quaternion LerpUnclamped(Quaternion a, Quaternion b,
                                            float t);
 
-    /**
-     * Creates a rotation with the specified forward direction. This is the
-     * same as calling LookRotation with (0, 1, 0) as the upwards vector.
-     * The output is undefined for parallel vectors.
-     * @param forward: The forward direction to look toward.
-     * @return: A new quaternion.
-     */
     static inline Quaternion LookRotation(Vector3 forward);
 
-    /**
-     * Creates a rotation with the specified forward and upwards directions.
-     * The output is undefined for parallel vectors.
-     * @param forward: The forward direction to look toward.
-     * @param upwards: The direction to treat as up.
-     * @return: A new quaternion.
-     */
     static inline Quaternion LookRotation(Vector3 forward, Vector3 upwards);
 
-    /**
-     * Returns the norm of a quaternion.
-     * @param rotation: The quaternion in question.
-     * @return: A scalar value.
-     */
     static inline float Norm(Quaternion rotation);
 
-    /**
-     * Returns a quaternion with identical rotation and a norm of one.
-     * @param rotation: The quaternion in question.
-     * @return: A new quaternion.
-     */
     static inline Quaternion Normalized(Quaternion rotation);
 
-    /**
-     * Returns a new Quaternion created by rotating "from" towards "to" by
-     * "maxRadiansDelta". This will not overshoot, and if a negative delta is
-     * applied, it will rotate till completely opposite "to" and then stop.
-     * @param from: The rotation at which to start.
-     * @param to: The rotation at which to end.
-     # @param maxRadiansDelta: The maximum number of radians to rotate.
-     * @return: A new Quaternion.
-     */
     static inline Quaternion RotateTowards(Quaternion from, Quaternion to,
                                            float maxRadiansDelta);
 
-    /**
-     * Returns a new quaternion interpolated between a and b, usinfg spherical
-     * linear interpolation. The variable t is clamped to the range [0-1]. The
-     * resulting quaternion will be normalized.
-     * @param a: The starting rotation.
-     * @param b: The ending rotation.
-     * @param t: The interpolation value.
-     * @return: A new quaternion.
-     */
     static inline Quaternion Slerp(Quaternion a, Quaternion b, float t);
 
-    /**
-     * Returns a new quaternion interpolated between a and b, usinfg spherical
-     * linear interpolation. The resulting quaternion will be normalized.
-     * @param a: The starting rotation.
-     * @param b: The ending rotation.
-     * @param t: The interpolation value.
-     * @return: A new quaternion.
-     */
     static inline Quaternion SlerpUnclamped(Quaternion a, Quaternion b,
                                             float t);
 
-    /**
-     * Outputs the angle axis representation of the provided quaternion.
-     * @param rotation: The input quaternion.
-     * @param angle: The output angle.
-     * @param axis: The output axis.
-     */
     static inline void ToAngleAxis(Quaternion rotation, float &angle,
                                    Vector3 &axis);
 
-    /**
-     * Returns the Euler angle representation of a rotation. The resulting
-     * vector contains the rotations about the z, x and y axis, in that order.
-     * @param rotation: The quaternion to convert.
-     * @return: A new vector.
-     */
     static inline Vector3 ToEuler(Quaternion rotation);
 
-    /**
-     * Operator overloading.
-     */
     inline struct Quaternion& operator+=(const float rhs);
     inline struct Quaternion& operator-=(const float rhs);
     inline struct Quaternion& operator*=(const float rhs);
@@ -246,12 +103,6 @@ inline Vector3 operator*(Quaternion lhs, const Vector3 rhs);
 inline bool operator==(const Quaternion lhs, const Quaternion rhs);
 inline bool operator!=(const Quaternion lhs, const Quaternion rhs);
 
-
-
-/*******************************************************************************
- * Implementation
- */
-
 Quaternion::Quaternion() : x(0), y(0), z(0), w(1) {}
 Quaternion::Quaternion(float data[]) : x(data[0]), y(data[1]), z(data[2]),
                                        w(data[3]) {}
@@ -268,7 +119,6 @@ Quaternion::Quaternion(float Pitch, float Yaw, float Roll) {
 }
 
 Quaternion Quaternion::Identity() { return Quaternion(0, 0, 0, 1); }
-
 
 inline Vector3 Quaternion::Up(Quaternion q)
 {
@@ -396,19 +246,19 @@ Quaternion Quaternion::LookRotation(Vector3 forward)
 
 Quaternion Quaternion::LookRotation(Vector3 forward, Vector3 upwards)
 {
-    // Normalize inputs
+
     forward = Vector3::Normalized(forward);
     upwards = Vector3::Normalized(upwards);
-    // Don't allow zero vectors
+
     if (Vector3::SqrMagnitude(forward) < SMALL_FLOAT || Vector3::SqrMagnitude(upwards) < SMALL_FLOAT)
         return Quaternion::Identity();
-    // Handle alignment with up direction
+
     if (1 - fabs(Vector3::Dot(forward, upwards)) < SMALL_FLOAT)
         return FromToRotation(Vector3::Forward(), forward);
-    // Get orthogonal vectors
+
     Vector3 right = Vector3::Normalized(Vector3::Cross(upwards, forward));
     upwards = Vector3::Cross(forward, right);
-    // Calculate rotation
+
     Quaternion quaternion;
     float radicand = right.x + upwards.y + forward.z;
     if (radicand > 0)
@@ -547,12 +397,12 @@ Vector3 Quaternion::ToEuler(Quaternion rotation)
         v.z = 0;
         return v;
     }
-    // yaw
+
     v.y = atan2f(2 * rotation.w * rotation.y + 2 * rotation.z * rotation.x,
                  1 - 2 * (rotation.x * rotation.x + rotation.y * rotation.y));
-    // Pitch
+
     v.x = asinf(2 * (rotation.w * rotation.x - rotation.y * rotation.z));
-    // Roll
+
     v.z = atan2f(2 * rotation.w * rotation.z + 2 * rotation.x * rotation.y,
                  1 - 2 * (rotation.z * rotation.z + rotation.x * rotation.x));
     return (v * Rad2Deg) + 180;
@@ -667,4 +517,3 @@ bool operator!=(const Quaternion lhs, const Quaternion rhs)
 std::string to_string(Quaternion a) {
     return to_string(a.x) + std::string(", ") + to_string(a.y) + std::string(", ") + to_string(a.z) + std::string(", ") + to_string(a.w);
 }
-

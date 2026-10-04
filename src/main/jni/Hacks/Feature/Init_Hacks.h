@@ -90,7 +90,7 @@ struct sConfig {
         uintptr_t thiz;
     };
     sInitImGui ImGuiMenu{0};
-    
+
 struct sWeaponAim {
         bool Aimbot360;
         float AimAssistSize;
@@ -102,13 +102,12 @@ struct sWeaponAim {
         float Cross;
     };
     sWeaponAim Aim{0};
-    
-    
+
     struct sESPMenuLineScale {
         float lineSize;
     };
     sESPMenuLineScale sESPMenuLineScale{0};
-    
+
     struct sESPMenu {
         bool Alert;
         bool Count;
@@ -127,7 +126,7 @@ struct sWeaponAim {
         bool Aimline;
     };
     sESPMenu ESPMenu{0};
-    
+
     struct sColorsESPPLAYER {
     float *LinePLAYER;
     float *BoxPLAYER;
@@ -147,12 +146,12 @@ struct sColorsESPBOT {
     float *SkeletonBOT;
 };
 sColorsESPBOT sColorsESPBOT{0};
-    
+
     struct sColorsESPOTHERS {
         float *PovOTHERS;
     };
     sColorsESPOTHERS sColorsESPOTHERS{0};
-    
+
     struct sExtraMenu {
 		bool ClearDisplay;
 		bool ResetGuest;
@@ -174,7 +173,7 @@ sColorsESPBOT sColorsESPBOT{0};
 		bool UnlockBlueprint;
     };
     sExtraMenu ExtraMenu{0};
-      
+
 };
 
 sConfig Config{0};

@@ -3,7 +3,7 @@
 #include "IL2CppSDKGenerator/Dobby/dobby.h"
 
 namespace Tools {
-    // Function declarations
+
     void Hook(void *target, void *replace, void **backup);
     bool Read(void *addr, void *buffer, size_t length);
     bool Write(void *addr, void *buffer, size_t length);
@@ -28,7 +28,6 @@ namespace Tools {
     const char *GetDeviceUniqueIdentifier(JNIEnv *env, const char *uuid);
     std::string CalcMD5(std::string s);
 
-    // Template functions (implemented inline in the header)
     template<typename T>
     void Writes(uintptr_t address, T data) {
         WriteAddr((void *)address, reinterpret_cast<void *>(&data), sizeof(T));

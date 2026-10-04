@@ -4,10 +4,9 @@
 
 namespace portfolio
 {
-    // ============ ACCENT ============
-    inline ImVec4 g_accent = { 0x61/255.f, 0x5D/255.f, 0xCE/255.f, 1.f };  // #615DCE
 
-    // ============ NIGHT PALETTE (DEFAULT) ============
+    inline ImVec4 g_accent = { 0x61/255.f, 0x5D/255.f, 0xCE/255.f, 1.f };
+
     inline ImVec4 bg            = { 0.f, 0.f, 0.f, 0.50f };
     inline ImVec4 panel         = { 0.f, 0.f, 0.f, 0.50f };
     inline ImVec4 sidebar       = { 0.f, 0.f, 0.f, 0.40f };
@@ -37,7 +36,6 @@ namespace portfolio
     inline ImVec4 fg(float alpha)   { return { ink.x,  ink.y,  ink.z,  alpha }; }
     inline ImVec4 wash(float alpha) { return { haze.x, haze.y, haze.z, alpha }; }
 
-    // ============ LAYOUT CONSTANTS (design px) ============
     inline constexpr float window_w         = 1160.f;
     inline constexpr float window_h         = 669.f;
     inline constexpr float shell_round      = 14.f;
@@ -95,7 +93,7 @@ namespace portfolio
     inline constexpr float dropdown_item_h    = 28.f;
     inline constexpr float color_swatch_size  = 24.f;
     inline constexpr float button_h           = 24.f;
-    // Values below are read straight from theme/layout.h in the reference.
+
     inline constexpr float sidebar_tabs_gap   = 0.f;
     inline constexpr float row_label_y_nudge  = 0.f;
     inline constexpr float row_label_font     = 14.f;
@@ -108,26 +106,19 @@ namespace portfolio
     inline constexpr float user_name_font     = 14.f;
     inline constexpr float logo_font          = 36.f;
 
-    // Android touch metrics, in real (unscaled) pixels.
-    // The reference is a desktop app driven by a mouse. Its rows are 37 design
-    // px and its toggles 42x22, which is comfortable for a cursor and far too
-    // small for a finger. These are the knobs the shell uses to compensate.
-    inline constexpr float kScreenMarginPx = 10.f;   // gap around the panel
+    inline constexpr float kScreenMarginPx = 10.f;
     inline constexpr float kMinFactor       = 0.55f;
     inline constexpr float kMaxFactor       = 2.5f;
-    inline constexpr float kTouchTargetPx   = 44.f;  // Android's tappable floor
+    inline constexpr float kTouchTargetPx   = 44.f;
 
-    // Reference: layout::settings_box_height(rows) = rows * settings_row_h
-    // + box_pad_y * 2. Same formula, so a column box hugs its rows exactly.
     inline float settings_box_height(int rows)
     {
         return rows * settings_row_h + box_pad_y * 2.f;
     }
 
-    // ============ UI SCALE ============
     inline constexpr float ref_display_w = 1920.f;
     inline constexpr float ref_display_h = 1080.f;
-    inline constexpr float ref_factor    = 0.9375f * 0.75f;  // 0.703125f
+    inline constexpr float ref_factor    = 0.9375f * 0.75f;
 
     inline float auto_factor   = ref_factor;
     inline float manual_factor = 1.f;
@@ -139,13 +130,6 @@ namespace portfolio
     {
         if (display.x <= 0.f || display.y <= 0.f) return;
 
-        // The reference formula min(w/1920, h/1080) * 0.703 assumes a landscape
-        // desktop window. On a portrait phone it evaluates to ~0.40, which made
-        // a 37px row about 15px tall. Fit the shell itself instead - it is
-        // window_w x window_h design px - so rows stay finger-sized at any
-        // aspect ratio:
-        //   1080x2400 portrait : min(1060/1160, 2380/669) = 0.91 -> rows ~34px
-        //   2400x1080 landscape: min(2380/1160, 1060/669) = 1.58 -> rows ~59px
         const float usable_w = ImMax(1.f, display.x - 2.f * kScreenMarginPx);
         const float usable_h = ImMax(1.f, display.y - 2.f * kScreenMarginPx);
         const float fit = ImMin(usable_w / window_w, usable_h / window_h);
@@ -162,14 +146,9 @@ namespace portfolio
     inline float s(float design_px) { return design_px * factor; }
     inline float px(float design_px) { return design_px * factor; }
 
-    // Extra padding added to hit rects on the horizontal axis. Rows sit 2px
-    // apart vertically, so widening them vertically would make adjacent rows
-    // fight over the same press; horizontally there is a whole column of slack.
-    // Declared after s(), which it calls.
     inline float touch_pad_x() { return s(10.f); }
     inline float touch_pad_y() { return 2.f; }
 
-    // ============ ANIMATION ============
     inline constexpr float anim_slider_min = 0.f;
     inline constexpr float anim_slider_max = 200.f;
     inline constexpr float anim_threshold  = 50.f;
@@ -195,16 +174,10 @@ namespace portfolio
         return ImLerp(current, target, anim_lerp_t(rate));
     }
 
-    // ============ APPLY TO IMGUI STYLE ============
-    // Resets every size-dependent field that ImGuiStyle::ScaleAllSizes()
-    // multiplies, so apply_scaled_style() is idempotent and safe to call every
-    // frame. ScaleAllSizes touches 24 fields and this version of ImGuiStyle has
-    // no FontSize member - setting one is a compile error.
     inline void apply_style()
     {
         ImGuiStyle& s = ImGui::GetStyle();
 
-        // --- every field below is multiplied by ScaleAllSizes() ---
         s.WindowPadding            = ImVec2(0.f, 0.f);
         s.WindowRounding           = 0.f;
         s.WindowMinSize            = ImVec2(32.f, 32.f);
@@ -224,12 +197,11 @@ namespace portfolio
         s.GrabRounding             = 0.f;
         s.LogSliderDeadzone        = 0.f;
         s.TabRounding              = 0.f;
-        s.TabMinWidthForCloseButton = FLT_MAX;   // ScaleAllSizes special-cases FLT_MAX
+        s.TabMinWidthForCloseButton = FLT_MAX;
         s.SeparatorTextPadding     = ImVec2(50.f, 50.f);
         s.DisplayWindowPadding     = ImVec2(0.f, 0.f);
         s.DisplaySafeAreaPadding   = ImVec2(0.f, 0.f);
         s.MouseCursorScale         = 1.f;
-        // --- end ScaleAllSizes fields ---
 
         s.WindowBorderSize = 0.f;
         s.ChildBorderSize  = 0.f;
@@ -247,25 +219,16 @@ namespace portfolio
         c[ImGuiCol_ScrollbarGrabActive]  = { 0.f, 0.f, 0.f, 0.f };
     }
 
-    // ScaleAllSizes() MULTIPLIES the live style values, so it is only valid
-    // once per context. Calling it per frame compounds padding/spacing without
-    // bound. apply_style() resets every size-dependent field to a base value,
-    // so scaling immediately after apply_style() is idempotent.
     inline void apply_scaled_style()
     {
-        apply_style();                 // reset to unscaled base first
+        apply_style();
         ImGui::GetStyle().ScaleAllSizes(factor);
         ImGui::GetIO().FontGlobalScale = 1.f;
     }
 
-    // ============ ACCENT HELPERS ============
     inline ImVec4 accent_vec4(float alpha = 1.f) { return { g_accent.x, g_accent.y, g_accent.z, alpha }; }
     inline ImU32 accent_u32(float alpha = 1.f) { return ImGui::GetColorU32(accent_vec4(alpha)); }
 
-    // Stand-in for the reference's glow_renderer::draw_accent_rect(), which
-    // draws through a DX11 shader. ImGui's draw list has no blur, so this fakes
-    // the halo with a few concentric rounded rects at falling alpha, expanding
-    // outward. Cheap, and visually close at these sizes.
     inline void draw_accent_rect(ImDrawList* dl, const ImVec2& p0, const ImVec2& p1,
         float rounding, float strength, int layers = 4)
     {
@@ -275,7 +238,7 @@ namespace portfolio
         const float h = p1.y - p0.y;
         for (int i = layers; i >= 1; --i)
         {
-            const float t = (float)i / (float)layers;      // 1.0 = outermost
+            const float t = (float)i / (float)layers;
             const float grow_x = w * 0.10f * t;
             const float grow_y = h * 0.55f * t;
             const float a = strength * 0.16f * (1.f - t * 0.55f);
@@ -286,8 +249,6 @@ namespace portfolio
         }
     }
 
-    // UV window covering screen-space rect `r` inside a full-screen capture.
-    // `r` is (x, y, w, h) in the same space as io.DisplaySize.
     inline void uv_for_screen_rect(const ImVec4& r, ImVec2& uv_min, ImVec2& uv_max)
     {
         const ImVec2 disp = ImGui::GetIO().DisplaySize;
@@ -299,36 +260,26 @@ namespace portfolio
         }
         uv_min = ImVec2(ImClamp(r.x / disp.x, 0.f, 1.f), ImClamp(r.y / disp.y, 0.f, 1.f));
         uv_max = ImVec2(ImClamp((r.x + r.z) / disp.x, 0.f, 1.f), ImClamp((r.y + r.w) / disp.y, 0.f, 1.f));
-        // Rounding can collapse the window; keep a sliver so the sampler has
-        // something with non-zero extent.
+
         if (uv_max.x <= uv_min.x) uv_max.x = ImMin(1.f, uv_min.x + 1e-4f);
         if (uv_max.y <= uv_min.y) uv_max.y = ImMin(1.f, uv_min.y + 1e-4f);
     }
 
-    // ============ LIQUID GLASS RENDERING ============
-    // Apple-style liquid glass: neutral interior + specular rim + chromatic aberration edge
-    //
-    // `backdrop`, when set, is a capture of the whole screen (the live game
-    // frame). It is sampled with UVs derived from the panel rect so the panel
-    // shows the part of the game that is actually behind it, not a squashed
-    // copy of the entire frame.
     inline void DrawLiquidGlassPanel(ImDrawList* dl, const ImVec2& p0, const ImVec2& p1, float R, ImTextureID backdrop = nullptr)
     {
         const float w = p1.x - p0.x;
         const float h = p1.y - p0.y;
         if (w < 4.f || h < 4.f) return;
 
-        // 1. Drop shadow (large, soft)
         dl->AddShadowRect(p0, p1, IM_COL32(0, 0, 0, 120), 40.f, ImVec2(0, 16), 0, R);
 
-        // 2. Backdrop: sample only the screen region behind this panel.
         if (backdrop)
         {
             const ImVec4 r(p0.x, p0.y, w, h);
             ImVec2 uv_min, uv_max;
             uv_for_screen_rect(r, uv_min, uv_max);
             dl->AddImageRounded(backdrop, p0, p1, uv_min, uv_max, IM_COL32_WHITE, R);
-            // Dark tint for text contrast (portfolio: rgba(14,14,22,0.18→0.32))
+
             dl->AddRectFilled(p0, p1, IM_COL32(14, 14, 22, 80), R);
         }
         else
@@ -336,20 +287,17 @@ namespace portfolio
             dl->AddRectFilled(p0, p1, IM_COL32(0, 0, 0, 160), R);
         }
 
-        // 3. NEUTRAL INTERIOR - inset region where refraction is neutralized
         const float inset = ImMin(R * 0.5f, ImMin(w, h) * 0.08f);
         const ImVec2 ni0 = { p0.x + inset, p0.y + inset };
         const ImVec2 ni1 = { p1.x - inset, p1.y - inset };
-        // Slight frosted overlay on interior (portfolio: linear-gradient 0.18→0.32)
+
         dl->AddRectFilledMultiColor(ni0, ni1,
-            IM_COL32(14, 14, 22, 46),   // top: 0.18
             IM_COL32(14, 14, 22, 46),
-            IM_COL32(14, 14, 22, 82),   // bottom: 0.32
+            IM_COL32(14, 14, 22, 46),
+            IM_COL32(14, 14, 22, 82),
             IM_COL32(14, 14, 22, 82),
             ImMin(R - inset, 8.f));
 
-        // 4. CHROMATIC ABERRATION RIM - simulate refraction at edges
-        // Red channel offset left, Blue channel offset right (prism fringe)
         const float rimW = ImMin(inset * 1.5f, 12.f);
         const int fringeSteps = 3;
         for (int i = 0; i < fringeSteps; ++i)
@@ -357,8 +305,7 @@ namespace portfolio
             const float t = (float)(i + 1) / fringeSteps;
             const float offset = rimW * t * 0.5f;
             const float alpha = 0.03f * (1.f - t * 0.5f);
-            
-            // Top edge - red shifts left, blue shifts right
+
             dl->AddRectFilledMultiColor(
                 { p0.x + R, p0.y + offset },
                 { p1.x - R, p0.y + offset + 1.f },
@@ -367,7 +314,7 @@ namespace portfolio
                 IM_COL32(0, 0, 255, (int)(alpha * 255)),
                 IM_COL32(255, 0, 0, (int)(alpha * 255))
             );
-            // Left edge
+
             dl->AddRectFilledMultiColor(
                 { p0.x + offset, p0.y + R },
                 { p0.x + offset + 1.f, p1.y - R },
@@ -376,7 +323,7 @@ namespace portfolio
                 IM_COL32(0, 0, 255, (int)(alpha * 255)),
                 IM_COL32(0, 0, 255, (int)(alpha * 255))
             );
-            // Right edge
+
             dl->AddRectFilledMultiColor(
                 { p1.x - offset - 1.f, p0.y + R },
                 { p1.x - offset, p1.y - R },
@@ -385,7 +332,7 @@ namespace portfolio
                 IM_COL32(255, 0, 0, (int)(alpha * 255)),
                 IM_COL32(255, 0, 0, (int)(alpha * 255))
             );
-            // Bottom edge
+
             dl->AddRectFilledMultiColor(
                 { p0.x + R, p1.y - offset - 1.f },
                 { p1.x - R, p1.y - offset },
@@ -396,7 +343,6 @@ namespace portfolio
             );
         }
 
-        // 5. SPECULAR TOP HIGHLIGHT - 1px white line at top interior
         const float highlightAlpha = 0.5f;
         dl->AddRectFilledMultiColor(
             { p0.x + R, p0.y + 0.5f },
@@ -407,7 +353,6 @@ namespace portfolio
             IM_COL32(255, 255, 255, (int)(highlightAlpha * 255))
         );
 
-        // 6. INSIDE TOP HIGHLIGHT - subtle inset glow
         dl->AddRectFilledMultiColor(
             { p0.x + R + 4, p0.y + 8 },
             { p1.x - R - 4, p0.y + 16 },
@@ -417,11 +362,9 @@ namespace portfolio
             IM_COL32(255, 255, 255, 15)
         );
 
-        // 7. GLASS BORDER - 1px inset white border
-        dl->AddRect(p0 + ImVec2(0.5f, 0.5f), p1 - ImVec2(0.5f, 0.5f), 
+        dl->AddRect(p0 + ImVec2(0.5f, 0.5f), p1 - ImVec2(0.5f, 0.5f),
             IM_COL32(255, 255, 255, 33), R, 0, 1.f);
 
-        // 8. SUBTLE ACCENT RIM - very faint accent color at corners
         const float accentRimAlpha = 0.04f;
         const float cornerR = R;
         dl->AddRectFilledMultiColor(
@@ -436,10 +379,7 @@ namespace portfolio
         );
     }
 
-    // Liquid glass button (portfolio style: rounded, icon+label, hover states)
-    // iconSize / textSize are explicit because this repo's ImGui has no
-    // fonts::size() helper to query a font's pixel size from.
-    inline void DrawLiquidGlassButton(ImDrawList* dl, const ImVec2& p0, const ImVec2& p1, float R, 
+    inline void DrawLiquidGlassButton(ImDrawList* dl, const ImVec2& p0, const ImVec2& p1, float R,
         const char* icon, const char* label, ImFont* iconFont, float iconSize,
         ImFont* textFont, float textSize,
         bool hovered, bool pressed, bool active)
@@ -451,7 +391,6 @@ namespace portfolio
         dl->AddRectFilled(p0, p1, bgCol, R);
         dl->AddRect(p0 + ImVec2(0.5f, 0.5f), p1 - ImVec2(0.5f, 0.5f), borderCol, R, 0, 1.f);
 
-        // Specular top highlight
         dl->AddRectFilledMultiColor(
             { p0.x + R, p0.y + 0.5f },
             { p1.x - R, p0.y + 1.5f },
@@ -468,8 +407,7 @@ namespace portfolio
         float x = cx - totalW * 0.5f;
         if (icon && iconFont)
         {
-            // AddText's position is the text baseline top-left; nudge up by a
-            // third of the line so the glyphs sit optically centred.
+
             dl->AddText(iconFont, iconSize, ImVec2(x, cy - iconSize * 0.5f), textCol, icon);
             x += iconSize + gap;
         }
@@ -477,9 +415,6 @@ namespace portfolio
             dl->AddText(textFont, textSize, ImVec2(x, cy - textSize * 0.5f), textCol, label);
     }
 
-    // Liquid glass search field background only. The glyph and the text field
-    // are drawn by the caller so they use this project's icon set and the
-    // real ImGui input widget.
     inline void DrawLiquidGlassSearchField(ImDrawList* dl, const ImVec2& p0, const ImVec2& p1, float R,
         bool focused, bool hovered)
     {
@@ -489,7 +424,6 @@ namespace portfolio
         dl->AddRectFilled(p0, p1, bgCol, R);
         dl->AddRect(p0 + ImVec2(0.5f, 0.5f), p1 - ImVec2(0.5f, 0.5f), borderCol, R, 0, 1.f);
 
-        // Specular top highlight, same as the other glass surfaces
         dl->AddRectFilledMultiColor(
             { p0.x + R, p0.y + 0.5f },
             { p1.x - R, p0.y + 1.5f },

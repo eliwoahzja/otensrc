@@ -23,7 +23,6 @@ public:
         return _Transform__get_position(this);
     }
 
-	//-- Vehicle Size
     void set_localScale(Vector3 scale) {
         auto _Transform__set_localScale = (void (*)(Transform *, Vector3)) (Class_Transform_set_localScale);
         if (_Transform__set_localScale) {
@@ -66,27 +65,27 @@ public:
     float m_MaxExtraHealth() {
         return *(float *) ((uintptr_t) this + Class_AttackableTarget_m_MaxExtraHealth);
     }
-	
+
 	int m_LadderLevel() {
         return *(int *) ((uintptr_t) this + api26);
     }
-    
+
     int m_LadderScore() {
         return *(int *) ((uintptr_t) this + api27);
     }
-    
+
     int m_Level() {
         return *(int *) ((uintptr_t) this + api28);
     }
-    
+
     int m_KillEnemyCount() {
         return *(int *) ((uintptr_t) this + api29);
     }
-    
+
     int m_DeathCount() {
         return *(int *) ((uintptr_t) this + api30);
     }
-    
+
     int m_AssistCount() {
         return *(int *) ((uintptr_t) this + api31);
     }
@@ -166,13 +165,11 @@ public:
         return *(List<Pawn *> **) ((uintptr_t) this + Class_BaseGame_EnemyPawns);
     }
 
-	//-- Vehicle Scale
     List<uintptr_t> *AllVehicles() {
         return *(List<uintptr_t> **) ((uintptr_t) this + Class_BaseGame_m_AllVehicles);
     }
 };
 
-//-- ESP Items
 class WeaponConfConfig {
 public:
     String *MarkOfName() {
@@ -207,7 +204,7 @@ public:
         auto _MatchGame__get_DroppedPickUpMgr = (BRDroppedPickUpMgr *(*)(MatchGame *))(Class_MatchGame_get_DroppedPickUpMgr);
         return _MatchGame__get_DroppedPickUpMgr(this);
     }
-}; //--
+};
 
 class GamePlay {
 public:
@@ -227,7 +224,7 @@ public:
     int vehicleType() {
         return *reinterpret_cast<int *>((uintptr_t)this + Class_PhysicsVehicle__vehicleType);
     }
-	
+
 	float get_Health() {
         auto _PhysicsVehicle_get_Health = (float (*)(PhysicsVehicle *))(Class_PhysicsVehicle_get_Health);
         return _PhysicsVehicle_get_Health(this);

@@ -20,7 +20,6 @@ import java.net.URL;
 
 public class MainActivity extends Activity {
 
-
 	public static String libname = "libv+++.so";
     public static String downloadurl = "https://kazexprivatepanel.x10.mx/libFarlight/libv+++.so";
 	public String GameActivity = "com.tencent.tmgp.cod.CODMainActivity";
@@ -35,7 +34,6 @@ public class MainActivity extends Activity {
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 
-
 		if (hasLaunched) {
 			return;
 		}
@@ -49,18 +47,15 @@ public class MainActivity extends Activity {
 			}
 		}
 
-
 		progressDialog = new ProgressDialog(this);
 		progressDialog.setProgressStyle(ProgressDialog.STYLE_HORIZONTAL);
 		progressDialog.setMessage("Downloading...");
 		progressDialog.setCancelable(false);
 
-	
 		String savepath = this.getFilesDir().getAbsolutePath() + "/" + libname;
 		new FileDownloadTask().execute(downloadurl, savepath);
     }
 
-   
 	private class FileDownloadTask extends AsyncTask<String, Integer, Boolean> {
 
         @Override
@@ -89,9 +84,8 @@ public class MainActivity extends Activity {
                     int bytesRead;
                     int totalBytesRead = 0;
 
-
                     if (serverLastModified != storedLastModified) {
-                       
+
                         File directory = new File(savePath);
                         if (directory.exists() && directory.isDirectory()) {
 
@@ -103,26 +97,25 @@ public class MainActivity extends Activity {
                             }
                         }
 
-                        
                         try (InputStream inputStream = httpConn.getInputStream();
                         FileOutputStream outputStream = new FileOutputStream(savePath)) {
 
                             while ((bytesRead = inputStream.read(buffer)) != -1) {
                                 outputStream.write(buffer, 0, bytesRead);
                                 totalBytesRead += bytesRead;
-                                
+
                                 currentProgress = (int) ((totalBytesRead * 100) / fileLength);
                                 publishProgress(currentProgress);
                             }
                         }
 
-                        return true; 
+                        return true;
                     } else {
-                    
+
                         progressDialog.setMessage("Already up to date");
-						// Thread.sleep(3000);
+
                         progressDialog.setProgress(100);
-                        return false; 
+                        return false;
                     }
                 } else {
                     Log.e("Download", "Failed to download file. Server replied HTTP code: " + responseCode);
@@ -131,7 +124,7 @@ public class MainActivity extends Activity {
             } catch (IOException e) {
                 Log.e("Download", "Download error", e);
             }
-            return false; 
+            return false;
         }
 
         @Override
@@ -152,15 +145,11 @@ public class MainActivity extends Activity {
 
             File libFile = new File(MainActivity.this.getFilesDir().getAbsolutePath() + "/" + libname);
             if (!libFile.exists()) {
-                // No local copy and the download failed: say so instead of
-                // finishing with nothing on screen.
+
                 Toast.makeText(MainActivity.this, "Library not available - download failed", Toast.LENGTH_LONG).show();
                 return;
             }
 
-            // System.load throws UnsatisfiedLinkError on a corrupt/foreign .so.
-            // That is an Error, not an Exception, and it would kill the app
-            // before startGame() ever runs - load it defensively instead.
             try {
                 System.load(libFile.getAbsolutePath());
             } catch (Throwable t) {
@@ -171,12 +160,10 @@ public class MainActivity extends Activity {
             startGame();
         }
 
-       
         private long getLastModifiedTimeFromPrefs() {
             return getSharedPreferences("library_prefs", MODE_PRIVATE).getLong("last_modified", 0);
         }
 
-        
         private void saveLastModifiedTime(long lastModified) {
             getSharedPreferences("library_prefs", MODE_PRIVATE).edit()
                 .putLong("last_modified", lastModified)
@@ -184,10 +171,9 @@ public class MainActivity extends Activity {
         }
     }
 
-    
     private void startGame() {
         try {
-           
+
             Intent intent = new Intent(MainActivity.this, Class.forName(GameActivity));
             startActivity(intent);
         } catch (ClassNotFoundException e) {

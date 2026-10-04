@@ -42,7 +42,7 @@ struct StateRefs {
 };
 
 static Texture g_menuBackground;
-static Texture g_ethnirGlassBackdrop;   // baked blurred wallpaper for the Ethnir shell
+static Texture g_ethnirGlassBackdrop;
 static bool g_infoPopupRequested = false;
 static bool g_priceListPopupRequested = false;
 static bool g_popupFocusVisible = false;
@@ -441,4 +441,4 @@ inline void CollapseMenu(StateRefs &state) {
     state.collapseBarPressAnim = 0.0f;
 }
 
-} // namespace runtime_preview_menu
+}

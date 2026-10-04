@@ -15,22 +15,14 @@
 extern ImFont* F50;
 namespace font { extern ImFont* inter_semibold; }
 
-// ═══════════════════════════════════════════════════════════════════
-//  PSYCHE — GLITCH TERMINAL LOADER
-//  Concept: corrupted holographic data panel
-//  No circles. No hex grids. Pure raw terminal energy.
-// ═══════════════════════════════════════════════════════════════════
-
 namespace ui_loading {
 
-// ── Internal state ──────────────────────────────────────────────────
 static bool  showLoadingAnimation     = false;
 static float loadingAnimationTimer    = 0.0f;
 static float loadingAnimationDuration = 6.0f;
 static float animationTime            = 0.0f;
 static bool  seededRandom             = false;
 
-// Glitch blocks — random screen-tear rectangles
 struct GlitchBlock {
     float x, y, w, h;
     float life, maxLife;
@@ -40,7 +32,6 @@ struct GlitchBlock {
 static std::vector<GlitchBlock> glitchBlocks;
 static float glitchSpawnTimer = 0.0f;
 
-// Data stream columns — falling characters
 struct DataCol {
     float x;
     std::vector<float> charY;
@@ -51,7 +42,6 @@ struct DataCol {
 };
 static std::vector<DataCol> dataCols;
 
-// Scan bars — horizontal sweeping lines
 struct ScanBar {
     float y;
     float speed;
@@ -60,7 +50,6 @@ struct ScanBar {
 };
 static std::vector<ScanBar> scanBars;
 
-// Typewriter decrypt state per step label
 struct DecryptState {
     char  display[64];
     float timer;
@@ -75,7 +64,6 @@ static const char* stepLabels[3] = {
 };
 static float stepThresholds[3] = { 0.0f, 0.34f, 0.68f };
 
-// Random char pool for decrypt effect
 static const char kGlitchChars[] =
     "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*<>?/|\\[]{}~";
 
@@ -86,7 +74,6 @@ inline float Rnd01()  { return (std::rand() % 10000) / 10000.0f; }
 inline float RndRange(float a, float b) { return a + Rnd01() * (b - a); }
 inline int   RndInt(int n) { return std::rand() % n; }
 
-// ── Easing ──────────────────────────────────────────────────────────
 inline float EaseOutExpo(float t) {
     t = std::clamp(t, 0.0f, 1.0f);
     return t >= 1.0f ? 1.0f : 1.0f - std::pow(2.0f, -10.0f * t);
@@ -96,14 +83,12 @@ inline float EaseInOutQuart(float t) {
     return t < 0.5f ? 8.0f * t * t * t * t : 1.0f - std::pow(-2.0f * t + 2.0f, 4.0f) / 2.0f;
 }
 
-// ── Init ─────────────────────────────────────────────────────────────
 inline void InitLoader(float panelW, float panelH) {
     SeedOnce();
     glitchBlocks.clear();
     dataCols.clear();
     scanBars.clear();
 
-    // Data stream columns across panel
     const int colCount = (int)(panelW / 18.0f);
     for (int i = 0; i < colCount; ++i) {
         DataCol col;
@@ -119,7 +104,6 @@ inline void InitLoader(float panelW, float panelH) {
         dataCols.push_back(col);
     }
 
-    // Horizontal scan bars
     for (int i = 0; i < 3; ++i) {
         ScanBar sb;
         sb.y     = RndRange(0.0f, panelH);
@@ -129,7 +113,6 @@ inline void InitLoader(float panelW, float panelH) {
         scanBars.push_back(sb);
     }
 
-    // Init decrypt states
     for (int i = 0; i < 3; ++i) {
         std::memset(decryptStates[i].display, 0, sizeof(decryptStates[i].display));
         decryptStates[i].timer        = 0.0f;
@@ -144,7 +127,7 @@ inline void Start(float durationSeconds = 6.0f) {
     loadingAnimationDuration = std::max(0.4f, durationSeconds);
     animationTime            = 0.0f;
     glitchSpawnTimer         = 0.0f;
-    // Panel size estimate for init — actual layout computed in RenderWindow
+
     InitLoader(680.0f, 360.0f);
 }
 
@@ -154,16 +137,11 @@ inline float GetProgress() {
     return std::clamp(loadingAnimationTimer / loadingAnimationDuration, 0.0f, 1.0f);
 }
 
-// ══════════════════════════════════════════════════════════════════
-//  DRAW HELPERS
-// ══════════════════════════════════════════════════════════════════
-
-// Diagonal slash — draws a filled parallelogram (screen-tear style)
 inline void DrawSlashRect(ImDrawList* draw,
                           float x, float y, float w, float h,
                           float slant, ImU32 col)
 {
-    // slant = how far the top-right shifts right vs bottom-right
+
     draw->AddQuadFilled(
         ImVec2(x + slant, y),
         ImVec2(x + w + slant, y),
@@ -172,7 +150,6 @@ inline void DrawSlashRect(ImDrawList* draw,
         col);
 }
 
-// Dashed horizontal line
 inline void DrawDashedLine(ImDrawList* draw,
                            ImVec2 p0, ImVec2 p1,
                            ImU32 col, float thick,
@@ -197,7 +174,6 @@ inline void DrawDashedLine(ImDrawList* draw,
     }
 }
 
-// Corner L-bracket decorator
 inline void DrawCornerBracket(ImDrawList* draw, ImVec2 origin,
                                float sx, float sy,
                                float len, ImU32 col, float thick = 1.5f)
@@ -206,7 +182,6 @@ inline void DrawCornerBracket(ImDrawList* draw, ImVec2 origin,
     draw->AddLine(origin, ImVec2(origin.x, origin.y + sy * len), col, thick);
 }
 
-// Vertical bar graph (frequency/signal style)
 inline void DrawSignalBars(ImDrawList* draw, ImVec2 origin,
                            float totalW, float maxH,
                            float time, ImU32 col, ImU32 colDim)
@@ -218,17 +193,17 @@ inline void DrawSignalBars(ImDrawList* draw, ImVec2 origin,
         const float h  = maxH * (0.3f + 0.7f * std::abs(
             std::sin(time * 3.1f + i * 0.72f) *
             std::cos(time * 1.8f + i * 0.41f)));
-        // Dim background bar
+
         draw->AddRectFilled(
             ImVec2(x, origin.y - maxH),
             ImVec2(x + bw, origin.y),
             colDim, 1.0f);
-        // Active bar
+
         draw->AddRectFilled(
             ImVec2(x, origin.y - h),
             ImVec2(x + bw, origin.y),
             col, 1.0f);
-        // Top bright cap
+
         draw->AddRectFilled(
             ImVec2(x, origin.y - h - 2.0f),
             ImVec2(x + bw, origin.y - h),
@@ -236,10 +211,7 @@ inline void DrawSignalBars(ImDrawList* draw, ImVec2 origin,
     }
 }
 
-// ══════════════════════════════════════════════════════════════════
-//  MAIN RENDER
-// ══════════════════════════════════════════════════════════════════
-inline bool RenderWindow(ImTextureID /*backgroundTexture*/ = nullptr) {
+inline bool RenderWindow(ImTextureID  = nullptr) {
     if (!showLoadingAnimation) return false;
 
     ImGuiIO&     io       = ImGui::GetIO();
@@ -267,22 +239,14 @@ inline bool RenderWindow(ImTextureID /*backgroundTexture*/ = nullptr) {
         ImGuiWindowFlags_NoMove))
     {
         ImDrawList* draw = ImGui::GetWindowDrawList();
-        const ImVec2 P   = ImGui::GetWindowPos(); // top-left of window
+        const ImVec2 P   = ImGui::GetWindowPos();
 
-        // ── Accent colours (green terminal feel — swap c::accent if you want) ──
-        // Using c::accent as base but shifting to feel like a holo-terminal
-        // MODIFIED: Shifted to custom high-tier industrial Grey + Vivid Yellow theme
-        const ImVec4 av(240.0f / 255.0f, 190.0f / 255.0f, 20.0f / 255.0f, 1.0f);   // Tech Yellow primary accent
-        const ImVec4 av2(140.0f / 255.0f, 142.0f / 255.0f, 145.0f / 255.0f, 1.0f); // Mechanical Grey secondary accent
+        const ImVec4 av(240.0f / 255.0f, 190.0f / 255.0f, 20.0f / 255.0f, 1.0f);
+        const ImVec4 av2(140.0f / 255.0f, 142.0f / 255.0f, 145.0f / 255.0f, 1.0f);
 
         auto A  = [&](float a) { return ImGui::GetColorU32(ImVec4(av.x,  av.y,  av.z,  a)); };
         auto A2 = [&](float a) { return ImGui::GetColorU32(ImVec4(av2.x, av2.y, av2.z, a)); };
 
-        // ════════════════════════════════════════════════════════
-        //  PANEL BACKGROUND
-        // ════════════════════════════════════════════════════════
-
-        // Deep shadow behind panel
         for (int sh = 5; sh >= 1; --sh) {
             const float e = sh * 5.0f;
             draw->AddRectFilled(
@@ -291,11 +255,9 @@ inline bool RenderWindow(ImTextureID /*backgroundTexture*/ = nullptr) {
                 IM_COL32(0, 0, 0, 14), 4.0f);
         }
 
-        // Main BG — very dark, near-black with slight tint
         draw->AddRectFilled(P, ImVec2(P.x + PS.x, P.y + PS.y),
             IM_COL32(18, 19, 21, 248), 2.0f);
 
-        // Diagonal stripe texture overlay (slanted grid)
         {
             const float stride = 18.0f;
             for (float sx = -PS.y; sx < PS.x + PS.y; sx += stride) {
@@ -306,7 +268,6 @@ inline bool RenderWindow(ImTextureID /*backgroundTexture*/ = nullptr) {
             }
         }
 
-        // Top-left accent diagonal block (visual anchor)
         DrawSlashRect(draw,
             P.x, P.y, PS.x * 0.38f, 3.0f,
             14.0f, A(0.85f));
@@ -314,26 +275,20 @@ inline bool RenderWindow(ImTextureID /*backgroundTexture*/ = nullptr) {
             P.x, P.y + 7.0f, PS.x * 0.20f, 1.5f,
             8.0f, A(0.40f));
 
-        // Bottom-right accent diagonal block
         DrawSlashRect(draw,
             P.x + PS.x * 0.62f, P.y + PS.y - 3.0f, PS.x * 0.38f, 3.0f,
             -14.0f, A(0.65f));
 
-        // Outer border — thin with corner emphasis
         draw->AddRect(P, ImVec2(P.x + PS.x, P.y + PS.y),
             A2(0.20f), 0.0f, 0, 1.0f);
 
-        // Corner brackets — all 4 corners
         DrawCornerBracket(draw, P,                                     1, 1,  22.0f, A(0.80f), 2.0f);
         DrawCornerBracket(draw, ImVec2(P.x + PS.x, P.y),             -1, 1,  22.0f, A(0.80f), 2.0f);
         DrawCornerBracket(draw, ImVec2(P.x, P.y + PS.y),              1, -1, 22.0f, A(0.80f), 2.0f);
         DrawCornerBracket(draw, ImVec2(P.x + PS.x, P.y + PS.y),     -1, -1, 22.0f, A(0.80f), 2.0f);
 
-        // ════════════════════════════════════════════════════════
-        //  DATA STREAM (matrix rain — left half bg)
-        // ════════════════════════════════════════════════════════
         {
-            // Clip to left portion (decorative only)
+
             const float streamW = PS.x * 0.42f;
             draw->PushClipRect(P, ImVec2(P.x + streamW, P.y + PS.y), true);
 
@@ -351,7 +306,7 @@ inline bool RenderWindow(ImTextureID /*backgroundTexture*/ = nullptr) {
                         col.charIdx[j] = RndInt((int)sizeof(kGlitchChars) - 1);
                         col.charLife[j]= RndRange(0.5f, 1.0f);
                     }
-                    // Randomise char occasionally
+
                     if (RndInt(120) == 0)
                         col.charIdx[j] = RndInt((int)sizeof(kGlitchChars) - 1);
 
@@ -368,7 +323,6 @@ inline bool RenderWindow(ImTextureID /*backgroundTexture*/ = nullptr) {
 
             draw->PopClipRect();
 
-            // Gradient fade — left stream fades into right content
             draw->AddRectFilledMultiColor(
                 ImVec2(P.x + streamW * 0.55f, P.y),
                 ImVec2(P.x + streamW, P.y + PS.y),
@@ -376,9 +330,6 @@ inline bool RenderWindow(ImTextureID /*backgroundTexture*/ = nullptr) {
                 IM_COL32(18,19,21,245), IM_COL32(18,19,21,245));
         }
 
-        // ════════════════════════════════════════════════════════
-        //  SCAN BARS (horizontal sweep)
-        // ════════════════════════════════════════════════════════
         draw->PushClipRect(P, ImVec2(P.x + PS.x, P.y + PS.y), true);
         for (auto& sb : scanBars) {
             sb.y += dt * sb.speed;
@@ -397,9 +348,6 @@ inline bool RenderWindow(ImTextureID /*backgroundTexture*/ = nullptr) {
         }
         draw->PopClipRect();
 
-        // ════════════════════════════════════════════════════════
-        //  GLITCH BLOCKS (random screen tears)
-        // ════════════════════════════════════════════════════════
         glitchSpawnTimer += dt;
         if (glitchSpawnTimer > RndRange(0.08f, 0.35f)) {
             glitchSpawnTimer = 0.0f;
@@ -431,14 +379,10 @@ inline bool RenderWindow(ImTextureID /*backgroundTexture*/ = nullptr) {
             }
         }
 
-        // ════════════════════════════════════════════════════════
-        //  RIGHT CONTENT PANE
-        // ════════════════════════════════════════════════════════
         const float cL = P.x + PS.x * 0.42f;
         const float cR = P.x + PS.x - 18.0f;
         const float cW = cR - cL;
 
-        // Vertical divider (dashed)
         DrawDashedLine(draw,
             ImVec2(cL - 10.0f, P.y + 16.0f),
             ImVec2(cL - 10.0f, P.y + PS.y - 16.0f),
@@ -450,10 +394,9 @@ inline bool RenderWindow(ImTextureID /*backgroundTexture*/ = nullptr) {
         const float bSz  = labelFont->FontSize * 0.88f;
         const float tSz  = (titleFont == F50) ? 13.0f : titleFont->FontSize;
 
-        // ── System ID tag (top-left of right pane) ─────────────
         {
             const char* sysTag = "SYS::OMNI_V1";
-            // Blinking cursor effect
+
             const bool blink = ((int)(animationTime * 2.4f) % 2 == 0);
             char tagBuf[32];
             std::snprintf(tagBuf, sizeof(tagBuf), "%s%s", sysTag, blink ? "_" : " ");
@@ -461,15 +404,13 @@ inline bool RenderWindow(ImTextureID /*backgroundTexture*/ = nullptr) {
                 ImVec2(cL, P.y + 14.0f), A(0.85f), tagBuf);
         }
 
-        // Thin separator line under tag
         DrawDashedLine(draw,
             ImVec2(cL, P.y + 14.0f + lSz + 5.0f),
             ImVec2(cR, P.y + 14.0f + lSz + 5.0f),
             A2(0.20f), 0.8f, 8.0f, 5.0f);
 
-        // ── TITLE (large, bold, glitchy) ───────────────────────
         const float titleY = P.y + 38.0f;
-        // Shadow/glitch offset
+
         const float gOff = std::sin(animationTime * 18.0f) > 0.92f ? 2.0f : 0.0f;
         if (gOff > 0.0f) {
             draw->AddText(titleFont, tSz,
@@ -484,7 +425,6 @@ inline bool RenderWindow(ImTextureID /*backgroundTexture*/ = nullptr) {
             ImVec2(cL, titleY + tSz + 3.0f),
             A2(0.60f), "HACKS // BOOT SEQUENCE");
 
-        // ── SIGNAL BARS (audio/signal visualizer) ──────────────
         const float sigY  = titleY + tSz + 3.0f + lSz + 14.0f;
         const float sigH  = 18.0f;
         const float sigW  = cW * 0.55f;
@@ -493,7 +433,6 @@ inline bool RenderWindow(ImTextureID /*backgroundTexture*/ = nullptr) {
             sigW, sigH, animationTime,
             A(0.80f), A2(0.15f));
 
-        // Signal label
         {
             const char* sigLabel = "NEURAL LINK ACTIVE";
             draw->AddText(labelFont, lSz * 0.85f,
@@ -501,7 +440,6 @@ inline bool RenderWindow(ImTextureID /*backgroundTexture*/ = nullptr) {
                 A2(0.70f), sigLabel);
         }
 
-        // ── STEP ROWS (decrypt animation) ──────────────────────
         const float stepTop = sigY + sigH + 18.0f;
         const float sH      = 38.0f;
         const float sGap    = 6.0f;
@@ -511,7 +449,6 @@ inline bool RenderWindow(ImTextureID /*backgroundTexture*/ = nullptr) {
             const int   state   = (progress >= nextThr) ? 2
                                 : (progress >= stepThresholds[i]) ? 1 : 0;
 
-            // Update decrypt animation
             DecryptState& ds = decryptStates[i];
             const int labelLen = (int)std::strlen(stepLabels[i]);
             if (state >= 1 && !ds.done) {
@@ -523,7 +460,7 @@ inline bool RenderWindow(ImTextureID /*backgroundTexture*/ = nullptr) {
                     else
                         ds.done = true;
                 }
-                // Build display string
+
                 for (int c = 0; c < labelLen; ++c) {
                     ds.display[c] = (c < ds.revealedChars)
                         ? stepLabels[i][c]
@@ -531,7 +468,7 @@ inline bool RenderWindow(ImTextureID /*backgroundTexture*/ = nullptr) {
                 }
                 ds.display[labelLen] = '\0';
             } else if (state == 0) {
-                // Scrambled placeholder
+
                 for (int c = 0; c < labelLen; ++c)
                     ds.display[c] = kGlitchChars[RndInt((int)sizeof(kGlitchChars) - 1)];
                 ds.display[labelLen] = '\0';
@@ -539,17 +476,14 @@ inline bool RenderWindow(ImTextureID /*backgroundTexture*/ = nullptr) {
 
             const float ry = stepTop + i * (sH + sGap);
 
-            // Row BG — slash-style left edge
             DrawSlashRect(draw, cL, ry, cW, sH, 6.0f,
                 state == 1 ? A2(0.12f) :
                 state == 2 ? A2(0.08f) : IM_COL32(255,255,255,8));
 
-            // Left accent slash bar
             DrawSlashRect(draw, cL, ry, 3.0f, sH, 3.0f,
                 state == 2 ? A(0.95f) :
                 state == 1 ? A2(0.80f) : A2(0.20f));
 
-            // State indicator (right side)
             const char* stateStr = state == 2 ? "[DONE]"
                                  : state == 1 ? "[EXEC]" : "[IDLE]";
             const ImVec2 stSz = labelFont->CalcTextSizeA(lSz, FLT_MAX, 0.0f, stateStr);
@@ -559,14 +493,12 @@ inline bool RenderWindow(ImTextureID /*backgroundTexture*/ = nullptr) {
                 state == 1 ? A2(0.85f) : A2(0.35f),
                 stateStr);
 
-            // Row number
             char numBuf[8];
             std::snprintf(numBuf, sizeof(numBuf), "%02d/", i + 1);
             draw->AddText(labelFont, lSz,
                 ImVec2(cL + 10.0f, ry + (sH - lSz) * 0.5f),
                 A2(0.40f), numBuf);
 
-            // Decrypted / scrambled label
             const ImU32 labelCol =
                 state == 2 ? ImGui::GetColorU32(c::text::text_active) :
                 state == 1 ? A(0.90f) : A2(0.40f);
@@ -577,14 +509,12 @@ inline bool RenderWindow(ImTextureID /*backgroundTexture*/ = nullptr) {
                                                           : stepLabels[i]);
         }
 
-        // ── PROGRESS SECTION ───────────────────────────────────
         const float pbTop = stepTop + 3 * (sH + sGap) + 10.0f;
 
-        // Percent text (large, anchored right)
         char pctBuf[16];
         std::snprintf(pctBuf, sizeof(pctBuf), "%03d%%", (int)std::lround(progress * 100.0f));
         const ImVec2 pctSz = titleFont->CalcTextSizeA(tSz * 1.4f, FLT_MAX, 0.0f, pctBuf);
-        // Glitch offset on percent
+
         const float pGlitch = std::sin(animationTime * 22.0f) > 0.90f ? 3.0f : 0.0f;
         if (pGlitch > 0.0f)
             draw->AddText(titleFont, tSz * 1.4f,
@@ -593,11 +523,9 @@ inline bool RenderWindow(ImTextureID /*backgroundTexture*/ = nullptr) {
             ImVec2(cR - pctSz.x, pbTop),
             ImGui::GetColorU32(c::text::text_active), pctBuf);
 
-        // "LOADING" label left of percent
         draw->AddText(labelFont, lSz,
             ImVec2(cL, pbTop + tSz * 0.2f), A2(0.50f), "DATA TRANSFER");
 
-        // Progress bar — segmented style (like blocks not smooth)
         const float barY  = pbTop + tSz * 1.4f + 8.0f;
         const float barH  = 6.0f;
         const float barW  = cW;
@@ -607,7 +535,7 @@ inline bool RenderWindow(ImTextureID /*backgroundTexture*/ = nullptr) {
         for (int s = 0; s < segs; ++s) {
             const float sx = cL + s * (segW + 1.5f);
             const bool  isF= s < filled;
-            // Active segment — slight flicker on leading edge
+
             const bool  isLead = (s == filled - 1);
             const float fAlpha = isLead
                 ? (0.7f + 0.3f * std::sin(animationTime * 14.0f))
@@ -618,7 +546,6 @@ inline bool RenderWindow(ImTextureID /*backgroundTexture*/ = nullptr) {
                 isF ? A(fAlpha) : A2(0.12f), 1.0f);
         }
 
-        // Bar glow underneath
         for (int g = 4; g >= 0; --g) {
             const float gy = 2.0f + g * 2.5f;
             const float gfilled = cL + EaseInOutQuart(progress) * barW;
@@ -628,7 +555,6 @@ inline bool RenderWindow(ImTextureID /*backgroundTexture*/ = nullptr) {
                 A(0.05f / (g + 1)), 2.0f);
         }
 
-        // Status message below bar
         {
             const char* msgs[] = {
                 "VERIFYING CRYPTOGRAPHIC SIGNATURE...",
@@ -642,9 +568,8 @@ inline bool RenderWindow(ImTextureID /*backgroundTexture*/ = nullptr) {
                 A2(0.45f), msg);
         }
 
-        // ── BOTTOM STATUS LINE ─────────────────────────────────
         {
-            // Left pane bottom — coordinate display
+
             const float bLineY = P.y + PS.y - 18.0f;
             char coordBuf[48];
             std::snprintf(coordBuf, sizeof(coordBuf),
@@ -656,21 +581,16 @@ inline bool RenderWindow(ImTextureID /*backgroundTexture*/ = nullptr) {
                 ImVec2(P.x + 14.0f, bLineY),
                 A2(0.40f), coordBuf);
 
-            // Right — version tag
             draw->AddText(labelFont, lSz * 0.80f,
                 ImVec2(cR - 80.0f, bLineY),
                 A2(0.35f), "BUILD 2025.06.06");
         }
 
-        // ════════════════════════════════════════════════════════
-        //  LEFT PANE — DECORATIVE GEOMETRY (not circles!)
-        // ════════════════════════════════════════════════════════
         {
             const float lpCX = P.x + PS.x * 0.21f;
             const float lpCY = P.y + PS.y * 0.48f;
             const float lpSz = PS.y * 0.28f;
 
-            // Rotating diamond (square rotated 45°)
             for (int d = 0; d < 3; ++d) {
                 const float dSz  = lpSz * (0.55f + d * 0.22f);
                 const float rot  = animationTime * (d % 2 == 0 ? 0.6f : -0.4f)
@@ -691,7 +611,6 @@ inline bool RenderWindow(ImTextureID /*backgroundTexture*/ = nullptr) {
                     d == 0 ? 2.0f : 1.2f);
             }
 
-            // Cross-hair lines through diamond center
             const float chLen = lpSz * 1.15f;
             const float chOff = 12.0f;
             draw->AddLine(ImVec2(lpCX - chLen, lpCY),
@@ -703,7 +622,6 @@ inline bool RenderWindow(ImTextureID /*backgroundTexture*/ = nullptr) {
             draw->AddLine(ImVec2(lpCX, lpCY + chOff),
                           ImVec2(lpCX, lpCY + chLen), A2(0.30f), 1.0f);
 
-            // Targeting tick marks on crosshair
             for (int t = 0; t < 4; ++t) {
                 const float ta = t * 3.14159f * 0.5f + animationTime * 0.3f;
                 const float tr = lpSz * 0.78f;
@@ -713,7 +631,6 @@ inline bool RenderWindow(ImTextureID /*backgroundTexture*/ = nullptr) {
                 draw->AddLine(tc, td, A(0.75f), 2.0f);
             }
 
-            // Animated corner squares on diamond vertices
             {
                 const float rot0 = animationTime * 0.6f;
                 ImVec2 v0(lpCX + std::cos(rot0) * lpSz * 0.55f,
@@ -725,7 +642,6 @@ inline bool RenderWindow(ImTextureID /*backgroundTexture*/ = nullptr) {
                     A(0.90f));
             }
 
-            // Center reticle
             draw->AddRectFilled(
                 ImVec2(lpCX - 3.0f, lpCY - 3.0f),
                 ImVec2(lpCX + 3.0f, lpCY + 3.0f),
@@ -735,7 +651,6 @@ inline bool RenderWindow(ImTextureID /*backgroundTexture*/ = nullptr) {
                 ImVec2(lpCX + 7.0f, lpCY + 7.0f),
                 A2(0.50f), 0.0f, 0, 1.0f);
 
-            // "LOCK" text when progress > 0.9
             if (progress > 0.90f) {
                 const float lockAlpha = (progress - 0.90f) / 0.10f;
                 draw->AddText(labelFont, lSz,
@@ -743,7 +658,6 @@ inline bool RenderWindow(ImTextureID /*backgroundTexture*/ = nullptr) {
                     A(lockAlpha * 0.90f), "LOCKED ON");
             }
 
-            // Scan ring (expanding then fading — like a sonar ping)
             {
                 const float pingT = std::fmod(animationTime * 0.55f, 1.0f);
                 const float pingR = lpSz * 0.30f + pingT * lpSz * 1.20f;
@@ -763,4 +677,4 @@ inline bool RenderWindow(ImTextureID /*backgroundTexture*/ = nullptr) {
     return finished;
 }
 
-} // namespace ui_loading
+}

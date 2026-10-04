@@ -1,7 +1,5 @@
 #pragma once
-//
-// Created by aimar on 12/28/2019.
-//
+
 #pragma once
 
 #include <stdio.h>
@@ -16,7 +14,6 @@ using namespace std;
 #ifndef IL2CPP_H
 #define IL2CPP_H
 
-// ================================================================================================================================ //
 typedef void(*Il2CppMethodPointer)();
 
 struct MethodInfo;
@@ -298,6 +295,3 @@ size_t Il2CppGetStaticFieldOffset(const char *image, const char *namespaze, cons
 
 bool Il2CppIsAssembliesLoaded();
 #endif
-
-
-

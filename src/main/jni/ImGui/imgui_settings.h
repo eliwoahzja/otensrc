@@ -147,7 +147,7 @@ namespace c
 
 namespace main_runtime_theme
 {
-    inline float g_menuHue = 0.6726f;  // Indigo hue
+    inline float g_menuHue = 0.6726f;
 
     inline ImU32 g_accentRgbOverride = IM_COL32(0x61, 0x5D, 0xCE, 0xFF);
 
@@ -244,4 +244,4 @@ namespace main_runtime_theme
     }
 }
 
-#endif // IMGUI_SETTINGS_H
+#endif

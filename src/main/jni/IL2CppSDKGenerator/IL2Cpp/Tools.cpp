@@ -129,7 +129,6 @@ uintptr_t Tools::GetRealOffsets(const char *libraryName, uintptr_t relativeAddr)
 	return (reinterpret_cast<uintptr_t>(libBase + relativeAddr));
 }
 
-
 uintptr_t Tools::GetEndAddress(const char *name) {
     uintptr_t end = 0;
     char line[512];
@@ -161,7 +160,6 @@ uintptr_t Tools::GetEndAddress(const char *name) {
     fclose(f);
     return end;
 }
-
 
 uintptr_t Tools::FindPattern(const char *lib, const char *pattern) {
     auto start = GetBaseAddress(lib);
@@ -226,7 +224,7 @@ const char *Tools::GetAndroidID(JNIEnv *env, jobject context) {
 const char *Tools::GetDeviceModel(JNIEnv *env) {
 	jclass buildClass = env->FindClass("android/os/Build");
 	jfieldID modelId = env->GetStaticFieldID(buildClass, "MODEL", "Ljava/lang/String;");
-	
+
 	auto str = (jstring) env->GetStaticObjectField(buildClass, modelId);
 	return env->GetStringUTFChars(str, 0);
 }
@@ -234,7 +232,7 @@ const char *Tools::GetDeviceModel(JNIEnv *env) {
 const char *Tools::GetDeviceBrand(JNIEnv *env) {
 	jclass buildClass = env->FindClass("android/os/Build");
 	jfieldID modelId = env->GetStaticFieldID(buildClass, "BRAND", "Ljava/lang/String;");
-	
+
 	auto str = (jstring) env->GetStaticObjectField(buildClass, modelId);
 	return env->GetStringUTFChars(str, 0);
 }
@@ -265,11 +263,11 @@ std::string Tools::CalcMD5(std::string s) {
     MD5_Init(&md5);
     MD5_Update(&md5, s.c_str(), s.length());
     MD5_Final(hash, &md5);
-	
+
     for (unsigned char i : hash) {
         sprintf(tmp, "%02x", i);
         result += tmp;
     }
-	
+
     return result;
 }

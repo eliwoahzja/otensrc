@@ -25,47 +25,45 @@ void RenderLicenseInfo(ImDrawList* draw, const ImVec2& startPos)
     ImGui::TextColored(titleColor, "License");
     ImGui::SetWindowFontScale(1.0f);
     ImGui::PopFont();
-    
+
     if (!usedKey.empty())
     {
         ImGui::SameLine(0, 15.0f);
         ImGui::TextColored(valueColor, ": %s", usedKey.c_str());
     }
-    
+
     custom::Separator_line();
-    
-    
+
     std::string countdownText = getExpiryCountdown();
-    
+
     ImGui::SetCursorPosX(15);
     ImGui::PushFont(F50);
     ImGui::SetWindowFontScale(0.6f);
     ImGui::TextColored(titleColor, "Expiry");
     ImGui::SetWindowFontScale(1.0f);
     ImGui::PopFont();
-    
+
     if (!EXP.empty())
     {
         ImGui::SameLine(0, 15.0f);
         ImGui::TextColored(valueColor, ": %s", EXP.c_str());
-        
+
         if (!countdownText.empty())
         {
             ImGui::SetCursorPosX(15);
             ImGui::TextColored(valueColor, "                 (%s)", countdownText.c_str());
         }
     }
-    
+
     custom::Separator_line();
-    
-    
+
     ImGui::SetCursorPosX(15);
     ImGui::PushFont(F50);
     ImGui::SetWindowFontScale(0.6f);
     ImGui::TextColored(titleColor, "Subscription");
     ImGui::SetWindowFontScale(1.0f);
     ImGui::PopFont();
-    
+
     if (!userType.empty())
     {
         ImGui::SameLine(0, 15.0f);
@@ -84,7 +82,7 @@ void RenderLogoSettings(ImDrawList* draw)
 {
     float tempOpacity = GetLogoOpacity();
     float tempSize = GetLogoSizeMultiplier();
-    
+
     custom::SliderFloat("Opacity", &tempOpacity, 0.0f, 1.0f, "%.2f");
     SetLogoOpacity(tempOpacity);
 
@@ -95,7 +93,7 @@ void RenderLogoSettings(ImDrawList* draw)
     const float buttonInsetX = 10.0f;
     ImGui::SetCursorPosX(buttonInsetX);
     ImVec2 buttonSize = ImVec2(ImMax(1.0f, ImGui::GetContentRegionAvail().x - buttonInsetX), buttonHeight);
-    
+
     ImGui::PushStyleColor(ImGuiCol_Button, c::button::background_hovered);
     ImGui::PushStyleColor(ImGuiCol_ButtonHovered, c::button::background_active);
     ImGui::PushStyleColor(ImGuiCol_ButtonActive, c::button::background_active);
@@ -103,13 +101,13 @@ void RenderLogoSettings(ImDrawList* draw)
     ImGui::PushStyleColor(ImGuiCol_Text, c::text::text_active);
     ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, c::button::rounding);
     ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
-    
+
     if (ImGui::Button("RESET LOGO", buttonSize))
     {
         SetLogoOpacity(1.0f);
         SetLogoSizeMultiplier(1.0f);
     }
-    
+
     ImGui::PopStyleVar(2);
     ImGui::PopStyleColor(5);
 }
@@ -120,7 +118,7 @@ void RenderConfigManagement(ImDrawList* draw)
     const float buttonInsetX = 10.0f;
     ImGui::SetCursorPosX(buttonInsetX);
     ImVec2 buttonSize = ImVec2(ImMax(1.0f, ImGui::GetContentRegionAvail().x - buttonInsetX), buttonHeight);
-    
+
     ImGui::PushStyleColor(ImGuiCol_Button, c::widget::background);
     ImGui::PushStyleColor(ImGuiCol_ButtonHovered, c::button::background_active);
     ImGui::PushStyleColor(ImGuiCol_ButtonActive, c::button::background_active);
@@ -128,18 +126,18 @@ void RenderConfigManagement(ImDrawList* draw)
     ImGui::PushStyleColor(ImGuiCol_Text, c::text::text_active);
     ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, c::button::rounding);
     ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
-    
+
     if (ImGui::Button("LOAD CONFIG", buttonSize))
     {
         LoadConfiguration("astral_config");
     }
-    
+
     ImGui::PopStyleVar(2);
     ImGui::PopStyleColor(5);
 
     ImGui::SetCursorPosX(buttonInsetX);
     buttonSize = ImVec2(ImMax(1.0f, ImGui::GetContentRegionAvail().x - buttonInsetX), buttonHeight);
-    
+
     ImGui::PushStyleColor(ImGuiCol_Button, c::widget::background);
     ImGui::PushStyleColor(ImGuiCol_ButtonHovered, c::button::background_active);
     ImGui::PushStyleColor(ImGuiCol_ButtonActive, c::button::background_active);
@@ -147,12 +145,12 @@ void RenderConfigManagement(ImDrawList* draw)
     ImGui::PushStyleColor(ImGuiCol_Text, c::text::text_active);
     ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, c::button::rounding);
     ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
-    
+
     if (ImGui::Button("SAVE CONFIG", buttonSize))
     {
         SaveConfiguration("astral_config");
     }
-    
+
     ImGui::PopStyleVar(2);
     ImGui::PopStyleColor(5);
 }

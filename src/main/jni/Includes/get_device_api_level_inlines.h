@@ -1,6 +1,5 @@
 #pragma once
 
-
 #include <sys/cdefs.h>
 
 __BEGIN_DECLS
@@ -16,4 +15,3 @@ int api_level() {
 }
 
 __END_DECLS
-

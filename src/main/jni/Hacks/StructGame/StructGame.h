@@ -2,4 +2,3 @@
 
 #include "Defines.h"
 #include "StructSDK.h"
-

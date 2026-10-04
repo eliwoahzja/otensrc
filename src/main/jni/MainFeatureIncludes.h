@@ -4,7 +4,6 @@
 
 #include "System/Core/FileUtils.h"
 #include "System/Core/ConfigManager.h"
-//#include "System/Core/Bypass.h"
 
 #include "System/UI/GuestAccount.h"
 #include "System/UI/SearchFunction.h"
@@ -19,7 +18,6 @@
 #include "System/UI/FloatingInfo.h"
 #include "System/Texture/main.h"
 #include "IMAGE/astral.h"
-
 
 #include "AstralPrtctn/StrEnc.h"
 #include "AstralPrtctn/json.hpp"

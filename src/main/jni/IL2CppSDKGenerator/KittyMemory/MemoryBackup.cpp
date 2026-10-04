@@ -1,12 +1,6 @@
-//
-//  MemoryBackup.cpp
-//
-//  Created by MJ (Ruit) on 4/19/20.
-//
 
 #include <Includes/obfuscate.h>
 #include "MemoryBackup.h"
-
 
 MemoryBackup::MemoryBackup() {
   _address = 0;
@@ -22,15 +16,13 @@ MemoryBackup::MemoryBackup(const char *libraryName, uintptr_t address, size_t ba
 
   _address = KittyMemory::getAbsoluteAddress(libraryName, address, useMapCache);
   if(_address == 0) return;
-  
+
   _size = backup_size;
 
   _orig_code.resize(backup_size);
 
-  // backup current content
   KittyMemory::memRead(&_orig_code[0], reinterpret_cast<const void *>(_address), backup_size);
 }
-
 
 MemoryBackup::MemoryBackup(uintptr_t absolute_address, size_t backup_size) {
   MemoryBackup();
@@ -39,20 +31,18 @@ MemoryBackup::MemoryBackup(uintptr_t absolute_address, size_t backup_size) {
     return;
 
   _address = absolute_address;
-  
+
   _size = backup_size;
 
   _orig_code.resize(backup_size);
 
-  // backup current content
   KittyMemory::memRead(&_orig_code[0], reinterpret_cast<const void *>(_address), backup_size);
 }
 
    MemoryBackup::~MemoryBackup() {
-     // clean up
+
      _orig_code.clear();
    }
-
 
   bool MemoryBackup::isValid() const {
     return (_address != 0 && _size > 0
@@ -73,9 +63,9 @@ MemoryBackup::MemoryBackup(uintptr_t absolute_address, size_t backup_size) {
   }
 
   std::string MemoryBackup::get_CurrBytes() {
-    if (!isValid()) 
+    if (!isValid())
       _hexString = std::string(OBFUSCATE("0xInvalid"));
-      else 
+      else
       _hexString = KittyMemory::read2HexStr(reinterpret_cast<const void *>(_address), _size);
 
     return _hexString;

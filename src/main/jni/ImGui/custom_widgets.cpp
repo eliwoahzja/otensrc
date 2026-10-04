@@ -227,7 +227,6 @@ namespace custom
         }
     }
 
-
     const char* keys[] =
     {
         "-",
@@ -1268,7 +1267,7 @@ namespace custom
         if (!ItemAdd(bb, id)) return false;
 
         bool hovered, held, pressed = ButtonBehavior(bb, id, &hovered, &held, NULL);
-        
+
         custom::Checkbox(label, v);
 
         PushFont(font::icomoon_page);

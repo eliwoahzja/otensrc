@@ -1,15 +1,9 @@
-//
-//  KittyMemory.cpp
-//
-//  Created by MJ (Ruit) on 1/1/19.
-//
 
 #include <Includes/obfuscate.h>
 #include "KittyMemory.h"
 
 using KittyMemory::Memory_Status;
 using KittyMemory::ProcMap;
-
 
 struct mapsCache {
     std::string identifier;
@@ -28,7 +22,6 @@ static ProcMap findMapInCache(std::string id){
     return ret;
 }
 
-
 bool KittyMemory::ProtectAddr(void *addr, size_t length, int protection) {
    uintptr_t pageStart = _PAGE_START_OF_(addr);
    uintptr_t pageLen   = _PAGE_LEN_OF_(addr, length);
@@ -36,7 +29,6 @@ bool KittyMemory::ProtectAddr(void *addr, size_t length, int protection) {
      mprotect(reinterpret_cast<void *>(pageStart), pageLen, protection) != -1
  );
 }
-
 
 Memory_Status KittyMemory::memWrite(void *addr, const void *buffer, size_t len) {
     if (addr == NULL)
@@ -57,7 +49,6 @@ Memory_Status KittyMemory::memWrite(void *addr, const void *buffer, size_t len) 
     return FAILED;
 }
 
-
 Memory_Status KittyMemory::memRead(void *buffer, const void *addr, size_t len) {
     if (addr == NULL)
         return INV_ADDR;
@@ -73,7 +64,6 @@ Memory_Status KittyMemory::memRead(void *buffer, const void *addr, size_t len) {
 
     return FAILED;
 }
-
 
 std::string KittyMemory::read2HexStr(const void *addr, size_t len) {
     char temp[len];
@@ -105,8 +95,7 @@ ProcMap KittyMemory::getLibraryMap(const char *libraryName) {
         while (fgets(line, sizeof(line), fp)) {
             if (strstr(line, libraryName)) {
                 char tmpPerms[5] = {0}, tmpDev[12] = {0}, tmpPathname[444] = {0};
-                // parse a line in maps file
-                // (format) startAddress-endAddress perms offset dev inode pathname
+
                 sscanf(line, "%llx-%llx %s %ld %s %d %s",
                        (long long unsigned *) &retMap.startAddr,
                        (long long unsigned *) &retMap.endAddr,

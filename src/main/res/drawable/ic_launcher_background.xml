@@ -1,7 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Solid dark base for the adaptive icon. The glyph lives in
-     mipmap-*/ic_launcher_foreground.png and is tinted white, because the
-     icons8 source glyph is pure black and vanishes on a dark launcher. -->
+
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"

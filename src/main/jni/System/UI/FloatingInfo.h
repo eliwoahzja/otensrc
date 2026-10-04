@@ -26,7 +26,6 @@ inline std::string FormatTimeDuration(std::chrono::steady_clock::duration durati
     return std::string(buffer);
 }
 
-// Helper: lerp between two IM_COL32 colors
 inline ImU32 LerpColor(ImU32 a, ImU32 b, float t) {
     int ar = (a >> 0)  & 0xFF, ag = (a >> 8)  & 0xFF, ab_ = (a >> 16) & 0xFF, aa = (a >> 24) & 0xFF;
     int br = (b >> 0)  & 0xFF, bg = (b >> 8)  & 0xFF, bb_ = (b >> 16) & 0xFF, ba = (b >> 24) & 0xFF;
@@ -42,7 +41,6 @@ inline void Render(ImDrawList* draw, float screenWidth, float screenHeight) {
     if (draw == nullptr || Config.ExtraMenu.ClearDisplay) return;
     if (!font::inter_semibold) return;
 
-    // ── Time & Date ───────────────────────────────────────────────────────────
     const auto now         = std::chrono::system_clock::now();
     std::time_t currentTime = std::chrono::system_clock::to_time_t(now);
     std::tm* localTime     = std::localtime(&currentTime);
@@ -57,7 +55,6 @@ inline void Render(ImDrawList* draw, float screenWidth, float screenHeight) {
     auto currentDuration   = std::chrono::steady_clock::now() - appStartTime;
     std::string sessionTime = FormatTimeDuration(currentDuration);
 
-    // ── Layout ────────────────────────────────────────────────────────────────
     const float scale   = c::scale;
     const float boxW    = 220.0f * scale;
     const float boxH    = 145.0f * scale;
@@ -70,30 +67,26 @@ inline void Render(ImDrawList* draw, float screenWidth, float screenHeight) {
     float       y     = boxY + 14.0f * scale;
     const float lineH = 16.5f * scale;
 
-    // ── Animation values ──────────────────────────────────────────────────────
     const float t          = (float)ImGui::GetTime();
     const float pulse      = sinf(t * 2.8f) * 0.5f + 0.5f;
     const float fastPulse  = sinf(t * 6.0f) * 0.5f + 0.5f;
     const float slowDrift  = sinf(t * 0.7f) * 0.5f + 0.5f;
-    const float scanOffset = fmodf(t * 28.0f * scale, boxH);  // scanline scroll
-    const float dataFlow   = fmodf(t * 55.0f * scale, boxH);  // data stream scroll
+    const float scanOffset = fmodf(t * 28.0f * scale, boxH);
+    const float dataFlow   = fmodf(t * 55.0f * scale, boxH);
 
-    // ── Design Themes (Grey 75% Alpha + Tech Yellow) ──────────────────────────
     const ImU32 c_yellow      = IM_COL32(250, 195, 25, 255);
     const ImU32 c_yellow_glow = IM_COL32(250, 195, 25, 45);
-    const ImU32 c_grey_trans  = IM_COL32(35, 37, 40, 191);   // Perfect 75% Transparent Dark Grey Panel Base
+    const ImU32 c_grey_trans  = IM_COL32(35, 37, 40, 191);
     const ImU32 c_text_grey   = IM_COL32(165, 170, 180, 230);
     const ImU32 c_text_bright = IM_COL32(255, 255, 255, 255);
 
-    // ── Enable clipping so effects stay inside box ────────────────────────────
     draw->PushClipRect(
         ImVec2(boxX, boxY),
         ImVec2(boxX + boxW, boxY + boxH),
         true
     );
 
-    // ── Deep layered outer glow ───────────────────────────────────────────────
-    draw->PopClipRect();  // temporarily pop to draw glow outside
+    draw->PopClipRect();
     for (int i = 4; i >= 1; --i) {
         float expand = (float)i * 4.0f * scale;
         int   alpha  = (int)((4 + 6 * pulse) * (5 - i));
@@ -110,7 +103,6 @@ inline void Render(ImDrawList* draw, float screenWidth, float screenHeight) {
         true
     );
 
-    // ── Main dark background ──────────────────────────────────────────────────
     draw->AddRectFilled(
         ImVec2(boxX, boxY),
         ImVec2(boxX + boxW, boxY + boxH),
@@ -118,7 +110,6 @@ inline void Render(ImDrawList* draw, float screenWidth, float screenHeight) {
         6.0f
     );
 
-    // ── Hex grid texture (drawn as dots pattern) ──────────────────────────────
     {
         const float hexSize  = 10.0f * scale;
         const float hexStepX = hexSize * 1.73f;
@@ -137,7 +128,6 @@ inline void Render(ImDrawList* draw, float screenWidth, float screenHeight) {
         }
     }
 
-    // ── Vertical data stream (right side) ────────────────────────────────────
     {
         const float streamX = boxX + boxW - 18.0f * scale;
         const float segH    = 6.0f * scale;
@@ -154,7 +144,6 @@ inline void Render(ImDrawList* draw, float screenWidth, float screenHeight) {
         }
     }
 
-    // ── Scanline pass ─────────────────────────────────────────────────────────
     {
         const float scanH = 2.0f * scale;
         const float scanStep = 5.0f * scale;
@@ -165,7 +154,7 @@ inline void Render(ImDrawList* draw, float screenWidth, float screenHeight) {
                 IM_COL32(0, 0, 0, 22)
             );
         }
-        // Moving bright scanline
+
         draw->AddRectFilled(
             ImVec2(boxX, boxY + scanOffset - 1),
             ImVec2(boxX + boxW, boxY + scanOffset + 2),
@@ -173,7 +162,6 @@ inline void Render(ImDrawList* draw, float screenWidth, float screenHeight) {
         );
     }
 
-    // ── Diagonal glint (top-left to center) ──────────────────────────────────
     {
         float glintT = fmodf(t * 0.6f, 1.0f);
         float gx     = boxX + boxW * glintT;
@@ -185,8 +173,6 @@ inline void Render(ImDrawList* draw, float screenWidth, float screenHeight) {
         );
     }
 
-    // ── Blue gradient top overlay ─────────────────────────────────────────────
-    // Note: Re-routed to rich deep grey/yellow shading to drop cold blue aesthetics
     draw->AddRectFilledMultiColor(
         ImVec2(boxX, boxY),
         ImVec2(boxX + boxW, boxY + boxH * 0.45f),
@@ -196,7 +182,6 @@ inline void Render(ImDrawList* draw, float screenWidth, float screenHeight) {
         IM_COL32(0, 0, 0, 0)
     );
 
-    // ── Top accent bar (gradient) ─────────────────────────────────────────────
     const float barH = 3.0f * scale;
     draw->AddRectFilledMultiColor(
         ImVec2(boxX, boxY),
@@ -206,7 +191,7 @@ inline void Render(ImDrawList* draw, float screenWidth, float screenHeight) {
         IM_COL32(250, 195, 25, 255),
         IM_COL32(110, 115, 125, 0)
     );
-    // Thin sharp highlight below bar
+
     draw->AddRectFilledMultiColor(
         ImVec2(boxX, boxY + barH),
         ImVec2(boxX + boxW, boxY + barH + 1.0f),
@@ -216,7 +201,6 @@ inline void Render(ImDrawList* draw, float screenWidth, float screenHeight) {
         IM_COL32(255, 255, 255, 0)
     );
 
-    // ── Bottom accent bar ─────────────────────────────────────────────────────
     draw->AddRectFilledMultiColor(
         ImVec2(boxX, boxY + boxH - barH),
         ImVec2(boxX + boxW, boxY + boxH),
@@ -226,7 +210,6 @@ inline void Render(ImDrawList* draw, float screenWidth, float screenHeight) {
         IM_COL32(35, 37, 40, 0)
     );
 
-    // ── Outer glowing border ──────────────────────────────────────────────────
     const int borderA = (int)(160 + 80 * pulse);
     draw->AddRect(
         ImVec2(boxX, boxY),
@@ -234,7 +217,7 @@ inline void Render(ImDrawList* draw, float screenWidth, float screenHeight) {
         IM_COL32(250, 195, 25, borderA),
         6.0f, 0, 1.6f
     );
-    // Inner subtle border
+
     draw->AddRect(
         ImVec2(boxX + 2.0f, boxY + 2.0f),
         ImVec2(boxX + boxW - 2.0f, boxY + boxH - 2.0f),
@@ -242,42 +225,38 @@ inline void Render(ImDrawList* draw, float screenWidth, float screenHeight) {
         5.0f, 0, 0.7f
     );
 
-    // ── Corner brackets (L-shaped) ────────────────────────────────────────────
     const float cLen   = 12.0f * scale;
     const float cThick = 1.8f;
     const ImU32 cornerColOuter = IM_COL32(250, 195, 25, (int)(220 + 35 * fastPulse));
     const ImU32 cornerColInner = IM_COL32(255, 255, 255, (int)(70 + 30 * fastPulse));
-    // Top-left
+
     draw->AddLine(ImVec2(boxX,          boxY + cLen), ImVec2(boxX,          boxY), cornerColOuter, cThick);
     draw->AddLine(ImVec2(boxX,          boxY),         ImVec2(boxX + cLen,  boxY), cornerColOuter, cThick);
     draw->AddLine(ImVec2(boxX + 1.5f,  boxY + cLen * 0.5f), ImVec2(boxX + 1.5f, boxY + 1.5f), cornerColInner, 0.8f);
-    // Top-right
+
     draw->AddLine(ImVec2(boxX + boxW - cLen, boxY), ImVec2(boxX + boxW, boxY), cornerColOuter, cThick);
     draw->AddLine(ImVec2(boxX + boxW,         boxY), ImVec2(boxX + boxW, boxY + cLen), cornerColOuter, cThick);
-    // Bottom-left
+
     draw->AddLine(ImVec2(boxX, boxY + boxH - cLen), ImVec2(boxX, boxY + boxH), cornerColOuter, cThick);
     draw->AddLine(ImVec2(boxX, boxY + boxH),         ImVec2(boxX + cLen, boxY + boxH), cornerColOuter, cThick);
-    // Bottom-right
+
     draw->AddLine(ImVec2(boxX + boxW, boxY + boxH - cLen), ImVec2(boxX + boxW, boxY + boxH), cornerColOuter, cThick);
     draw->AddLine(ImVec2(boxX + boxW, boxY + boxH),         ImVec2(boxX + boxW - cLen, boxY + boxH), cornerColOuter, cThick);
 
-    // ── Title: CALL OF DUTY | 1.6.55 | ──────────────────────────────────────
     const char* title    = "CALL OF DUTY  |  1.6.55  |";
     const float fontSize = 14.8f * scale;
 
-    // Multi-layer glow
     const int glowA = (int)(40 + 40 * pulse);
     for (int gi = 2; gi >= 0; --gi) {
         float off = (float)(gi + 1) * 1.0f;
         draw->AddText(font::inter_semibold, fontSize, ImVec2(textX - off, y - off), IM_COL32(250, 195, 25, glowA / (gi + 1)), title);
         draw->AddText(font::inter_semibold, fontSize, ImVec2(textX + off, y + off), IM_COL32(250, 195, 25, glowA / (gi + 1)), title);
     }
-    // Main text — slight flicker
+
     const int titleA = (int)(220 + 35 * pulse + 10 * (sinf(t * 17.3f) > 0.97f ? 1.0f : 0.0f));
     draw->AddText(font::inter_semibold, fontSize, ImVec2(textX, y),
                   IM_COL32(255, 255, 255, titleA), title);
 
-    // Underline with gradient
     float titleWidth = font::inter_semibold->CalcTextSizeA(fontSize, FLT_MAX, 0.0f, title).x;
     const float ulY  = y + 21.0f * scale;
     draw->AddRectFilledMultiColor(
@@ -288,7 +267,7 @@ inline void Render(ImDrawList* draw, float screenWidth, float screenHeight) {
         IM_COL32(250, 195, 25, (int)(240 + 15 * pulse)),
         IM_COL32(140, 145, 155, 0)
     );
-    // Glow under the underline
+
     draw->AddRectFilledMultiColor(
         ImVec2(textX, ulY + 1.8f),
         ImVec2(textX + titleWidth, ulY + 5.0f),
@@ -300,7 +279,6 @@ inline void Render(ImDrawList* draw, float screenWidth, float screenHeight) {
 
     y += 34.0f * scale;
 
-    // ── Separator ─────────────────────────────────────────────────────────────
     draw->AddRectFilledMultiColor(
         ImVec2(textX, y),
         ImVec2(textX + boxW - 30.0f * scale, y + 1.0f),
@@ -309,7 +287,7 @@ inline void Render(ImDrawList* draw, float screenWidth, float screenHeight) {
         IM_COL32(250, 195, 25, 200),
         IM_COL32(100, 105, 115, 0)
     );
-    // Separator glow
+
     draw->AddRectFilledMultiColor(
         ImVec2(textX, y + 1.0f),
         ImVec2(textX + boxW - 30.0f * scale, y + 4.0f),
@@ -320,22 +298,19 @@ inline void Render(ImDrawList* draw, float screenWidth, float screenHeight) {
     );
     y += 9.0f * scale;
 
-    // ── Content lines ─────────────────────────────────────────────────────────
     const ImColor labelCol(c_text_grey);
     const ImColor valueCol(c_text_bright);
     const ImColor sepCol(c_yellow);
 
     auto DrawLine = [&](const char* label, const char* value, bool highlight = false) {
-        // Label
+
         draw->AddText(font::inter_semibold, 12.2f * scale, ImVec2(textX, y), labelCol, label);
         float lw = font::inter_semibold->CalcTextSizeA(12.2f * scale, FLT_MAX, 0.0f, label).x;
 
-        // Separator " : "
         const char* sep = " : ";
         draw->AddText(font::inter_semibold, 12.2f * scale, ImVec2(textX + lw, y), sepCol, sep);
         float sw = font::inter_semibold->CalcTextSizeA(12.2f * scale, FLT_MAX, 0.0f, sep).x;
 
-        // Value with optional glow for highlight
         if (highlight) {
             int hA = (int)(30 + 20 * pulse);
             draw->AddText(font::inter_semibold, 12.2f * scale, ImVec2(textX + lw + sw - 1, y - 1),
@@ -352,7 +327,6 @@ inline void Render(ImDrawList* draw, float screenWidth, float screenHeight) {
 
     y += 6.0f * scale;
 
-    // ── Bottom divider ────────────────────────────────────────────────────────
     draw->AddRectFilledMultiColor(
         ImVec2(textX, y),
         ImVec2(textX + boxW - 30.0f * scale, y + 1.0f),
@@ -363,11 +337,9 @@ inline void Render(ImDrawList* draw, float screenWidth, float screenHeight) {
     );
     y += 7.0f * scale;
 
-    // ── Watermark: [ POWERED BY RODS ] ──────────────────────────────────────
     const char* wm     = "[ POWERED BY KAELEX ]";
     const float wmSize = 11.8f * scale;
 
-    // Glow layers
     for (int gi = 2; gi >= 0; --gi) {
         float off = (float)(gi + 1) * 0.8f;
         int   a   = (int)((15 + 15 * pulse) / (gi + 1));
@@ -381,4 +353,4 @@ inline void Render(ImDrawList* draw, float screenWidth, float screenHeight) {
     draw->PopClipRect();
 }
 
-} // namespace floating_info
+}

@@ -138,7 +138,7 @@ inline bool DrawKeyButton(
     return clicked;
 }
 
-} // namespace keyboard_ui
+}
 
 inline void RenderVirtualKeyboard(const char* id, char* searchQuery, size_t querySize, bool* showKeyboard) {
     if (id == nullptr || searchQuery == nullptr || querySize == 0 || showKeyboard == nullptr) {

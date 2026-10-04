@@ -1,14 +1,9 @@
 #pragma once
 
 #include "imgui.h"
-/**
- * @autor SPraditya
- * email help : foxcheatsid@gmail.com
- */
 
 namespace ImguiPP
 {
-
 
     float getx();
     float gety();

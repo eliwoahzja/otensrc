@@ -380,7 +380,7 @@ void LoadCharacterSkins() {
             itemResByAvatarModelID[fields->AvatarModelID] = res;
         itemResByID[fields->ID] = res;
     }
-    
+
     for (void* conf : roleConfs) {
         if (!conf || !Tools::IsPtrValid(conf)) continue;
         auto* fields = (RoleConfFields*)((uintptr_t)conf + 0x10);
@@ -461,7 +461,7 @@ void LoadCharacterSkins() {
         if (!charModel || !Tools::IsPtrValid(charModel)) continue;
         auto* charFields = (CharacterModelFields*)((uintptr_t)charModel + 0x10);
         if (!Tools::IsPtrValid(charFields)) continue;
-        
+
         uint64_t avatarModelID = charFields->ItemID;
         auto itRes = itemResByAvatarModelID.find(avatarModelID);
         if (itRes == itemResByAvatarModelID.end()) continue;
@@ -475,7 +475,7 @@ void LoadCharacterSkins() {
         void* roleConf = itRole->second;
         auto* roleFields = (RoleConfFields*)((uintptr_t)roleConf + 0x10);
         if (!Tools::IsPtrValid(roleFields)) continue;
-        
+
         int rolePackID = roleFields->RolePackID;
         int loadingFrame, entryAnimID, gestureId, handEffectUI, killStreakSkinID = 0;
         auto itPack = rolePackByCharID.find(itemID);
@@ -508,7 +508,7 @@ void LoadCharacterSkins() {
                 { rolePackID, entryAnimID, gestureId, handEffectUI, loadingFrame, killStreakSkinID }
             });
         }
-        
+
         if (!charName.empty()) {
             g_targetCharacters.push_back({charName, charFields->Traitor1P, charFields->Traitor3P, itemFields->ID, (int)roleFields->ID, rolePackID });
         }
@@ -857,9 +857,9 @@ void Skins_Thread()
     {
         sleep(1);
     }
-    
+
     sleep(5);
-    
+
     while (true)
     {
         LoadCharacterSkins();

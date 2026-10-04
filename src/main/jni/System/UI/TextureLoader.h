@@ -36,7 +36,7 @@ inline GLuint LoadTextureFromMemory(const unsigned char* imageData, int imageSiz
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
     stbi_image_free(data);
-    
+
     printf("Texture loaded successfully! ID: %u, Size: %dx%d\n", texID, width, height);
     return texID;
 }
@@ -48,11 +48,11 @@ inline GLuint LoadAstralTexture(const unsigned char* logoData, int logoSize)
     }
 
     astralTextureID = LoadTextureFromMemory(logoData, logoSize);
-    
+
     if (astralTextureID != 0) {
         astralLoaded = true;
     }
-    
+
     return astralTextureID;
 }
 
@@ -69,12 +69,3 @@ inline void CleanupAllTextures()
     FreeTexture(&astralTextureID);
     astralLoaded = false;
 }
-
-/*
-inline float GetLogoOpacity() {
-    return 1.0f;
-}
-
-inline float GetLogoSizeMultiplier() {
-    return 1.0f;
-} */

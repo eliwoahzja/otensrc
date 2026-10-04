@@ -1,8 +1,3 @@
-//
-//  MemoryPatch.cpp
-//
-//  Created by MJ (Ruit) on 1/1/19.
-//
 
 #include <Includes/obfuscate.h>
 #include "MemoryPatch.h"
@@ -30,7 +25,6 @@ MemoryPatch::MemoryPatch(const char *libraryName, uintptr_t address,
     _orig_code.resize(patch_size);
     _patch_code.resize(patch_size);
 
-    // initialize patch & backup current content
     KittyMemory::memRead(&_patch_code[0], patch_code, patch_size);
     KittyMemory::memRead(&_orig_code[0], reinterpret_cast<const void *>(_address), patch_size);
 }
@@ -48,13 +42,12 @@ MemoryPatch::MemoryPatch(uintptr_t absolute_address,
     _orig_code.resize(patch_size);
     _patch_code.resize(patch_size);
 
-    // initialize patch & backup current content
     KittyMemory::memRead(&_patch_code[0], patch_code, patch_size);
     KittyMemory::memRead(&_orig_code[0], reinterpret_cast<const void *>(_address), patch_size);
 }
 
 MemoryPatch::~MemoryPatch() {
-    // clean up
+
     _orig_code.clear();
     _patch_code.clear();
 }
@@ -74,10 +67,8 @@ MemoryPatch MemoryPatch::createWithHex(const char *libraryName, uintptr_t addres
     patch._orig_code.resize(patch._size);
     patch._patch_code.resize(patch._size);
 
-    // initialize patch
     KittyUtils::fromHex(hex, &patch._patch_code[0]);
 
-    // backup current content
     KittyMemory::memRead(&patch._orig_code[0], reinterpret_cast<const void *>(patch._address),
                          patch._size);
     return patch;
@@ -95,10 +86,8 @@ MemoryPatch MemoryPatch::createWithHex(uintptr_t absolute_address, std::string h
     patch._orig_code.resize(patch._size);
     patch._patch_code.resize(patch._size);
 
-    // initialize patch
     KittyUtils::fromHex(hex, &patch._patch_code[0]);
 
-    // backup current content
     KittyMemory::memRead(&patch._orig_code[0], reinterpret_cast<const void *>(patch._address),
                          patch._size);
     return patch;
@@ -119,14 +108,14 @@ uintptr_t MemoryPatch::get_TargetAddress() const {
 
 bool MemoryPatch::Restore() {
     if (!isValid()) return false;
-    //LOGI("Restore %i", isLeeched);
+
     return KittyMemory::memWrite(reinterpret_cast<void *>(_address), &_orig_code[0], _size) ==
            Memory_Status::SUCCESS;
 }
 
 bool MemoryPatch::Modify() {
     if (!isValid()) return false;
-    //LOGI("Modify");
+
     return (KittyMemory::memWrite(reinterpret_cast<void *>(_address), &_patch_code[0], _size) ==
             Memory_Status::SUCCESS);
 }

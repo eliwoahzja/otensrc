@@ -55,7 +55,7 @@ extern "C" {
 		}
 		return 0;
 	}
-	
+
 	static void *fake_dlopen_with_path(const char *libpath, int flags) {
 		FILE *maps;
 		char buff[256], name[256];
@@ -64,54 +64,54 @@ extern "C" {
 		int k, fd = -1, found = 0;
 		char *shoff;
 		Elf_Ehdr *elf = (Elf_Ehdr *) MAP_FAILED;
-		
+
 		maps = fopen(OBFUSCATE("/proc/self/maps"), OBFUSCATE("r"));
-		
+
 		if (!maps)
 			fatal(OBFUSCATE("failed to open maps"));
-			
+
 		while (!found && fgets(buff, sizeof(buff), maps)) {
 			if (strstr(buff, libpath) && (strstr(buff, OBFUSCATE("r-xp")) || strstr(buff, OBFUSCATE("r--p")))) found = 1;
 		}
-		
+
 		fclose(maps);
-		
-		if (!found) 
+
+		if (!found)
 			fatal(OBFUSCATE("%s not found in my userspace"), libpath);
-			
+
 		if (sscanf(buff, OBFUSCATE("%lx-%*lx %*s %*s %*s %*s %s"), &load_addr, name) != 2)
 			fatal(OBFUSCATE("failed to read load address for %s"), libpath);
-			
+
 		__android_log_print(ANDROID_LOG_INFO, g_LogTag, OBFUSCATE("%s loaded in Android at 0x%08lx"), libpath, load_addr);
-		
+
 		libpath = name;
-		
+
 		fd = open(libpath, O_RDONLY);
 		if (fd < 0)
 			fatal(OBFUSCATE("failed to open %s"), libpath);
-			
+
 		size = lseek(fd, 0, SEEK_END);
-		if (size <= 0) 
+		if (size <= 0)
 			fatal(OBFUSCATE("lseek() failed for %s"), libpath);
-			
+
 		elf = (Elf_Ehdr *) mmap(0, size, PROT_READ, MAP_SHARED, fd, 0);
 		close(fd);
 		fd = -1;
-		
+
 		if (elf == MAP_FAILED)
 			fatal(OBFUSCATE("mmap() failed for %s"), libpath);
-			
+
 		ctx = (struct ctx *) calloc(1, sizeof(struct ctx));
 		if (!ctx)
 			fatal(OBFUSCATE("no memory for %s"), libpath);
-			
+
 		ctx->load_addr = (void *) load_addr;
 		shoff = ((char *) elf) + elf->e_shoff;
-		
+
 		for (k = 0; k < elf->e_shnum; k++, shoff += elf->e_shentsize) {
 			Elf_Shdr *sh = (Elf_Shdr *) shoff;
 			__android_log_print(ANDROID_LOG_DEBUG, g_LogTag, OBFUSCATE("%s: k=%d shdr=%p type=%x"), __func__, k, sh, sh->sh_type);
-			
+
 			switch (sh->sh_type) {
 			case SHT_DYNSYM:
 				if (ctx->dynsym)
@@ -139,36 +139,36 @@ extern "C" {
 		}
 		munmap(elf, size);
 		elf = 0;
-		
+
 		if (!ctx->dynstr || !ctx->dynsym)
 			fatal("dynamic sections not found in %s", libpath);
 		#undef fatal
-		
+
 		__android_log_print(ANDROID_LOG_DEBUG, g_LogTag, OBFUSCATE("%s: ok, dynsym = %p, dynstr = %p"), libpath, ctx->dynsym, ctx->dynstr);
 		return ctx;
-		
+
 		err_exit:
 		if (fd >= 0) close(fd);
 		if (elf != MAP_FAILED) munmap(elf, size);
 		fake_dlclose(ctx);
 		return 0;
 	}
-	
+
 	static void *fake_dlopen(const char *filename, int flags) {
 		if (strlen(filename) > 0 && filename[0] == '/') {
 			return fake_dlopen_with_path(filename, flags);
 		} else {
 			char buf[512] = {0};
 			void *handle = NULL;
-			
+
 			strcpy(buf, kSystemLibDir);
 			strcat(buf, filename);
-			
+
 			handle = fake_dlopen_with_path(buf, flags);
 			if (handle) {
 				return handle;
 			}
-			
+
 			memset(buf, 0, sizeof(buf));
 			strcpy(buf, kApexLibDir);
 			strcat(buf, filename);
@@ -176,7 +176,7 @@ extern "C" {
 			if (handle) {
 				return handle;
 			}
-			
+
 			memset(buf, 0, sizeof(buf));
 			strcpy(buf, kApexArtNsLibDir);
 			strcat(buf, filename);
@@ -184,7 +184,7 @@ extern "C" {
 			if (handle) {
 				return handle;
 			}
-			
+
 			memset(buf, 0, sizeof(buf));
 			strcpy(buf, kOdmLibDir);
 			strcat(buf, filename);
@@ -192,7 +192,7 @@ extern "C" {
 			if (handle) {
 				return handle;
 			}
-			
+
 			memset(buf, 0, sizeof(buf));
 			strcpy(buf, kVendorLibDir);
 			strcat(buf, filename);
@@ -203,13 +203,13 @@ extern "C" {
 			return fake_dlopen_with_path(filename, flags);
 		}
 	}
-	
+
 	static void *fake_dlsym(void *handle, const char *name) {
 		int k;
 		struct ctx *ctx = (struct ctx *) handle;
 		Elf_Sym *sym = (Elf_Sym *) ctx->dynsym;
 		char *strings = (char *) ctx->dynstr;
-		
+
 		for (k = 0; k < ctx->nsyms; k++, sym++)
 		if (strcmp(strings + sym->st_name, name) == 0) {
 			void *ret = (char *) ctx->load_addr + sym->st_value - ctx->bias;
@@ -218,11 +218,11 @@ extern "C" {
 		}
 		return 0;
 	}
-	
+
 	static const char *fake_dlerror() {
 		return NULL;
 	}
-	
+
 	static int SDK_INT = -1;
 	static int get_sdk_level() {
 		if (SDK_INT > 0) {
@@ -233,7 +233,7 @@ extern "C" {
 		SDK_INT = atoi(sdk);
 		return SDK_INT;
 	}
-	
+
 	int dlclose_ex(void *handle) {
 		if (get_sdk_level() >= 24) {
 			return fake_dlclose(handle);
@@ -241,7 +241,7 @@ extern "C" {
 			return dlclose(handle);
 		}
 	}
-	
+
 	void *dlopen_ex(const char *filename, int flags) {
 		__android_log_print(ANDROID_LOG_INFO, g_LogTag, OBFUSCATE("dlopen: %s"), filename);
 		if (get_sdk_level() >= 24) {
@@ -250,7 +250,7 @@ extern "C" {
 			return dlopen(filename, flags);
 		}
 	}
-	
+
 	void *dlsym_ex(void *handle, const char *symbol) {
 		if (get_sdk_level() >= 24) {
 			return fake_dlsym(handle, symbol);
@@ -258,7 +258,7 @@ extern "C" {
 			return dlsym(handle, symbol);
 		}
 	}
-	
+
 	const char *dlerror_ex() {
 		if (get_sdk_level() >= 24) {
 			return fake_dlerror();

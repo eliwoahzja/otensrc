@@ -28,7 +28,6 @@ uintptr_t Class_Pawn_get_PlayerName;
 uintptr_t Class_Pawn_get_TeamSeatId;
 uintptr_t PlayerVisibleC;
 
-//=========={ ImGui Rqd }============
 uintptr_t Class_Input_GetTouch;
 uintptr_t Class_Input_get_touchSupported;
 uintptr_t Class_Input_get_touchCount;
@@ -37,7 +36,6 @@ uintptr_t Screen_get_width;
 uintptr_t Screen_get_height;
 uintptr_t Screen_get_dpi;
 
-//=========={ FIELDS }================
 uintptr_t Class_Pawn_m_PlayerInfo;
 uintptr_t Class_PlayerInfo_m_IsPlayerDead;
 uintptr_t Class_PlayerInfo_m_NickName;
@@ -45,7 +43,7 @@ uintptr_t Class_AttackableTarget_m_AttackableInfo;
 uintptr_t Class_AttackableTarget_m_Health;
 uintptr_t Class_AttackableTarget_m_MaxHealth;
 uintptr_t Class_BaseGame_m_AllVehicles;
-//uintptr_t Class_Pawn_CheckVisible;
+
 uintptr_t Class_AttackableTarget_m_ExtraHealth;
 uintptr_t Class_AttackableTarget_m_MaxExtraHealth;
 uintptr_t Class_Pawn_m_IsBot;
@@ -64,8 +62,6 @@ uintptr_t Class_PlayerInfo_m_ProfessionChipID;
 
 uintptr_t Class_Physics_Raycast;
 
-//-- Esp Items
-// uintptr_t Class_MatchGame_get_DroppedPickUpMgr;
 uintptr_t Class_LethalAndTacticalConfConfig_MarkOfName;
 uintptr_t Class_BRDroppedPickUpNormal_mThrowConf;
 uintptr_t Class_BRDroppedPickUpMgr_mNormalItemEntityDic;
@@ -81,7 +77,7 @@ uintptr_t api4 = 0x50504BC;
 uintptr_t api5 = 0x5050520;
 uintptr_t api6 = 0x5087930;
 uintptr_t api7 = 0x5024010;
-uintptr_t api8 = 0x5023B54; 
+uintptr_t api8 = 0x5023B54;
 uintptr_t api9 = 0x50291B0;
 uintptr_t api10 = 0x507C19C;
 uintptr_t api11 = 0x8569B10;
@@ -98,7 +94,6 @@ uintptr_t api21 = 0x5057F00;
 uintptr_t api22 = 0x518BEA8;
 uintptr_t api23 = 0xB0A9C10;
 
-//-- Room Info
 uintptr_t api24 = 0x5F1;
 uintptr_t api25 = 0x530;
 uintptr_t api26 = 0x19C;
@@ -170,9 +165,7 @@ void UpdateAllOffset(){
 #define Class_PlayerInfo_m_ProfessionChipID (0x1E8)
 
 #define Class_Physics_Raycast (m_unity + 0x506BEA8)
-//-- ESP Items
-// #define Class_MatchGame_get_DroppedPickUpMgr (m_unity + 0x59B4C80)
-// #define Weapon_GetWeaponId (m_unity + 0xAEBB6BC)
+
 #define Class_BRDroppedPickUpNormal_ItemConfigType (0xC0)
 #define Class_BRDroppedPickUpNormal_mThrowConf (0xE8)
 #define Class_BRDroppedPickUpNormal_mWeaponConf (0xE0)

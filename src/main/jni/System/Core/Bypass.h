@@ -16,31 +16,27 @@ struct range {
     struct Iter {
       uintptr_t val;
       bool operator!=(const Iter& it) const {
-        return val <= it.val; 
+        return val <= it.val;
       }
       uintptr_t operator*() const {
-        return val; 
+        return val;
       }
       void operator++() {
-        val += 4; 
+        val += 4;
       }
     };
-    Iter begin() const { 
-      return {Irt}; 
+    Iter begin() const {
+      return {Irt};
     }
     Iter end() const {
-      return {Ind}; 
+      return {Ind};
     }
 };
 
 inline void InitializeProtection() {
-    
-
 
     for (auto offs : range{0x1, 0x1000}) {
         MemoryPatch::createWithHex("libanogs.so", offs, armFalse).Modify();
     }
-    
+
 }
-    
-    

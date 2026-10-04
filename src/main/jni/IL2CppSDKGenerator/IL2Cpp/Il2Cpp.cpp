@@ -6,14 +6,12 @@
 #include "Il2cpp.h"
 #include "Fake_dlfcn.h"
 #include "Tools.h"
-//#include "Includes/obfuscate.h"
 
 #define g_LogTag "Chitoge"
 
 typedef unsigned short UTF16;
 typedef wchar_t UTF32;
 typedef char UTF8;
-
 
 namespace {
 	void *(*il2cpp_assembly_get_image)(void *assembly);
@@ -79,7 +77,7 @@ const wchar_t* utf16_to_utf32(const UTF16* source, size_t len) {
     output[len] = L'\0';
     return output;
 }
-// =========================================================================== //
+
 const char* Il2CppString::CString() {
     return utf16_to_utf8(&this->start_char, this->length);
 }
@@ -197,11 +195,7 @@ void Il2CppSetStaticFieldValue(const char *image, const char *namespaze, const c
 }
 
 void *Il2CppGetMethodOffset(const char *image, const char *namespaze, const char *clazz, const char *name, int argsCount) {
-	// void *img = Il2CppGetImageByName(image);
-	// if (!img) {
-	// 	__android_log_print(ANDROID_LOG_ERROR, g_LogTag, "Can't find image %s!", image);
-	// 	return 0;
-	// }
+
 	void *klass = Il2CppGetClassType(image, namespaze, clazz);
 	if (!klass) {
 		__android_log_print(ANDROID_LOG_ERROR, g_LogTag, "Can't find method %s!", clazz, name);
@@ -230,7 +224,7 @@ void *Il2CppGetMethodOffset(const char *image, const char *namespaze, const char
 	void *iter = 0;
 	int score = 0;
 	void **method = (void**) il2cpp_class_get_methods(klass, &iter);
-	
+
 	while(method) {
 		const char *fname = il2cpp_method_get_name(method);
 		if (strcmp(fname, name) == 0) {
@@ -280,10 +274,6 @@ size_t Il2CppGetFieldOffset(const char *image, const char *namespaze, const char
 	return result;
 }
 
-
-
-
-
 size_t Il2CppGetStaticFieldOffset(const char *image, const char *namespaze, const char *clazz, const char *name){
     void *img = Il2CppGetImageByName(image);
     if(!img) {
@@ -328,5 +318,3 @@ bool Il2CppAttach(const char *name) {
 
 	return true;
 }
-
-

@@ -188,7 +188,6 @@ static bool WeaponSkinCheckbox(const char* label, bool* value, std::function<voi
     return false;
 }
 
-// ── CAMO IDs ── VERIFY THESE FOR YOUR GAME VERSION ──
 #define ID_DIAMOND_CAMO    0x1D37F758
 #define ID_RED_SPRITE_CAMO 0x1D37F77E
 
@@ -196,13 +195,12 @@ inline void RenderSkinCategoryContent(int categoryIndex, bool drawSubTabs = fals
     ImGui::BeginChild("SkinContent", ImVec2(0, 0));
     ImGui::Dummy(ImVec2(0, 8 * c::scale));
     int skin_tab = skinSubTab;
-    
-    // ── SUB-TABS: 6 buttons (added Camo) ──
+
     if (drawSubTabs) {
         const float tabSpacing = 8.0f * c::scale;
         const float tabHeight = 34.0f * c::scale;
         const float tabWidth = ImMax(32.0f, (ImGui::GetContentRegionAvail().x - tabSpacing * 5.0f) / 6.0f);
-        
+
         ImFont* subTabFont = font::inter_semibold;
         if (!subTabFont)
             subTabFont = F50;
@@ -213,7 +211,7 @@ inline void RenderSkinCategoryContent(int categoryIndex, bool drawSubTabs = fals
         }
         if (subTabFont) ImGui::PushFont(subTabFont);
         ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(tabSpacing, tabSpacing));
-        
+
         if (custom::Page(skinSubTab == 0, "Character", ImVec2(tabWidth, tabHeight), false, false)) skinSubTab = 0;
         ImGui::SameLine();
         if (custom::Page(skinSubTab == 1, "Watch", ImVec2(tabWidth, tabHeight), false, false)) skinSubTab = 1;
@@ -225,26 +223,23 @@ inline void RenderSkinCategoryContent(int categoryIndex, bool drawSubTabs = fals
         if (custom::Page(skinSubTab == 4, "Weapon", ImVec2(tabWidth, tabHeight), false, false)) skinSubTab = 4;
         ImGui::SameLine();
         if (custom::Page(skinSubTab == 5, "Camo", ImVec2(tabWidth, tabHeight), false, false)) skinSubTab = 5;
-        
+
         ImGui::PopStyleVar();
         if (subTabFont) ImGui::PopFont();
         skin_tab = skinSubTab;
     }
 
-    // ═══════════════════════════════════════════════════════
-    // CAMO TAB (index 5) — No search UI, direct camo manager
-    // ═══════════════════════════════════════════════════════
     if (skin_tab == 5) {
         ImGui::Dummy(ImVec2(0, 12 * c::scale));
-        
+
         static bool camoOff = true;
         static bool camoDiamond = false;
         static bool camoRedSprite = false;
-        
+
         ImGui::TextColored(c::text::text_active, "Camo Injector");
         ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "Apply camo to Mythic / Legendary skins");
         ImGui::Dummy(ImVec2(0, 10 * c::scale));
-        
+
         auto CamoCheckbox = [](const char* label, bool* v, ImVec4 activeColor) -> bool {
             ImGui::PushStyleColor(ImGuiCol_CheckMark, activeColor);
             ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.06f, 0.0f, 0.1f, 0.9f));
@@ -254,13 +249,13 @@ inline void RenderSkinCategoryContent(int categoryIndex, bool drawSubTabs = fals
             ImGui::PopStyleColor(4);
             return result;
         };
-        
+
         if (CamoCheckbox("Default / OFF", &camoOff, ImVec4(0.74f, 0.44f, 1.0f, 1.0f))) {
             if (camoOff) {
                 camoDiamond = false;
                 camoRedSprite = false;
                 for (const auto& getitem : itemData) {
-                    if (getitem.itemName.find("[M]") != std::string::npos || 
+                    if (getitem.itemName.find("[M]") != std::string::npos ||
                         getitem.itemName.find("[L]") != std::string::npos) {
                         for (auto conf : weaponConfInstance) {
                             if (!conf) continue;
@@ -273,16 +268,16 @@ inline void RenderSkinCategoryContent(int categoryIndex, bool drawSubTabs = fals
                 }
             }
         }
-        
+
         custom::Separator_line();
         ImGui::Dummy(ImVec2(0, 6 * c::scale));
-        
+
         if (CamoCheckbox("Diamond Camo", &camoDiamond, ImVec4(0.72f, 0.95f, 1.0f, 1.0f))) {
             if (camoDiamond) {
                 camoOff = false;
                 camoRedSprite = false;
                 for (const auto& getitem : itemData) {
-                    if (getitem.itemName.find("[M]") != std::string::npos || 
+                    if (getitem.itemName.find("[M]") != std::string::npos ||
                         getitem.itemName.find("[L]") != std::string::npos) {
                         for (auto conf : weaponConfInstance) {
                             if (!conf) continue;
@@ -295,15 +290,15 @@ inline void RenderSkinCategoryContent(int categoryIndex, bool drawSubTabs = fals
                 }
             }
         }
-        
+
         ImGui::Dummy(ImVec2(0, 4 * c::scale));
-        
+
         if (CamoCheckbox("Red Sprite Camo", &camoRedSprite, ImVec4(1.0f, 0.25f, 0.25f, 1.0f))) {
             if (camoRedSprite) {
                 camoOff = false;
                 camoDiamond = false;
                 for (const auto& getitem : itemData) {
-                    if (getitem.itemName.find("[M]") != std::string::npos || 
+                    if (getitem.itemName.find("[M]") != std::string::npos ||
                         getitem.itemName.find("[L]") != std::string::npos) {
                         for (auto conf : weaponConfInstance) {
                             if (!conf) continue;
@@ -316,29 +311,29 @@ inline void RenderSkinCategoryContent(int categoryIndex, bool drawSubTabs = fals
                 }
             }
         }
-        
+
         ImGui::Dummy(ImVec2(0, 20 * c::scale));
-        const char* statusText = camoOff ? "STATUS: DEFAULT" : 
+        const char* statusText = camoOff ? "STATUS: DEFAULT" :
                                  (camoDiamond ? "STATUS: DIAMOND ACTIVE" : "STATUS: RED SPRITE ACTIVE");
-        ImU32 statusColor = camoOff ? IM_COL32(150, 150, 150, 255) : 
+        ImU32 statusColor = camoOff ? IM_COL32(150, 150, 150, 255) :
                             (camoDiamond ? IM_COL32(185, 242, 255, 255) : IM_COL32(255, 80, 80, 255));
-        
+
         ImFont* statusFont = font::inter_semibold ? font::inter_semibold : ImGui::GetFont();
         ImVec2 statusPos = ImGui::GetCursorScreenPos();
         ImGui::GetWindowDrawList()->AddText(statusFont, statusFont->FontSize, statusPos, statusColor, statusText);
-        
+
         static int eligibleCount = 0;
         static bool counted = false;
         if (!counted && !itemData.empty()) {
             for (const auto& getitem : itemData) {
-                if (getitem.itemName.find("[M]") != std::string::npos || 
+                if (getitem.itemName.find("[M]") != std::string::npos ||
                     getitem.itemName.find("[L]") != std::string::npos) {
                     eligibleCount++;
                 }
             }
             counted = true;
         }
-        
+
         ImGui::Dummy(ImVec2(0, 8 * c::scale));
         ImGui::TextColored(ImVec4(0.74f, 0.44f, 1.0f, 0.7f), "Eligible weapons: %d", eligibleCount);
 
@@ -346,26 +341,23 @@ inline void RenderSkinCategoryContent(int categoryIndex, bool drawSubTabs = fals
         return;
     }
 
-    // ═══════════════════════════════════════════════════════
-    // REGULAR SKIN TABS (0-4): Character, Watch, Deadbox, Plane, Weapon
-    // ═══════════════════════════════════════════════════════
     static char charSearchQuery[256] = "";
     static bool skinSearchWasActive = false;
     static bool charSearchWasActive = false;
     bool charActive = false;
     bool charHovered = false;
-    
+
     ImGui::Indent(10.0f);
     float totalAvail = ImGui::GetContentRegionAvail().x - 20.0f;
     float halfWidth = (totalAvail - 10.0f) * 0.5f;
     float searchWidth = (skin_tab == 0) ? halfWidth : totalAvail;
-    
+
     ImGui::TextColored(c::text::text_active, "Search Skin:");
     if (skin_tab == 0) {
         ImGui::SameLine(halfWidth + 20.0f);
         ImGui::TextColored(c::text::text_active, "Search Custom Char:");
     }
-    
+
     ImGui::AstralInput("##SearchSkin", searchQuery, IM_ARRAYSIZE(searchQuery), ImVec2(searchWidth, 50));
     bool skinClicked = ImGui::IsItemClicked();
     bool skinActive  = ImGui::IsItemActive();
@@ -375,7 +367,7 @@ inline void RenderSkinCategoryContent(int categoryIndex, bool drawSubTabs = fals
         showKeyboard = true;
     }
     skinSearchWasActive = skinActive;
-    
+
     if (skin_tab == 0) {
         ImGui::SameLine(0.0f, 10.0f);
         ImGui::AstralInput("##SearchCustomChar", charSearchQuery, IM_ARRAYSIZE(charSearchQuery), ImVec2(halfWidth, 50));
@@ -388,7 +380,7 @@ inline void RenderSkinCategoryContent(int categoryIndex, bool drawSubTabs = fals
         }
         charSearchWasActive = charActive;
     }
-        
+
     if (showKeyboard && !skinActive && (skin_tab != 0 || (!charSearchWasActive && !charActive && !charHovered)) && ImGui::IsMouseClicked(0)) {
         ImGuiIO& io = ImGui::GetIO();
         float screenHeight = io.DisplaySize.y;
