@@ -2,6 +2,7 @@
 #include "imgui.h"
 #include "imgui_internal.h"
 #include "imgui_settings.h"
+#include "portfolio_theme.h"
 #include "Icon.h"
 #include <functional>
 #include <cmath>
@@ -32,7 +33,7 @@ namespace ethnir
         bool  ShowSettingsPanel = true;
         bool  HelpOpen          = false;
         float AnimSpeed         = 1.0f;         // 0.5 .. 2.0, scales every damped rate
-        int   AccentIndex       = 6;            // index into kAccents; boots on Indigo (kAccentDefaultIndex)
+        int   AccentIndex       = 0;            // portfolio uses single accent
         int   MenuBind          = 0;            // index into kMenuBinds
 
         bool  AutoSave          = true;
@@ -77,36 +78,22 @@ namespace ethnir
         int    LastRowCount   = 0;
     };
 
-    constexpr float kWinW     = 880.0f;
-    constexpr float kWinH     = 520.0f;
-    constexpr float kPad      = 14.0f;
-    constexpr float kBrandH   = 30.0f;
-    constexpr float kSideW    = 200.0f;
-    constexpr float kColGap   = 16.0f;
-    constexpr float kRadius   = 22.0f;
-    constexpr float kRowH     = 30.0f;         // toggle / combo / colour rows
-    constexpr float kSliderH  = 32.0f;         // slider rows
+    constexpr float kWinW     = portfolio::s(portfolio::window_w);
+    constexpr float kWinH     = portfolio::s(portfolio::window_h);
+    constexpr float kPad      = portfolio::s(14.f);
+    constexpr float kBrandH   = portfolio::s(30.f);
+    constexpr float kSideW    = portfolio::s(portfolio::sidebar_w);
+    constexpr float kColGap   = portfolio::s(portfolio::column_gap);
+    constexpr float kRadius   = portfolio::s(portfolio::shell_round);
+    constexpr float kRowH     = portfolio::s(portfolio::settings_row_h);
+    constexpr float kSliderH  = portfolio::s(32.f);
 
     // iOS system colours
     constexpr ImVec4 kSwitchOn(0.204f, 0.780f, 0.349f, 1.0f);   // #34C759 green switches
 
-    // rgb == 0: derived from hue through the shared theme (S=0.96/V=1.0).
-    // rgb != 0: exact preset colour the hue pipeline cannot express — #615DCE's
-    // hue at that saturation would render as #130AFF. Indigo is the accent of
-    // the imgui-portfolio-8 reference UI the shell is themed after.
-    struct AccentDef { const char* name; float hue; ImU32 rgb; };
-    static const AccentDef kAccents[] =
-    {
-        { "Blue",   0.5833f, 0 },      // #0A84FF with ApplyAccentFromHue()'s saturation
-        { "Teal",   0.4900f, 0 },
-        { "Green",  0.3600f, 0 },
-        { "Gold",   0.1150f, 0 },
-        { "Pink",   0.9300f, 0 },
-        { "Violet", 0.7400f, 0 },
-        { "Indigo", 0.6726f, IM_COL32(0x61, 0x5D, 0xCE, 0xFF) },   // #615DCE
-    };
-    static const int kAccentCount = IM_ARRAYSIZE(kAccents);
-    static const int kAccentDefaultIndex = kAccentCount - 1;   // boot on Indigo
+    // Portfolio uses single accent #615DCE
+    inline ImU32 PortfolioAccent() { return portfolio::accent_u32(); }
+    inline ImVec4 PortfolioAccentVec(float alpha = 1.f) { return portfolio::accent_vec4(alpha); }
 
     static const char* kMenuBinds[] = { "Num 0", "Num 1", "F1", "F4", "Home", "None" };
     static const int kMenuBindCount = IM_ARRAYSIZE(kMenuBinds);
@@ -120,44 +107,44 @@ namespace ethnir
     inline Palette EqPalDark()
     {
         Palette p;
-        // Reference (imgui-portfolio-8 night theme): black @ 0.5 panels over a
-        // blurred wallpaper, black @ 0.4 sidebar, black @ 0.7 dropdowns.
-        p.base      = ImVec4(0.000f, 0.000f, 0.000f, 0.60f);
-        p.scrim     = ImVec4(0.000f, 0.000f, 0.000f, 0.46f);
-        p.text      = ImVec4(0.965f, 0.972f, 0.985f, 1.00f);
-        p.textDim   = ImVec4(0.760f, 0.785f, 0.840f, 1.00f);
-        p.textFaint = ImVec4(0.550f, 0.580f, 0.645f, 1.00f);
-        p.cardBg    = ImVec4(1.000f, 1.000f, 1.000f, 0.050f);
-        p.cardEdge  = ImVec4(1.000f, 1.000f, 1.000f, 0.070f);
-        p.glassRim  = ImVec4(1.000f, 1.000f, 1.000f, 1.00f);
-        p.hover     = ImVec4(1.000f, 1.000f, 1.000f, 0.070f);
-        p.side      = ImVec4(0.000f, 0.000f, 0.000f, 0.280f);
-        p.sideEdge  = ImVec4(1.000f, 1.000f, 1.000f, 0.055f);
-        p.switchOff = ImVec4(1.000f, 1.000f, 1.000f, 0.170f);
-        p.track     = ImVec4(1.000f, 1.000f, 1.000f, 0.150f);
-        p.popupBg   = ImVec4(0.000f, 0.000f, 0.000f, 0.78f);
-        p.sep       = ImVec4(1.000f, 1.000f, 1.000f, 0.050f);
+        using namespace portfolio;
+        p.base      = panel;
+        p.scrim     = bg;
+        p.text      = text;
+        p.textDim   = text_muted;
+        p.textFaint = header_text;
+        p.cardBg    = box;
+        p.cardEdge  = separator;
+        p.glassRim  = { 1.f, 1.f, 1.f, 1.f };
+        p.hover     = control_hover;
+        p.side      = sidebar;
+        p.sideEdge  = sidebar_sep;
+        p.switchOff = toggle_off;
+        p.track     = slider_bg;
+        p.popupBg   = dropdown_bg;
+        p.sep       = separator;
         return p;
     }
 
     inline Palette EqPalLight()
     {
         Palette p;
-        p.base      = ImVec4(0.945f, 0.955f, 0.975f, 0.90f);
-        p.scrim     = ImVec4(1.000f, 1.000f, 1.000f, 0.55f);
-        p.text      = ImVec4(0.070f, 0.080f, 0.110f, 1.00f);
-        p.textDim   = ImVec4(0.355f, 0.385f, 0.450f, 1.00f);
-        p.textFaint = ImVec4(0.510f, 0.540f, 0.600f, 1.00f);
-        p.cardBg    = ImVec4(1.000f, 1.000f, 1.000f, 0.720f);
-        p.cardEdge  = ImVec4(0.000f, 0.000f, 0.000f, 0.055f);
-        p.glassRim  = ImVec4(1.000f, 1.000f, 1.000f, 1.00f);
-        p.hover     = ImVec4(0.000f, 0.000f, 0.000f, 0.040f);
-        p.side      = ImVec4(1.000f, 1.000f, 1.000f, 0.520f);
-        p.sideEdge  = ImVec4(0.000f, 0.000f, 0.000f, 0.055f);
-        p.switchOff = ImVec4(0.000f, 0.000f, 0.000f, 0.140f);
-        p.track     = ImVec4(0.000f, 0.000f, 0.000f, 0.120f);
-        p.popupBg   = ImVec4(1.000f, 1.000f, 1.000f, 0.98f);
-        p.sep       = ImVec4(0.000f, 0.000f, 0.000f, 0.045f);
+        const float w = 1.f;
+        p.base      = { w, w, w, 0.55f };
+        p.scrim     = { w, w, w, 0.55f };
+        p.text      = { 0x14/255.f, 0x14/255.f, 0x1A/255.f, 1.f };
+        p.textDim   = { 0.f, 0.f, 0.f, 0.58f };
+        p.textFaint = { 0.f, 0.f, 0.f, 0.34f };
+        p.cardBg    = { w, w, w, 0.45f };
+        p.cardEdge  = { 0.f, 0.f, 0.f, 0.12f };
+        p.glassRim  = { 1.f, 1.f, 1.f, 1.f };
+        p.hover     = { w, w, w, 0.72f };
+        p.side      = { w, w, w, 0.45f };
+        p.sideEdge  = { 0.f, 0.f, 0.f, 0.14f };
+        p.switchOff = { 0xC7/255.f, 0xC7/255.f, 0xCC/255.f, 1.f };
+        p.track     = { 0xD2/255.f, 0xD2/255.f, 0xD6/255.f, 1.f };
+        p.popupBg   = { w, w, w, 0.86f };
+        p.sep       = { 0.f, 0.f, 0.f, 0.12f };
         return p;
     }
 
@@ -189,9 +176,9 @@ namespace ethnir
     inline ImVec4 EqMix(const ImVec4& a, const ImVec4& b, float t) { return ImVec4(ImLerp(a.x, b.x, t), ImLerp(a.y, b.y, t), ImLerp(a.z, b.z, t), ImLerp(a.w, b.w, t)); }
     inline ImU32 EqCol(const ImVec4& c) { return ImGui::GetColorU32(c); }
     inline ImU32 EqColA(const ImVec4& c, float a) { return ImGui::GetColorU32(ImVec4(c.x, c.y, c.z, c.w * a)); }
-    inline ImU32 EqAccent() { return main_runtime_theme::GetAccentU32(); }
-    inline ImVec4 EqAccentVec() { return ImGui::ColorConvertU32ToFloat4(EqAccent()); }
-    inline ImU32 EqAccentA(float a) { ImVec4 v = EqAccentVec(); v.w = a; return ImGui::GetColorU32(v); }
+    inline ImU32 EqAccent() { return portfolio::accent_u32(); }
+    inline ImVec4 EqAccentVec() { return portfolio::accent_vec4(); }
+    inline ImU32 EqAccentA(float a) { return portfolio::accent_u32(a); }
 
     // iOS glass edge: a specular rim that is bright along the top and left and
     // fades out toward the bottom and right. Four thin bars rather than one
@@ -220,20 +207,9 @@ namespace ethnir
 
     inline void EqApplyAccentIndex(int index)
     {
+        (void)index; // Portfolio uses single accent #615DCE
         MenuState* s = EqState();
-        index = ImClamp(index, 0, kAccentCount - 1);
-        if (s) s->AccentIndex = index;
-        if (kAccents[index].rgb != 0)
-        {
-            // Exact RGB preset: feed the shared pipeline the colour directly so
-            // the menu and every shared-theme consumer agree on one accent.
-            main_runtime_theme::g_accentRgbOverride = kAccents[index].rgb;
-        }
-        else
-        {
-            main_runtime_theme::g_accentRgbOverride = 0;
-            main_runtime_theme::g_menuHue = kAccents[index].hue;
-        }
+        if (s) s->AccentIndex = 0;
         main_runtime_theme::ApplyAccentFromHue();
         if (s) s->Dirty = true;
     }
@@ -377,12 +353,12 @@ namespace ethnir
     {
         const float t = EqAnim(id, on ? 1.0f : 0.0f, 18.0f, dt, on ? 1.0f : 0.0f);
         const Palette pal = EqPal();
-        const ImVec2 size(36.0f, 20.0f);
+        const ImVec2 size(portfolio::s(portfolio::toggle_w), portfolio::s(portfolio::toggle_h));
         const ImVec2 mn(center.x - size.x * 0.5f, center.y - size.y * 0.5f);
-        dl->AddRectFilled(mn, mn + size, EqCol(EqMix(pal.switchOff, kSwitchOn, t)), size.y * 0.5f);
+        dl->AddRectFilled(mn, mn + size, EqCol(EqMix(pal.switchOff, portfolio::toggle_on, t)), size.y * 0.5f);
         if (hovered)
             dl->AddRect(mn + ImVec2(0.5f, 0.5f), mn + size - ImVec2(0.5f, 0.5f), EqColA(pal.cardEdge, 1.6f), size.y * 0.5f);
-        const float kr = 8.0f + (hovered ? 0.6f : 0.0f);
+        const float kr = portfolio::s(portfolio::toggle_knob_r);
         const ImVec2 kc(ImLerp(mn.x + size.y * 0.5f, mn.x + size.x - size.y * 0.5f, t), center.y);
         dl->AddCircleFilled(kc + ImVec2(0.0f, 0.6f), kr, IM_COL32(0, 0, 0, 70), 24);
         dl->AddCircleFilled(kc, kr, IM_COL32(252, 253, 255, 255), 24);
@@ -476,7 +452,7 @@ namespace ethnir
         const ImVec2 p = ImGui::GetCursorScreenPos();
         const float w = ImGui::GetContentRegionAvail().x;
         const float h = kSliderH;
-        const float trackW = 84.0f;
+        const float trackW = portfolio::s(portfolio::slider_w);
         const float trackX = p.x + w - trackW;
         const float trackY = p.y + h * 0.5f;
 
@@ -509,13 +485,13 @@ namespace ethnir
                     EqCol(hovered || held ? pal.text : pal.textDim), 13.0f);
         EqDrawLabel(dl, ImVec2(trackX - 10.0f - vs.x, p.y + (h - 12.5f) * 0.5f), buf, EqAccent(), 12.5f);
 
-        dl->AddRectFilled(ImVec2(trackX, trackY - 2.0f), ImVec2(trackX + trackW, trackY + 2.0f), EqCol(pal.track), 2.0f);
+        dl->AddRectFilled(ImVec2(trackX, trackY - portfolio::s(portfolio::slider_track_h) * 0.5f), ImVec2(trackX + trackW, trackY + portfolio::s(portfolio::slider_track_h) * 0.5f), EqCol(pal.track), portfolio::s(portfolio::slider_track_h) * 0.5f);
         const float fill = ImSaturate((shown - v_min) / ImMax(0.0001f, v_max - v_min)) * trackW;
         if (fill > 0.5f)
-            dl->AddRectFilled(ImVec2(trackX, trackY - 2.0f), ImVec2(trackX + fill, trackY + 2.0f), EqAccent(), 2.0f);
+            dl->AddRectFilled(ImVec2(trackX, trackY - portfolio::s(portfolio::slider_h) * 0.5f), ImVec2(trackX + fill, trackY + portfolio::s(portfolio::slider_h) * 0.5f), EqAccent(), portfolio::s(portfolio::slider_h) * 0.5f);
         const ImVec2 kc(trackX + fill, trackY);
-        if (hovered || held) dl->AddCircleFilled(kc, 8.0f, EqAccentA(0.22f), 20);
-        dl->AddCircleFilled(kc, held ? 5.5f : 4.5f, IM_COL32(252, 253, 255, 250), 20);
+        if (hovered || held) dl->AddCircleFilled(kc, portfolio::s(portfolio::slider_knob_r), EqAccentA(0.22f), 20);
+        dl->AddCircleFilled(kc, held ? portfolio::s(portfolio::slider_knob_r) * 0.85f : portfolio::s(portfolio::slider_knob_r) * 0.7f, IM_COL32(252, 253, 255, 250), 20);
 
         ImGui::SetCursorScreenPos(ImVec2(p.x, p.y + h + 2.0f));
         return changed;
@@ -532,7 +508,7 @@ namespace ethnir
         const Palette pal = EqPal();
         const ImVec2 p = ImGui::GetCursorScreenPos();
         const float w = ImGui::GetContentRegionAvail().x;
-        const float h = kRowH;
+        const float h = portfolio::s(portfolio::combo_h);
 
         char clean[128];
         EqStripId(label, clean, IM_ARRAYSIZE(clean));
@@ -772,8 +748,7 @@ namespace ethnir
         st.WinPos.y = ImClamp(st.WinPos.y, ImMin(yMin, yMax), ImMax(yMin, yMax));
     }
 
-    // Shell base: optional backdrop, animated accent bloom, fixed scrim.
-    // Plain rounded rects only — four draw calls, nothing to allocate.
+    // Shell base: portfolio style - flat panel with optional backdrop
     inline void EqDrawShellBase(ImDrawList* dl, const ImVec2& p0, const ImVec2& p1, float R, const Palette& pal, ImTextureID backdrop)
     {
         if (backdrop != nullptr)
@@ -783,30 +758,8 @@ namespace ethnir
         else
         {
             dl->AddRectFilled(p0, p1, EqCol(pal.base), R);
-
-            // Breathing top-down accent gradient. Every band spans the full
-            // width; narrowing them left a half-width block, not a gradient.
-            const float phase = EqBackdropPhase();
-            const float breathe = 0.5f + 0.5f * ImSin(phase);
-            const float h = p1.y - p0.y;
-            const float w = p1.x - p0.x;
-
-            struct Slab { float depth; float alpha; };
-            const Slab slabs[3] = { { 0.42f, 0.055f }, { 0.26f, 0.045f }, { 0.12f, 0.035f } };
-            for (int i = 0; i < 3; ++i)
-            {
-                const float depth = slabs[i].depth * (0.88f + 0.24f * breathe);
-                const float alpha = slabs[i].alpha * (0.70f + 0.55f * breathe);
-                dl->AddRectFilled(p0, ImVec2(p1.x, p0.y + h * depth), EqAccentA(alpha), R);
-            }
-
-            // Drifting highlight, anchored to p1.x so it never spills past the corner
-            const float sway = 0.5f + 0.5f * ImSin(phase * 0.61f + 1.7f);
-            const float x = p0.x + w * (0.62f - 0.22f * sway);
-            dl->AddRectFilled(ImVec2(x, p0.y), ImVec2(p1.x, p0.y + h * 0.22f), EqAccentA(0.030f), R);
         }
         dl->AddRectFilled(p0, p1, EqCol(pal.scrim), R);
-        EqDrawGlassRim(dl, p0, p1, R, pal);
     }
 
     inline void EqDrawSidebar(MenuState& st, const ImVec2& s0, const ImVec2& s1)
@@ -818,12 +771,12 @@ namespace ethnir
         ImGui::SetCursorScreenPos(s0);
         ImGui::BeginChild("##ethnir_nav", s1 - s0, false, ImGuiWindowFlags_NoBackground);
         dl = ImGui::GetWindowDrawList();
-        dl->AddRectFilled(s0, s1, EqCol(pal.side), 16.0f);
-        dl->AddRect(s0 + ImVec2(0.5f, 0.5f), s1 - ImVec2(0.5f, 0.5f), EqCol(pal.sideEdge), 16.0f);
+        dl->AddRectFilled(s0, s1, EqCol(pal.side), portfolio::s(portfolio::shell_round));
+        dl->AddRect(s0 + ImVec2(0.5f, 0.5f), s1 - ImVec2(0.5f, 0.5f), EqCol(pal.sideEdge), portfolio::s(portfolio::shell_round));
 
-        const float itemTop = s0.y + 12.0f;
-        const float itemPitch = 38.0f;
-        const float itemH = 34.0f;
+        const float itemTop = s0.y + portfolio::s(portfolio::sidebar_tabs_y);
+        const float itemPitch = portfolio::s(portfolio::sidebar_tab_h);
+        const float itemH = portfolio::s(portfolio::sidebar_tab_h);
 
         int activeRow = 0;
         for (int i = 0; i < kTabCount; ++i)
@@ -835,10 +788,10 @@ namespace ethnir
         dl->AddRectFilled(ImVec2(s0.x + 8.0f, hlY), ImVec2(s1.x - 8.0f, hlY + itemH), EqColA(pal.text, 0.10f), 11.0f);
         dl->AddRectFilled(ImVec2(s0.x + 8.0f, hlY + 8.0f), ImVec2(s0.x + 11.0f, hlY + itemH - 8.0f), EqAccent(), 1.5f);
 
-        for (int i = 0; i < kTabCount; ++i)
+for (int i = 0; i < kTabCount; ++i)
         {
-            const ImVec2 tmin(s0.x + 8.0f, itemTop + i * itemPitch);
-            const ImVec2 tmax(s1.x - 8.0f, tmin.y + itemH);
+            const ImVec2 tmin(s0.x + portfolio::s(portfolio::sidebar_tab_icon_x) - portfolio::s(portfolio::sidebar_tab_icon), itemTop + i * itemPitch);
+            const ImVec2 tmax(tmin.x + portfolio::s(portfolio::sidebar_tab_w), tmin.y + itemH);
             ImGui::SetCursorScreenPos(tmin);
             char id[32];
             ImFormatString(id, IM_ARRAYSIZE(id), "##ethnir_tab%d", i);
@@ -851,30 +804,30 @@ namespace ethnir
             ImFormatString(hid, IM_ARRAYSIZE(hid), "##ethnir_hot%d", i);
             const float hot = EqAnim(hid, hov ? 1.0f : 0.0f, 12.0f, ImGui::GetIO().DeltaTime, act ? 1.0f : 0.0f);
             if (!act && hot > 0.01f)
-                dl->AddRectFilled(tmin, tmax, EqColA(pal.text, 0.05f * hot), 11.0f);
+                dl->AddRectFilled(tmin, tmax, EqColA(pal.text, 0.05f * hot), portfolio::s(portfolio::shell_round));
 
-            EqDrawGlyph(dl, kTabs[i].glyph, ImVec2(tmin.x + 20.0f, (tmin.y + tmax.y) * 0.5f), 13.0f,
+            EqDrawGlyph(dl, kTabs[i].glyph, ImVec2(tmin.x + portfolio::s(portfolio::sidebar_tab_icon_x), (tmin.y + tmax.y) * 0.5f), portfolio::s(portfolio::sidebar_tab_icon),
                         act ? EqAccent() : EqCol(EqMix(pal.textFaint, pal.text, hot)));
-            EqDrawLabel(dl, ImVec2(tmin.x + 38.0f, (tmin.y + tmax.y) * 0.5f - 6.5f), kTabs[i].label,
-                        EqCol(act ? pal.text : EqMix(pal.textDim, pal.text, hot)), 13.0f);
+            EqDrawLabel(dl, ImVec2(tmin.x + portfolio::s(portfolio::sidebar_tab_icon_x) + portfolio::s(portfolio::sidebar_tab_icon) + portfolio::s(portfolio::sidebar_tab_text_gap), (tmin.y + tmax.y) * 0.5f - portfolio::s(13.f)), kTabs[i].label,
+                        EqCol(act ? pal.text : EqMix(pal.textDim, pal.text, hot)), portfolio::s(13.f));
             if (act)
-                dl->AddCircleFilled(ImVec2(tmax.x - 12.0f, (tmin.y + tmax.y) * 0.5f), 2.4f, EqAccent(), 12);
+                dl->AddRectFilled(tmin, ImVec2(tmin.x + portfolio::s(3.f), tmax.y), EqAccent(), portfolio::s(portfolio::shell_round), ImDrawFlags_RoundCornersLeft);
         }
 
         // help chip, bottom-left of the sidebar pane
-        const ImVec2 chipC(s0.x + 27.0f, s1.y - 27.0f);
-        ImGui::SetCursorScreenPos(chipC - ImVec2(13, 13));
+        const ImVec2 chipC(s0.x + portfolio::s(27.f), s1.y - portfolio::s(27.f));
+        ImGui::SetCursorScreenPos(chipC - ImVec2(portfolio::s(13), portfolio::s(13)));
         bool chipHov = false;
-        const bool chipPressed = EqPress("##ethnir_help", ImVec2(26, 26), &chipHov);
+        const bool chipPressed = EqPress("##ethnir_help", ImVec2(portfolio::s(26), portfolio::s(26)), &chipHov);
         if (chipPressed)
         {
             st.HelpOpen = !st.HelpOpen;
             st.HelpChipPressedFrame = true;   // don't dismiss the card on the same tap
         }
-        if (chipHov || st.HelpOpen) dl->AddCircleFilled(chipC, 14.0f, EqColA(pal.text, 0.08f), 24);
-        dl->AddCircle(chipC, 13.0f, EqColA(pal.text, st.HelpOpen ? 0.22f : 0.14f), 24, 1.0f);
-        EqDrawLabel(dl, ImVec2(chipC.x - 4.0f, chipC.y - 7.0f), "?", EqCol(st.HelpOpen ? pal.text : pal.textDim), 13.0f);
-        EqDrawLabel(dl, ImVec2(chipC.x + 20.0f, chipC.y - 5.5f), st.SubtitleText, EqCol(pal.textFaint), 10.0f);
+        if (chipHov || st.HelpOpen) dl->AddCircleFilled(chipC, portfolio::s(14.f), EqColA(pal.text, 0.08f), 24);
+        dl->AddCircle(chipC, portfolio::s(13.f), EqColA(pal.text, st.HelpOpen ? 0.22f : 0.14f), 24, 1.0f);
+        EqDrawLabel(dl, ImVec2(chipC.x - portfolio::s(4.f), chipC.y - portfolio::s(7.f)), "?", EqCol(st.HelpOpen ? pal.text : pal.textDim), portfolio::s(13.f));
+        EqDrawLabel(dl, ImVec2(chipC.x + portfolio::s(20.f), chipC.y - portfolio::s(5.5f)), st.SubtitleText, EqCol(pal.textFaint), portfolio::s(10.f));
 
         ImGui::EndChild();
     }
@@ -955,32 +908,17 @@ namespace ethnir
             const ImVec2 p = ImGui::GetCursorScreenPos();
             if (EqCardRowIndex()++ > 0) EqRowSeparator(cdl, p, p + ImVec2(w, h));
             EqDrawLabel(cdl, ImVec2(p.x + 3.0f, p.y + (h - 13.0f) * 0.5f), "Accent color", EqCol(pal.textDim), 13.0f);
-            const float sw = 16.0f, gap = 7.0f;
-            const float total = kAccentCount * sw + (kAccentCount - 1) * gap;
-            const float x0 = p.x + w - total;
-            for (int i = 0; i < kAccentCount; ++i)
-            {
-                const ImVec2 c(x0 + i * (sw + gap) + sw * 0.5f, p.y + h * 0.5f);
-                float r = 0, g = 0, b = 0;
-                if (kAccents[i].rgb != 0)
-                {
-                    const ImVec4 rc = ImGui::ColorConvertU32ToFloat4(kAccents[i].rgb);
-                    r = rc.x; g = rc.y; b = rc.z;
-                }
-                else
-                {
-                    ImGui::ColorConvertHSVtoRGB(kAccents[i].hue, 0.96f, 1.0f, r, g, b);
-                }
-                char aid[32];
-                ImFormatString(aid, IM_ARRAYSIZE(aid), "##accent%d", i);
-                ImGui::SetCursorScreenPos(c - ImVec2(9, 9));
-                bool hov = false;
-                if (EqPress(aid, ImVec2(18, 18), &hov))
-                    EqApplyAccentIndex(i);
-                if (i == st.AccentIndex)
-                    cdl->AddCircle(c, 9.0f, EqColA(ImVec4(r, g, b, 1.0f), 0.9f), 24, 1.6f);
-                cdl->AddCircleFilled(c, hov ? 7.0f : 6.0f, EqCol(ImVec4(r, g, b, 1.0f)), 24);
-            }
+            // Portfolio uses single accent #615DCE
+            const float sw = 16.0f;
+            const ImVec2 c(p.x + w - sw - 10.0f, p.y + h * 0.5f);
+            char aid[32];
+            ImFormatString(aid, IM_ARRAYSIZE(aid), "##accent");
+            ImGui::SetCursorScreenPos(c - ImVec2(9, 9));
+            bool hov = false;
+            EqPress(aid, ImVec2(18, 18), &hov);
+            cdl->AddCircleFilled(c, hov ? 7.0f : 6.0f, EqAccent(), 24);
+            if (st.AccentIndex == 0)
+                cdl->AddCircle(c, 9.0f, EqAccentA(0.9f), 24, 1.6f);
             ImGui::SetCursorScreenPos(ImVec2(p.x, p.y + h + 2.0f));
 
             KeybindRow("Menu bind", &st.MenuBind, kMenuBinds, kMenuBindCount);
@@ -1022,7 +960,6 @@ namespace ethnir
         dl->AddShadowRect(p0, p1, IM_COL32(0, 0, 0, 110), 24.0f, ImVec2(0, 8), 0, R);
         dl->AddRectFilled(p0, p1, EqCol(pal.popupBg), R);
         dl->AddRect(p0 + ImVec2(0.5f, 0.5f), p1 - ImVec2(0.5f, 0.5f), EqCol(pal.cardEdge), R);
-        EqDrawGlassRim(dl, p0, p1, R, pal);
 
         EqDrawTracked(dl, EqTitleFont(), 14.0f, ImVec2(p0.x + 16.0f, p0.y + 14.0f), EqCol(pal.text), st.TitleText, 1.4f);
         EqDrawTracked(dl, EqTextFont(), 9.5f, ImVec2(p0.x + 18.0f, p0.y + 34.0f), EqColA(EqAccentVec(), 0.95f), st.SubtitleText, 1.0f);

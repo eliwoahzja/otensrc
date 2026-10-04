@@ -313,6 +313,10 @@ EGLBoolean hook_eglSwapBuffers(EGLDisplay dpy, EGLSurface surface)
         io.Fonts->Build();
         ImGui_ImplOpenGL3_CreateFontsTexture();
 
+        // Initialize portfolio theme
+        portfolio::set_display_size(ImVec2((float)g_GlWidth, (float)g_GlHeight));
+        portfolio::apply_style();
+
         memset(&Config, 0, sizeof(sConfig));
         Config.sColorsESPPLAYER.LinePLAYER = CREATE_COLOR(0, 212, 255, 255);
         Config.sColorsESPPLAYER.BoxPLAYER = CREATE_COLOR(0, 212, 255, 255);
@@ -343,6 +347,11 @@ EGLBoolean hook_eglSwapBuffers(EGLDisplay dpy, EGLSurface surface)
     screenWidth = (float)g_GlWidth;
     screenHeight = (float)g_GlHeight;
     io->DisplaySize = ImVec2((float)g_GlWidth, (float)g_GlHeight);
+    
+    // Update portfolio theme scale for current frame
+    portfolio::set_display_size(io->DisplaySize);
+    portfolio::apply_scaled_style();
+
     ImGui_ImplOpenGL3_NewFrame();
     ImGui::NewFrame();
 
@@ -515,7 +524,7 @@ EGLBoolean hook_eglSwapBuffers(EGLDisplay dpy, EGLSurface surface)
         }
 
         runtime_preview_menu::EnsureTexturesLoaded();
-        main_runtime_theme::ApplyThemeState();
+        // Portfolio theme applied per-frame in render loop
         ImVec2 viewportCenter = ImGui::GetMainViewport()->GetCenter();
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
 
@@ -792,10 +801,8 @@ EGLBoolean hook_eglSwapBuffers(EGLDisplay dpy, EGLSurface surface)
             float openAlpha = 0.2f + 0.8f * openEase;
             ImGui::PushStyleVar(ImGuiStyleVar_Alpha, openAlpha);
 
+            // Portfolio theme applied per-frame in render loop
             main_runtime_theme::ApplyAccentFromHue();
-            c::ApplyMainWindowStyle(ImGui::GetStyle());
-            c::UpdateTheme(dark, menu, ImGui::GetIO().DeltaTime);
-            main_runtime_theme::ApplyThemeState();
 
             static ethnir::MenuState menuState;
             // One-shot: boot the menu on the reference indigo accent (#615DCE).
@@ -805,7 +812,7 @@ EGLBoolean hook_eglSwapBuffers(EGLDisplay dpy, EGLSurface surface)
             if (!sEthnirAccentBoot)
             {
                 sEthnirAccentBoot = true;
-                ethnir::EqApplyAccentIndex(ethnir::kAccentDefaultIndex);
+                ethnir::EqApplyAccentIndex(0);
             }
             // forces the floating info overlay off every frame
             Config.ExtraMenu.ClearDisplay = true;
