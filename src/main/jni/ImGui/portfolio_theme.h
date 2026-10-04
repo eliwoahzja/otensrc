@@ -108,6 +108,15 @@ namespace portfolio
     inline constexpr float user_name_font     = 14.f;
     inline constexpr float logo_font          = 36.f;
 
+    // Android touch metrics, in real (unscaled) pixels.
+    // The reference is a desktop app driven by a mouse. Its rows are 37 design
+    // px and its toggles 42x22, which is comfortable for a cursor and far too
+    // small for a finger. These are the knobs the shell uses to compensate.
+    inline constexpr float kScreenMarginPx = 10.f;   // gap around the panel
+    inline constexpr float kMinFactor       = 0.55f;
+    inline constexpr float kMaxFactor       = 2.5f;
+    inline constexpr float kTouchTargetPx   = 44.f;  // Android's tappable floor
+
     // Reference: layout::settings_box_height(rows) = rows * settings_row_h
     // + box_pad_y * 2. Same formula, so a column box hugs its rows exactly.
     inline float settings_box_height(int rows)
@@ -129,10 +138,26 @@ namespace portfolio
     inline void set_display_size(const ImVec2& display)
     {
         if (display.x <= 0.f || display.y <= 0.f) return;
-        const float fit = ImMin(display.x / ref_display_w, display.y / ref_display_h);
-        auto_factor = ImClamp(fit, 0.5f, 3.f) * ref_factor;
+
+        // The reference formula min(w/1920, h/1080) * 0.703 assumes a landscape
+        // desktop window. On a portrait phone it evaluates to ~0.40, which made
+        // a 37px row about 15px tall. Fit the shell itself instead - it is
+        // window_w x window_h design px - so rows stay finger-sized at any
+        // aspect ratio:
+        //   1080x2400 portrait : min(1060/1160, 2380/669) = 0.91 -> rows ~34px
+        //   2400x1080 landscape: min(2380/1160, 1060/669) = 1.58 -> rows ~59px
+        const float usable_w = ImMax(1.f, display.x - 2.f * kScreenMarginPx);
+        const float usable_h = ImMax(1.f, display.y - 2.f * kScreenMarginPx);
+        const float fit = ImMin(usable_w / window_w, usable_h / window_h);
+        auto_factor = ImClamp(fit, kMinFactor, kMaxFactor);
         recompute();
     }
+
+    // Extra padding added to hit rects on the horizontal axis. Rows sit 2px
+    // apart vertically, so widening them vertically would make adjacent rows
+    // fight over the same press; horizontally there is a whole column of slack.
+    inline float touch_pad_x() { return portfolio::s(10.f); }
+    inline float touch_pad_y() { return 2.f; }
 
     inline void set_percent(float percent)
     {
@@ -183,7 +208,7 @@ namespace portfolio
         s.ItemInnerSpacing= ImVec2(6.f, 6.f);
         s.IndentSpacing   = 20.f;
         s.CellPadding     = ImVec2(4.f, 4.f);
-        s.TouchExtraPadding = ImVec2(4.f, 4.f);
+        s.TouchExtraPadding = ImVec2(kTouchTargetPx * 0.18f, kTouchTargetPx * 0.18f);
         s.ScrollbarSize   = 6.f;
         s.GrabMinSize     = 12.f;
 

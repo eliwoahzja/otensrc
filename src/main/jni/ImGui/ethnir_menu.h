@@ -250,13 +250,24 @@ namespace ethnir
 
     // ButtonBehavior's default flags (PressedOnClickRelease) commit only on
     // release over the same rect, so a drag that becomes a scroll flips nothing.
+    // Touch padding is applied to the hit rect only; the visuals keep their
+    // reference geometry. Vertical padding is deliberately tiny because rows
+    // are stacked 2px apart - widening them there would let one row steal the
+    // next row's press. Horizontal slack is a whole column wide, so that is
+    // where the forgiveness goes.
     inline bool EqPress(const char* id, const ImVec2& size, bool* outHovered = nullptr, bool* outHeld = nullptr)
     {
         ImGuiWindow* w = ImGui::GetCurrentWindow();
         const ImGuiID wid = w->GetID(id);
         const ImVec2 p = ImGui::GetCursorScreenPos();
+
+        const float px = portfolio::touch_pad_x();
+        const float py = portfolio::touch_pad_y();
+        const ImVec2 hit_min(p.x - px, p.y - py);
+        const ImVec2 hit_max(p.x + size.x + px, p.y + size.y + py);
+
         bool hovered = false, held = false;
-        const bool pressed = ImGui::ButtonBehavior(ImRect(p, p + size), wid, &hovered, &held, ImGuiButtonFlags_None);
+        const bool pressed = ImGui::ButtonBehavior(ImRect(hit_min, hit_max), wid, &hovered, &held, ImGuiButtonFlags_None);
         // ButtonBehavior runs without ItemAdd, so NewFrame() would see the item
         // die and clear ActiveId mid-drag. Keep the id alive by hand.
         ImGui::KeepAliveID(wid);
