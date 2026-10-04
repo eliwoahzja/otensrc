@@ -368,46 +368,40 @@ EGLBoolean hook_eglSwapBuffers(EGLDisplay dpy, EGLSurface surface)
         static float collapsedDragDistance = 0.0f;
         const float collapsedAlphaSetting = ImClamp(GetLogoOpacity(), 0.0f, 1.0f);
         const float collapsedScaleSetting = ImClamp(GetLogoSizeMultiplier(), 0.1f, 2.0f);
-        const float pill_w = 158.0f * c::scale * collapsedScaleSetting;
-        const float pill_h = 60.0f * c::scale * collapsedScaleSetting;
+        const float pill_w = portfolio::s(158.f) * c::scale * collapsedScaleSetting;
+        const float pill_h = portfolio::s(60.f) * c::scale * collapsedScaleSetting;
         float line_w = pill_w;
         float click_h = pill_h;
         if (!collapsedPosInitialized)
         {
-            ImVec2 vp = ImGui::GetMainViewport()->Pos;
-            collapsedLogoPos = ImVec2(vp.x + 10.0f * c::scale, vp.y + 10.0f * c::scale);
+            ImVec2 vp = ImGui::GetMainViewport()->GetCenter();
+            collapsedLogoPos = ImVec2(vp.x - pill_w * 0.5f, vp.y - pill_h * 0.5f);
             collapsedPosInitialized = true;
         }
         collapseBarOpacityAnim = 1.0f;
-        ImGui::SetNextWindowPos(collapsedLogoPos, ImGuiCond_Always);
-        ImGui::SetNextWindowSize(ImVec2(line_w, click_h), ImGuiCond_Always);
+        
+        // Add hitbox margin for easier tapping
+        const float hitboxMargin = portfolio::s(20.f);
+        ImGui::SetNextWindowPos(collapsedLogoPos - ImVec2(hitboxMargin, hitboxMargin), ImGuiCond_Always);
+        ImGui::SetNextWindowSize(ImVec2(line_w + 2*hitboxMargin, click_h + 2*hitboxMargin), ImGuiCond_Always);
         ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0, 0, 0, 0));
         ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0, 0, 0, 0));
         ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
         ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
+        
         auto getCollapsedTouchPos = [&]() -> ImVec2
         {
-            ImVec2 currentMousePos = ImGui::GetIO().MousePos;
-            if (Class_Input_get_touchCount != 0 && Class_Input_get_mousePosition != 0 && Config.ImGuiMenu.thiz != 0)
-            {
-                auto Input_get_touchCount = (int (*)())(Class_Input_get_touchCount);
-                if (Input_get_touchCount() > 0)
-                {
-                    auto Input_get_mousePosition = (Vector3(*)(uintptr_t))(Class_Input_get_mousePosition);
-                    Vector3 pos = Input_get_mousePosition(Config.ImGuiMenu.thiz);
-                    currentMousePos = ImVec2(pos.x, get_height() - pos.y);
-                }
-            }
-            return currentMousePos;
+            return ImGui::GetIO().MousePos;
         };
+        
         if (ImGui::Begin("##indicator", nullptr,
             ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize |
             ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoCollapse |
             ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoSavedSettings))
         {
             ImVec2 windowPos = ImGui::GetWindowPos();
-            ImGui::SetCursorPos(ImVec2(0, 0));
+            ImGui::SetCursorPos(ImVec2(hitboxMargin, hitboxMargin));
             ImGui::InvisibleButton("##restoreclick", ImVec2(line_w, click_h));
             bool barHovered = ImGui::IsItemHovered();
             bool barHeld = ImGui::IsItemActive();
@@ -430,7 +424,7 @@ EGLBoolean hook_eglSwapBuffers(EGLDisplay dpy, EGLSurface surface)
                 collapsedLogoPos.y += delta.y;
                 collapsedDragDistance += sqrtf((delta.x * delta.x) + (delta.y * delta.y));
                 collapsedDragLastMousePos = currentMousePos;
-                if (collapsedDragDistance > (6.0f * c::scale))
+                if (collapsedDragDistance > (portfolio::s(15.f) * c::scale))
                     collapsedWasDragging = true;
             }
             if (ImGui::IsItemDeactivated())
@@ -447,36 +441,17 @@ EGLBoolean hook_eglSwapBuffers(EGLDisplay dpy, EGLSurface surface)
             float drawAlpha = ImClamp(collapseBarOpacityAnim * collapsedAlphaSetting, 0.0f, 1.0f);
             ImDrawList* indicatorDraw = ImGui::GetWindowDrawList();
             const float pillR = click_h * 0.5f;
-            ImVec2 pillMin = windowPos;
-            ImVec2 pillMax = ImVec2(windowPos.x + line_w, windowPos.y + click_h);
-            float breathe = 0.5f + 0.5f * sinf(g_OmniTime * 1.8f);
-            int glowAlpha = (int)((55.0f + 30.0f * breathe) * drawAlpha);
-            indicatorDraw->AddRectFilled(
-                ImVec2(pillMin.x - 4, pillMin.y - 4),
-                ImVec2(pillMax.x + 4, pillMax.y + 4),
-                IM_COL32(0, 180, 255, glowAlpha),
-                pillR + 4.0f
-            );
-            indicatorDraw->AddRectFilledMultiColor(
-                pillMin, pillMax,
-                IM_COL32(8, 18, 38, (int)(200 * drawAlpha)),
-                IM_COL32(6, 12, 28, (int)(200 * drawAlpha)),
-                IM_COL32(4, 8, 18, (int)(200 * drawAlpha)),
-                IM_COL32(6, 12, 28, (int)(200 * drawAlpha))
-            );
-            indicatorDraw->AddRectFilled(pillMin, pillMax,
-                IM_COL32(8, 16, 32, (int)(180 * drawAlpha)), pillR);
-            DrawOmniShimmer(indicatorDraw, pillMin, pillMax, pillR, g_OmniTime);
-            indicatorDraw->AddRect(
-                pillMin, pillMax,
-                IM_COL32(0, 180, 255, (int)(100 * drawAlpha)),
-                pillR, 0, 1.2f
-            );
+            ImVec2 pillMin = windowPos + ImVec2(hitboxMargin, hitboxMargin);
+            ImVec2 pillMax = ImVec2(pillMin.x + line_w, pillMin.y + click_h);
+            
+            // Liquid glass collapsed pill
+            portfolio::DrawLiquidGlassPanel(indicatorDraw, pillMin, pillMax, pillR);
+            
             GLuint collapsedLogo = LoadAstralTexture(astral_data, sizeof(astral_data));
-            const float logoPad = 6.0f * c::scale * collapsedScaleSetting;
-            const float logoSize = 48.0f * c::scale * collapsedScaleSetting;
-            const ImVec2 logoMin(windowPos.x + logoPad,
-                                  windowPos.y + (click_h - logoSize) * 0.5f);
+            const float logoPad = portfolio::s(6.f) * c::scale * collapsedScaleSetting;
+            const float logoSize = portfolio::s(48.f) * c::scale * collapsedScaleSetting;
+            const ImVec2 logoMin(pillMin.x + logoPad,
+                                  pillMin.y + (click_h - logoSize) * 0.5f);
             const ImVec2 logoMax(logoMin.x + logoSize, logoMin.y + logoSize);
             if (collapsedLogo != 0) {
                 indicatorDraw->AddImageRounded(
@@ -491,7 +466,7 @@ EGLBoolean hook_eglSwapBuffers(EGLDisplay dpy, EGLSurface surface)
             std::snprintf(fpsText, sizeof(fpsText), "%d FPS",
                           (int)std::lround(ImGui::GetIO().Framerate));
             ImFont* fpsFont = F50 ? F50 : (font::inter_semibold ? font::inter_semibold : ImGui::GetFont());
-            const float fpsSize = ((fpsFont == F50) ? (16.0f * c::scale) : (18.0f * c::scale))
+            const float fpsSize = ((fpsFont == F50) ? (portfolio::s(16.f) * c::scale) : (portfolio::s(18.f) * c::scale))
                                   * collapsedScaleSetting;
             const ImVec2 fpsSizeVec = fpsFont->CalcTextSizeA(fpsSize, FLT_MAX, 0.0f, fpsText);
             int fpsVal = (int)std::lround(ImGui::GetIO().Framerate);
@@ -500,8 +475,8 @@ EGLBoolean hook_eglSwapBuffers(EGLDisplay dpy, EGLSurface surface)
                             : IM_COL32(255, 180, 100, 255);
             indicatorDraw->AddText(
                 fpsFont, fpsSize,
-                ImVec2(logoMax.x + 14.0f * c::scale * collapsedScaleSetting,
-                        windowPos.y + (click_h - fpsSizeVec.y) * 0.5f),
+                ImVec2(logoMax.x + portfolio::s(14.f) * c::scale * collapsedScaleSetting,
+                        pillMin.y + (click_h - fpsSizeVec.y) * 0.5f),
                 fpsColor,
                 fpsText
             );

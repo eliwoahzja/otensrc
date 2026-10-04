@@ -182,4 +182,206 @@ namespace portfolio
     // ============ ACCENT HELPERS ============
     inline ImVec4 accent_vec4(float alpha = 1.f) { return { g_accent.x, g_accent.y, g_accent.z, alpha }; }
     inline ImU32 accent_u32(float alpha = 1.f) { return ImGui::GetColorU32(accent_vec4(alpha)); }
+
+    // ============ LIQUID GLASS RENDERING ============
+    // Apple-style liquid glass: neutral interior + specular rim + chromatic aberration edge
+    inline void DrawLiquidGlassPanel(ImDrawList* dl, const ImVec2& p0, const ImVec2& p1, float R, ImTextureID backdrop = nullptr, float backdropBlur = 0.f)
+    {
+        const float w = p1.x - p0.x;
+        const float h = p1.y - p0.y;
+        if (w < 4.f || h < 4.f) return;
+
+        // 1. Drop shadow (large, soft)
+        dl->AddShadowRect(p0, p1, IM_COL32(0, 0, 0, 120), 40.f, ImVec2(0, 16), 0, R);
+
+        // 2. Backdrop (blurred or solid)
+        if (backdrop)
+        {
+            dl->AddImageRounded(backdrop, p0, p1, ImVec2(0,0), ImVec2(1,1), IM_COL32_WHITE, R);
+            // Dark tint for text contrast (portfolio: rgba(14,14,22,0.18→0.32))
+            dl->AddRectFilled(p0, p1, IM_COL32(14, 14, 22, 80), R);
+        }
+        else
+        {
+            dl->AddRectFilled(p0, p1, IM_COL32(0, 0, 0, 160), R);
+        }
+
+        // 3. NEUTRAL INTERIOR - inset region where refraction is neutralized
+        const float inset = ImMin(R * 0.5f, ImMin(w, h) * 0.08f);
+        const ImVec2 ni0 = { p0.x + inset, p0.y + inset };
+        const ImVec2 ni1 = { p1.x - inset, p1.y - inset };
+        // Slight frosted overlay on interior (portfolio: linear-gradient 0.18→0.32)
+        dl->AddRectFilledMultiColor(ni0, ni1,
+            IM_COL32(14, 14, 22, 46),   // top: 0.18
+            IM_COL32(14, 14, 22, 46),
+            IM_COL32(14, 14, 22, 82),   // bottom: 0.32
+            IM_COL32(14, 14, 22, 82),
+            ImMin(R - inset, 8.f));
+
+        // 4. CHROMATIC ABERRATION RIM - simulate refraction at edges
+        // Red channel offset left, Blue channel offset right (prism fringe)
+        const float rimW = ImMin(inset * 1.5f, 12.f);
+        const int fringeSteps = 3;
+        for (int i = 0; i < fringeSteps; ++i)
+        {
+            const float t = (float)(i + 1) / fringeSteps;
+            const float offset = rimW * t * 0.5f;
+            const float alpha = 0.03f * (1.f - t * 0.5f);
+            
+            // Top edge - red shifts left, blue shifts right
+            dl->AddRectFilledMultiColor(
+                { p0.x + R, p0.y + offset },
+                { p1.x - R, p0.y + offset + 1.f },
+                IM_COL32(255, 0, 0, (int)(alpha * 255)),
+                IM_COL32(0, 0, 255, (int)(alpha * 255)),
+                IM_COL32(0, 0, 255, (int)(alpha * 255)),
+                IM_COL32(255, 0, 0, (int)(alpha * 255))
+            );
+            // Left edge
+            dl->AddRectFilledMultiColor(
+                { p0.x + offset, p0.y + R },
+                { p0.x + offset + 1.f, p1.y - R },
+                IM_COL32(255, 0, 0, (int)(alpha * 255)),
+                IM_COL32(255, 0, 0, (int)(alpha * 255)),
+                IM_COL32(0, 0, 255, (int)(alpha * 255)),
+                IM_COL32(0, 0, 255, (int)(alpha * 255))
+            );
+            // Right edge
+            dl->AddRectFilledMultiColor(
+                { p1.x - offset - 1.f, p0.y + R },
+                { p1.x - offset, p1.y - R },
+                IM_COL32(0, 0, 255, (int)(alpha * 255)),
+                IM_COL32(0, 0, 255, (int)(alpha * 255)),
+                IM_COL32(255, 0, 0, (int)(alpha * 255)),
+                IM_COL32(255, 0, 0, (int)(alpha * 255))
+            );
+            // Bottom edge
+            dl->AddRectFilledMultiColor(
+                { p0.x + R, p1.y - offset - 1.f },
+                { p1.x - R, p1.y - offset },
+                IM_COL32(0, 0, 255, (int)(alpha * 255)),
+                IM_COL32(255, 0, 0, (int)(alpha * 255)),
+                IM_COL32(255, 0, 0, (int)(alpha * 255)),
+                IM_COL32(0, 0, 255, (int)(alpha * 255))
+            );
+        }
+
+        // 5. SPECULAR TOP HIGHLIGHT - 1px white line at top interior
+        const float highlightAlpha = 0.5f;
+        dl->AddRectFilledMultiColor(
+            { p0.x + R, p0.y + 0.5f },
+            { p1.x - R, p0.y + 1.5f },
+            IM_COL32(255, 255, 255, (int)(highlightAlpha * 255)),
+            IM_COL32(255, 255, 255, 0),
+            IM_COL32(255, 255, 255, 0),
+            IM_COL32(255, 255, 255, (int)(highlightAlpha * 255))
+        );
+
+        // 6. INSIDE TOP HIGHLIGHT - subtle inset glow
+        dl->AddRectFilledMultiColor(
+            { p0.x + R + 4, p0.y + 8 },
+            { p1.x - R - 4, p0.y + 16 },
+            IM_COL32(255, 255, 255, 15),
+            IM_COL32(255, 255, 255, 0),
+            IM_COL32(255, 255, 255, 0),
+            IM_COL32(255, 255, 255, 15)
+        );
+
+        // 7. GLASS BORDER - 1px inset white border
+        dl->AddRect(p0 + ImVec2(0.5f, 0.5f), p1 - ImVec2(0.5f, 0.5f), 
+            IM_COL32(255, 255, 255, 33), R, 0, 1.f);
+
+        // 8. SUBTLE ACCENT RIM - very faint accent color at corners
+        const float accentRimAlpha = 0.04f;
+        const float cornerR = R;
+        dl->AddRectFilledMultiColor(
+            { p0.x + cornerR, p0.y },
+            { p1.x - cornerR, p0.y + 2.f },
+            accent_u32(accentRimAlpha), IM_COL32(0,0,0,0), IM_COL32(0,0,0,0), accent_u32(accentRimAlpha)
+        );
+        dl->AddRectFilledMultiColor(
+            { p0.x, p0.y + cornerR },
+            { p0.x + 2.f, p1.y - cornerR },
+            accent_u32(accentRimAlpha), accent_u32(accentRimAlpha), IM_COL32(0,0,0,0), IM_COL32(0,0,0,0)
+        );
+    }
+
+    // Liquid glass button (portfolio style: rounded, icon+label, hover states)
+    inline void DrawLiquidGlassButton(ImDrawList* dl, const ImVec2& p0, const ImVec2& p1, float R, 
+        const char* icon, const char* label, ImFont* iconFont, ImFont* textFont, 
+        bool hovered, bool pressed, bool active)
+    {
+        ImU32 bgCol = pressed ? IM_COL32(0, 0, 0, 120) : (hovered ? IM_COL32(255, 255, 255, 30) : IM_COL32(255, 255, 255, 15));
+        ImU32 borderCol = active ? accent_u32(0.6f) : (hovered ? IM_COL32(255, 255, 255, 60) : IM_COL32(255, 255, 255, 25));
+        ImU32 textCol = hovered || active ? IM_COL32_WHITE : IM_COL32(255, 255, 255, 200);
+
+        dl->AddRectFilled(p0, p1, bgCol, R);
+        dl->AddRect(p0 + ImVec2(0.5f, 0.5f), p1 - ImVec2(0.5f, 0.5f), borderCol, R, 0, 1.f);
+
+        // Specular top highlight
+        dl->AddRectFilledMultiColor(
+            { p0.x + R, p0.y + 0.5f },
+            { p1.x - R, p0.y + 1.5f },
+            IM_COL32(255, 255, 255, 60), IM_COL32(255, 255, 255, 0),
+            IM_COL32(255, 255, 255, 0), IM_COL32(255, 255, 255, 60)
+        );
+
+        float cx = (p0.x + p1.x) * 0.5f;
+        float cy = (p0.y + p1.y) * 0.5f;
+
+        if (icon && iconFont)
+        {
+            const float iconSize = ImMin(p1.y - p0.y, p1.x - p0.x) * 0.5f;
+            ImVec2 iconPos = { cx - iconSize * 0.5f, cy - iconSize * 0.5f };
+            if (label && textFont)
+            {
+                // Icon left of label
+                float labelW = textFont->CalcTextSizeA(fonts::size(textFont), FLT_MAX, 0, label).x;
+                float totalW = iconSize + 8.f + labelW;
+                iconPos.x = cx - totalW * 0.5f;
+                iconPos.y = cy - iconSize * 0.5f;
+                // Draw icon
+                dl->AddText(iconFont, iconSize, iconPos, textCol, icon);
+                // Draw label
+                dl->AddText(textFont, fonts::size(textFont), 
+                    { iconPos.x + iconSize + 8.f, cy - fonts::size(textFont) * 0.5f }, textCol, label);
+            }
+            else
+            {
+                // Icon only
+                dl->AddText(iconFont, iconSize, iconPos, textCol, icon);
+            }
+        }
+        else if (label && textFont)
+        {
+            // Label only
+            dl->AddText(textFont, fonts::size(textFont), 
+                { cx - textFont->CalcTextSizeA(fonts::size(textFont), FLT_MAX, 0, label).x * 0.5f,
+                  cy - fonts::size(textFont) * 0.5f }, textCol, label);
+        }
+    }
+
+    // Liquid glass search field
+    inline void DrawLiquidGlassSearchField(ImDrawList* dl, const ImVec2& p0, const ImVec2& p1, float R,
+        const char* placeholder, ImFont* textFont, ImFont* iconFont, bool focused, bool hovered)
+    {
+        ImU32 bgCol = focused ? IM_COL32(255, 255, 255, 25) : (hovered ? IM_COL32(255, 255, 255, 15) : IM_COL32(255, 255, 255, 10));
+        ImU32 borderCol = focused ? accent_u32(0.55f) : (hovered ? IM_COL32(255, 255, 255, 40) : IM_COL32(255, 255, 255, 15));
+        ImU32 textCol = IM_COL32(255, 255, 255, 220);
+        ImU32 placeholderCol = IM_COL32(255, 255, 255, 60);
+
+        dl->AddRectFilled(p0, p1, bgCol, R);
+        dl->AddRect(p0 + ImVec2(0.5f, 0.5f), p1 - ImVec2(0.5f, 0.5f), borderCol, R, 0, 1.f);
+
+        // Search icon
+        if (iconFont)
+        {
+            const float iconSize = s(24.f);
+            dl->AddText(iconFont, iconSize, 
+                { p0.x + s(24.f), p0.y + (p1.y - p0.y - iconSize) * 0.5f },
+                IM_COL32(255, 255, 255, 150), "\xEF\x80\x82"); // search icon
+        }
+
+        // Placeholder or input handled by ImGui InputText overlay
+    }
 }

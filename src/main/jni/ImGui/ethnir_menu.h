@@ -836,22 +836,21 @@ for (int i = 0; i < kTabCount; ++i)
     {
         const Palette pal = EqPal();
         const ImGuiIO& io = ImGui::GetIO();
-        const ImVec2 size(258.0f, 0.0f);
+        const ImVec2 size(portfolio::s(258.f), 0.0f);
         if (!st.PanelPosInit)
         {
             st.PanelPos = ImVec2(ImMin(st.WinPos.x + kWinW + 18.0f, io.DisplaySize.x - size.x - 12.0f),
                                  st.WinPos.y + 26.0f);
             st.PanelPosInit = true;
         }
-        // keep the panel on screen (rotation-safe); narrow displays pin it left
         const float panelMaxX = io.DisplaySize.x - size.x - 12.0f;
         st.PanelPos.x = (panelMaxX > 12.0f) ? ImClamp(st.PanelPos.x, 12.0f, panelMaxX) : 12.0f;
         st.PanelPos.y = ImClamp(st.PanelPos.y, 12.0f, ImMax(12.0f, io.DisplaySize.y - 60.0f));
 
         ImGui::SetNextWindowPos(st.PanelPos, ImGuiCond_Always);
         ImGui::SetNextWindowSize(size, ImGuiCond_Always);
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(14.0f, 12.0f));
-        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0.0f, 0.0f));
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
+        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 0));
         ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0, 0, 0, 0));
         ImGui::Begin("##ethnir_settings", nullptr,
                      ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
@@ -865,16 +864,18 @@ for (int i = 0; i < kTabCount; ++i)
         const ImVec2 p0 = ImGui::GetWindowPos();
         const ImVec2 p1 = ImVec2(p0.x + ImGui::GetWindowSize().x, p0.y + ImGui::GetWindowSize().y);
         ImDrawList* dl = ImGui::GetWindowDrawList();
-        const float R = 18.0f;
-        dl->AddShadowRect(p0, p1, IM_COL32(0, 0, 0, 120), 26.0f, ImVec2(0, 8), 0, R);
-        dl->AddRectFilled(p0, p1, EqCol(pal.popupBg), R);
-        dl->AddRectFilled(p0, ImVec2(p1.x, p0.y + 44.0f), EqColA(EqAccentVec(), 0.10f), R);
-        dl->AddRect(p0 + ImVec2(0.5f, 0.5f), p1 - ImVec2(0.5f, 0.5f), EqCol(pal.cardEdge), R);
-        EqDrawGlassRim(dl, p0, p1, R, pal);
+        const float R = portfolio::s(portfolio::shell_round);
 
-        // title + drag strip
-        EqDrawTracked(dl, EqTextFont(), 12.0f, ImVec2(p0.x + 16.0f, p0.y + 15.0f), EqCol(pal.text), "QUICK SETTINGS", 0.8f);
-        const ImVec2 dragMin(p0.x + 12.0f, p0.y + 8.0f), dragMax(p1.x - 12.0f, p0.y + 38.0f);
+        // Liquid glass panel
+        portfolio::DrawLiquidGlassPanel(dl, p0, p1, R);
+
+        // Title
+        ImGui::SetCursorScreenPos({ p0.x + portfolio::s(16.f), p0.y + portfolio::s(15.f) });
+        EqDrawTracked(dl, EqTextFont(), portfolio::s(12.f), ImVec2(p0.x + portfolio::s(16.f), p0.y + portfolio::s(15.f)), EqCol(pal.text), "QUICK SETTINGS", 0.8f);
+
+        // Drag strip
+        const ImVec2 dragMin(p0.x + portfolio::s(12.f), p0.y + portfolio::s(8.f));
+        const ImVec2 dragMax(p1.x - portfolio::s(12.f), p0.y + portfolio::s(38.f));
         ImGui::SetCursorScreenPos(dragMin);
         ImGui::InvisibleButton("##panel_drag", dragMax - dragMin);
         if (!st.PanelDragging && ImGui::IsItemActive() && ImGui::IsMouseDragging(0))
@@ -885,9 +886,8 @@ for (int i = 0; i < kTabCount; ++i)
             if (!io.MouseDown[0]) st.PanelDragging = false;
             else { st.PanelPos += io.MouseDelta; ImGui::SetWindowPos(st.PanelPos); }
         }
-        ImGui::SetCursorScreenPos(ImVec2(p0.x + 14.0f, p0.y + 46.0f));
+        ImGui::SetCursorScreenPos(ImVec2(p0.x + portfolio::s(14.f), p0.y + portfolio::s(46.f)));
 
-        // rows (search filter is off here: the panel keeps its own controls)
         EqFilterOn() = false;
         BeginGroupCard("eth_panel_rows");
         {
@@ -900,26 +900,24 @@ for (int i = 0; i < kTabCount; ++i)
             if (RowSlider(nullptr, "Animation", &animPct, 50.0f, 200.0f, "%.0f%%"))
                 st.AnimSpeed = animPct / 100.0f;
 
-            // accent swatches — each swatch is its own hit rect, so there is no
-            // row-wide press here (the first hit test in a frame owns the hover)
+            // Accent swatch
             ImDrawList* cdl = ImGui::GetWindowDrawList();
             const float w = ImGui::GetContentRegionAvail().x;
             const float h = kRowH;
             const ImVec2 p = ImGui::GetCursorScreenPos();
             if (EqCardRowIndex()++ > 0) EqRowSeparator(cdl, p, p + ImVec2(w, h));
-            EqDrawLabel(cdl, ImVec2(p.x + 3.0f, p.y + (h - 13.0f) * 0.5f), "Accent color", EqCol(pal.textDim), 13.0f);
-            // Portfolio uses single accent #615DCE
-            const float sw = 16.0f;
-            const ImVec2 c(p.x + w - sw - 10.0f, p.y + h * 0.5f);
+            EqDrawLabel(cdl, ImVec2(p.x + portfolio::s(3.f), p.y + (h - portfolio::s(13.f)) * 0.5f), "Accent color", EqCol(pal.textDim), portfolio::s(13.f));
+            const float sw = portfolio::s(16.f);
+            const ImVec2 c(p.x + w - sw - portfolio::s(10.f), p.y + h * 0.5f);
             char aid[32];
             ImFormatString(aid, IM_ARRAYSIZE(aid), "##accent");
-            ImGui::SetCursorScreenPos(c - ImVec2(9, 9));
+            ImGui::SetCursorScreenPos(c - ImVec2(portfolio::s(9), portfolio::s(9)));
             bool hov = false;
-            EqPress(aid, ImVec2(18, 18), &hov);
-            cdl->AddCircleFilled(c, hov ? 7.0f : 6.0f, EqAccent(), 24);
+            EqPress(aid, ImVec2(portfolio::s(18), portfolio::s(18)), &hov);
+            cdl->AddCircleFilled(c, hov ? portfolio::s(7.f) : portfolio::s(6.f), EqAccent(), 24);
             if (st.AccentIndex == 0)
-                cdl->AddCircle(c, 9.0f, EqAccentA(0.9f), 24, 1.6f);
-            ImGui::SetCursorScreenPos(ImVec2(p.x, p.y + h + 2.0f));
+                cdl->AddCircle(c, portfolio::s(9.f), EqAccentA(0.9f), 24, portfolio::s(1.6f));
+            ImGui::SetCursorScreenPos(ImVec2(p.x, p.y + h + portfolio::s(2.f)));
 
             KeybindRow("Menu bind", &st.MenuBind, kMenuBinds, kMenuBindCount);
         }
@@ -1061,15 +1059,14 @@ for (int i = 0; i < kTabCount; ++i)
         const ImVec2 p0 = ImGui::GetWindowPos();
         const ImVec2 p1 = p0 + ImGui::GetWindowSize();
 
-        // ---- shell base (drawn slightly scaled during the open/close spring) ----
+        // ---- shell base (liquid glass) ----
         {
             const ImVec2 mid = (p0 + p1) * 0.5f;
             const float sc = 0.94f + 0.06f * appear;
             const ImVec2 b0 = mid + (p0 - mid) * sc;
             const ImVec2 b1 = mid + (p1 - mid) * sc;
-            dl->AddShadowRect(b0, b1, IM_COL32(0, 0, 0, (int)(120 * appear)), 30.0f, ImVec2(0, 10), 0, kRadius);
-            EqDrawShellBase(dl, b0, b1, kRadius, pal, st.Backdrop);
-            dl->AddRect(b0 + ImVec2(0.5f, 0.5f), b1 - ImVec2(0.5f, 0.5f), EqCol(pal.cardEdge), kRadius);
+            // Liquid glass panel
+            portfolio::DrawLiquidGlassPanel(dl, b0, b1, kRadius, st.Backdrop);
         }
 
         // ---- wordmark (top-left, above the sidebar) ----
@@ -1093,100 +1090,115 @@ for (int i = 0; i < kTabCount; ++i)
 
         if (!st.Closing)
         {
-            // Save pill
-            const ImVec2 bmin = h0, bmax = h0 + ImVec2(88.0f, 30.0f);
-            ImGui::SetCursorScreenPos(bmin);
-            bool saveHov = false, saveHeld = false;
-            if (EqPress("##ethnir_save", bmax - bmin, &saveHov, &saveHeld))
+            // Save button - liquid glass style (portfolio: 138x49, icon+label)
             {
-                st.HeaderPressed = 0;
-                st.SaveFlash = 1.6f;
-                st.Dirty = false;
-                st.DirtyTimer = 0.0f;
-            }
-            dl->AddRectFilled(bmin, bmax, EqCol(saveHeld || saveHov ? pal.hover : pal.cardBg), 15.0f);
-            dl->AddRect(bmin + ImVec2(0.5f, 0.5f), bmax - ImVec2(0.5f, 0.5f), EqCol(pal.cardEdge), 15.0f);
-            if (st.SaveFlash > 0.0f)
-            {
-                const float t = ImSaturate(st.SaveFlash);
-                EqDrawGlyph(dl, ICON_FA_CHECK, ImVec2(bmin.x + 19.0f, (bmin.y + bmax.y) * 0.5f), 11.5f, EqAccentA(0.45f + 0.55f * t));
-                EqDrawLabel(dl, ImVec2(bmin.x + 32.0f, (bmin.y + bmax.y) * 0.5f - 6.5f), "Saved", EqAccent(), 13.0f);
-            }
-            else
-            {
-                EqDrawGlyph(dl, ICON_FA_SAVE, ImVec2(bmin.x + 19.0f, (bmin.y + bmax.y) * 0.5f), 11.5f,
-                            EqCol(saveHov ? pal.text : pal.textDim));
-                EqDrawLabel(dl, ImVec2(bmin.x + 32.0f, (bmin.y + bmax.y) * 0.5f - 6.5f), "Save",
-                            EqCol(saveHov ? pal.text : pal.textDim), 13.0f);
+                const float saveW = portfolio::s(portfolio::topbar_save_w);
+                const float saveH = portfolio::s(portfolio::topbar_row_h);
+                const ImVec2 bmin = { h0.x, h0.y + portfolio::s(portfolio::topbar_row_y) };
+                const ImVec2 bmax = { bmin.x + saveW, bmin.y + saveH };
+                const float R = portfolio::s(14.f);
+
+                ImGui::SetCursorScreenPos(bmin);
+                bool saveHov = false, saveHeld = false;
+                const bool pressed = EqPress("##ethnir_save", bmax - bmin, &saveHov, &saveHeld);
+                if (pressed)
+                {
+                    st.HeaderPressed = 0;
+                    st.SaveFlash = 1.6f;
+                    st.Dirty = false;
+                    st.DirtyTimer = 0.0f;
+                }
+
+                // Liquid glass button
+                portfolio::DrawLiquidGlassButton(dl, bmin, bmax, R, 
+                    st.SaveFlash > 0.0f ? ICON_FA_CHECK : ICON_FA_SAVE,
+                    st.SaveFlash > 0.0f ? "Saved" : "Save",
+                    EqIconFont(), EqTextFont(),
+                    saveHov, saveHeld, false);
             }
 
-            // FPS + gear + minimise on the right
+            // FPS on the right
             char fpsbuf[24];
             ImFormatString(fpsbuf, IM_ARRAYSIZE(fpsbuf), "%d FPS", (int)(io.Framerate + 0.5f));
             const ImVec2 fts = EqLabelSize(fpsbuf, 11.0f);
-            EqDrawLabel(dl, ImVec2(h1.x - 30.0f - 6.0f - 36.0f - 12.0f - fts.x, h0.y + 15.0f - fts.y * 0.5f),
+            EqDrawLabel(dl, ImVec2(h1.x - portfolio::s(30.f) - portfolio::s(6.f) - portfolio::s(36.f) - portfolio::s(12.f) - fts.x, h0.y + portfolio::s(15.f) - fts.y * 0.5f),
                         fpsbuf, EqCol(pal.textFaint), 11.0f);
 
-            struct HeaderBtn { const char* id; const char* glyph; };
-            const HeaderBtn btns[2] = { { "##ethnir_gear", ICON_FA_COG }, { "##ethnir_min", ICON_FA_MINUS } };
+            // Gear + Minimize buttons - liquid glass style
+            const float iconSize = portfolio::s(portfolio::topbar_icon_size);
+            const float btnSize = portfolio::s(36.f);
             for (int i = 0; i < 2; ++i)
             {
-                const float bx = h1.x - 30.0f - i * 36.0f;
-                const ImVec2 bmin(bx, h0.y), bmax(bx + 30.0f, h0.y + 30.0f);
+                const float bx = h1.x - portfolio::s(30.f) - i * btnSize;
+                const ImVec2 bmin(bx, h0.y + portfolio::s(portfolio::topbar_row_y) + (portfolio::s(portfolio::topbar_row_h) - btnSize) * 0.5f);
+                const ImVec2 bmax(bx + btnSize, bmin.y + btnSize);
+                const float R = portfolio::s(12.f);
+
                 ImGui::SetCursorScreenPos(bmin);
                 bool hov = false, held = false;
-                const bool pressed = EqPress(btns[i].id, ImVec2(30, 30), &hov, &held);
+                const bool pressed = EqPress(i == 0 ? "##ethnir_gear" : "##ethnir_min", ImVec2(btnSize, btnSize), &hov, &held);
                 const bool on = (i == 0 && st.ShowSettingsPanel);
                 if (pressed)
                 {
                     if (i == 0) st.ShowSettingsPanel = !st.ShowSettingsPanel;
-                    else st.Closing = true;    // fade out, then report TrafficPressed
+                    else st.Closing = true;
                 }
-                const ImVec4 btnBg = on ? ImVec4(pal.text.x, pal.text.y, pal.text.z, 0.12f) : (hov ? pal.hover : pal.cardBg);
-                dl->AddRectFilled(bmin, bmax, EqCol(btnBg), 15.0f);
-                dl->AddRect(bmin + ImVec2(0.5f, 0.5f), bmax - ImVec2(0.5f, 0.5f), EqCol(pal.cardEdge), 15.0f);
-                EqDrawGlyph(dl, btns[i].glyph, (bmin + bmax) * 0.5f, 12.5f, EqCol(on || hov ? pal.text : pal.textDim));
+
+                portfolio::DrawLiquidGlassButton(dl, bmin, bmax, R,
+                    i == 0 ? ICON_FA_COG : ICON_FA_MINUS,
+                    nullptr,
+                    EqIconFont(), EqTextFont(),
+                    hov, held, on);
             }
 
-            // search (centred in the content column)
-            const float searchW = ImMin(300.0f, ImMax(170.0f, contentW - 330.0f));
-            const ImVec2 fmin(h0.x + (contentW - searchW) * 0.5f, h0.y);
-            const ImVec2 fmax(fmin.x + searchW, h0.y + 30.0f);
+            // Search field - liquid glass style (portfolio: 434x49)
+            const float searchW = portfolio::s(portfolio::topbar_search_w);
+            const float searchH = portfolio::s(portfolio::topbar_row_h);
+            const float right = h1.x - portfolio::s(26.f) - btnSize - portfolio::s(12.f);
+            const ImVec2 fmin(right - searchW, h0.y + portfolio::s(portfolio::topbar_row_y));
+            const ImVec2 fmax(right, fmin.y + searchH);
+            const float searchR = portfolio::s(14.f);
+
             if (io.MouseClicked[0])
             {
-                if (ImGui::IsMouseHoveringRect(bmin, bmax))                        st.HeaderControl = true;
-                if (ImGui::IsMouseHoveringRect(fmin, fmax))                        st.HeaderControl = true;
-                if (ImGui::IsMouseHoveringRect(ImVec2(fmax.x + 8.0f, h0.y), h1))   st.HeaderControl = true;
+                if (ImGui::IsMouseHoveringRect(fmin, fmax)) st.HeaderControl = true;
             }
-            dl->AddRectFilled(fmin, fmax, EqCol(pal.cardBg), 15.0f);
-            EqDrawGlyph(dl, ICON_FA_SEARCH, ImVec2(fmin.x + 17.0f, (fmin.y + fmax.y) * 0.5f), 11.0f, EqColA(pal.textFaint, 0.95f));
 
+            // Draw liquid glass search background
+            portfolio::DrawLiquidGlassSearchField(dl, fmin, fmax, searchR, "", EqTextFont(), EqIconFont(), false, false);
+
+            // Search icon (drawn by DrawLiquidGlassSearchField, but we also need placeholder)
             char hint[64];
             ImFormatString(hint, IM_ARRAYSIZE(hint), "explore %d functions...", st.LastRowCount);
-            ImGui::SetCursorScreenPos(ImVec2(fmin.x + 30.0f, fmin.y + (30.0f - ImGui::GetFrameHeight()) * 0.5f));
-            ImGui::PushItemWidth(searchW - 46.0f);
+            ImGui::SetCursorScreenPos({ fmin.x + portfolio::s(48.f), fmin.y + (searchH - ImGui::GetFrameHeight()) * 0.5f });
+            ImGui::PushItemWidth(searchW - portfolio::s(48.f) - portfolio::s(24.f));
+            ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, { 0.f, 0.f });
             ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0, 0, 0, 0));
             ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, ImVec4(0, 0, 0, 0));
             ImGui::PushStyleColor(ImGuiCol_FrameBgActive, ImVec4(0, 0, 0, 0));
-            ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0, 6));
+            ImGui::PushStyleColor(ImGuiCol_Text, pal.text);
+            if (EqTextFont()) ImGui::PushFont(EqTextFont());
             ImGui::InputTextWithHint("##ethnir_search", hint, st.Search, IM_ARRAYSIZE(st.Search));
             const bool searchActive = ImGui::IsItemActive();
+            if (EqTextFont()) ImGui::PopFont();
+            ImGui::PopStyleColor(4);
             ImGui::PopStyleVar();
-            ImGui::PopStyleColor(3);
             ImGui::PopItemWidth();
+
             if (searchActive)
-                dl->AddRect(fmin + ImVec2(0.5f, 0.5f), fmax - ImVec2(0.5f, 0.5f), EqAccentA(0.55f), 15.0f);
-            else
-                dl->AddRect(fmin + ImVec2(0.5f, 0.5f), fmax - ImVec2(0.5f, 0.5f), EqCol(pal.cardEdge), 15.0f);
+                st.HeaderControl = true;
+
+            // Clear button
             if (st.Search[0] != 0)
             {
-                const ImVec2 cmin(fmax.x - 24.0f, fmin.y + 7.0f);
+                const float clearSize = portfolio::s(24.f);
+                const ImVec2 cmin(fmax.x - clearSize - portfolio::s(12.f), fmin.y + (searchH - clearSize) * 0.5f);
                 ImGui::SetCursorScreenPos(cmin);
-                ImGui::InvisibleButton("##ethnir_sclear", ImVec2(16, 16));
-                const bool chov = ImGui::IsItemHovered();
-                if (ImGui::IsItemClicked()) st.Search[0] = 0;
-                if (chov) dl->AddCircleFilled(ImVec2(cmin.x + 8, cmin.y + 8), 8.0f, EqColA(pal.text, 0.10f), 20);
-                EqDrawGlyph(dl, ICON_FA_TIMES, ImVec2(cmin.x + 8, cmin.y + 8), 8.5f, EqColA(pal.textDim, chov ? 1.0f : 0.8f));
+                bool chov = false;
+                if (EqPress("##ethnir_sclear", ImVec2(clearSize, clearSize), &chov))
+                    st.Search[0] = 0;
+                EqDrawGlyph(dl, ICON_FA_TIMES, cmin + ImVec2(clearSize * 0.5f, clearSize * 0.5f), clearSize * 0.5f, 
+                    EqColA(pal.textDim, chov ? 1.0f : 0.8f));
             }
         }
 
