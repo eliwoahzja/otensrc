@@ -32,7 +32,7 @@
 		android:requestLegacyExternalStorage="true">
 
 		<activity
-			android:name="com.kazex404.imguigr.MainActivity"
+			android:name="com.android.support.MainActivity"
 			android:exported="true"
 			android:screenOrientation="sensorLandscape">
 

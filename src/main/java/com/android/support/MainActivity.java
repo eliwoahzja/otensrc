@@ -7,6 +7,7 @@ import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
+import android.widget.Toast;
 import android.app.ProgressDialog;
 import android.net.Uri;
 import android.provider.Settings;
@@ -145,23 +146,29 @@ public class MainActivity extends Activity {
         protected void onPostExecute(Boolean result) {
             progressDialog.dismiss();
 
-            File libFile = new File(MainActivity.this.getFilesDir().getAbsolutePath() + "/" + libname);
-
             if (result) {
-               
                 saveLastModifiedTime(serverLastModified);
-                if (libFile.exists()) {
-                    
-                    System.load(libFile.getAbsolutePath());
-                    startGame();
-                }
-            } else {
-                
-                if (libFile.exists()) {
-                    System.load(libFile.getAbsolutePath());
-                    startGame();
-                }
             }
+
+            File libFile = new File(MainActivity.this.getFilesDir().getAbsolutePath() + "/" + libname);
+            if (!libFile.exists()) {
+                // No local copy and the download failed: say so instead of
+                // finishing with nothing on screen.
+                Toast.makeText(MainActivity.this, "Library not available - download failed", Toast.LENGTH_LONG).show();
+                return;
+            }
+
+            // System.load throws UnsatisfiedLinkError on a corrupt/foreign .so.
+            // That is an Error, not an Exception, and it would kill the app
+            // before startGame() ever runs - load it defensively instead.
+            try {
+                System.load(libFile.getAbsolutePath());
+            } catch (Throwable t) {
+                Log.e("LoadLibrary", "Failed to load " + libFile.getAbsolutePath(), t);
+                Toast.makeText(MainActivity.this, "Failed to load library: " + t.getMessage(), Toast.LENGTH_LONG).show();
+                return;
+            }
+            startGame();
         }
 
        
@@ -185,6 +192,10 @@ public class MainActivity extends Activity {
             startActivity(intent);
         } catch (ClassNotFoundException e) {
             Log.e("StartGame", "Game activity not found", e);
+            Toast.makeText(this, "Game activity not found: " + GameActivity, Toast.LENGTH_LONG).show();
+        } catch (Exception e) {
+            Log.e("StartGame", "Could not launch the game", e);
+            Toast.makeText(this, "Could not launch the game", Toast.LENGTH_LONG).show();
         }
     }
 }
