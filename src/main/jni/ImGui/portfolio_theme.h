@@ -111,7 +111,7 @@ namespace portfolio
 
     inline constexpr float kScreenMarginPx = 10.f;
     inline constexpr float kMinFactor       = 0.55f;
-    inline constexpr float kMaxFactor       = 2.5f;
+    inline constexpr float kMaxFactor       = 0.85f;
     inline constexpr float kTouchTargetPx   = 44.f;
 
     inline float settings_box_height(int rows)

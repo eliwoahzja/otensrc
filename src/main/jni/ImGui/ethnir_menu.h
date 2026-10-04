@@ -793,15 +793,7 @@ namespace ethnir
         const float itemPitch = portfolio::s(portfolio::sidebar_tab_h + portfolio::sidebar_tabs_gap);
         const float itemH = portfolio::s(portfolio::sidebar_tab_h);
 
-        int activeRow = 0;
-        for (int i = 0; i < kTabCount; ++i)
-            if (kTabs[i].tab == st.ActiveTab) activeRow = i;
-
-        const float hlTarget = itemTop + activeRow * itemPitch;
-        const float hlY = EqAnim("##ethnir_hl", hlTarget, 14.0f, ImGui::GetIO().DeltaTime, hlTarget);
-        dl->AddRectFilled(ImVec2(s0.x + 8.0f, hlY), ImVec2(s1.x - 8.0f, hlY + itemH), EqColA(pal.text, 0.10f), 11.0f);
-        dl->AddRectFilled(ImVec2(s0.x + 8.0f, hlY + 8.0f), ImVec2(s0.x + 11.0f, hlY + itemH - 8.0f), EqAccent(), 1.5f);
-
+        // activeRow removed: the per-tab gradient replaced the sliding highlight
 for (int i = 0; i < kTabCount; ++i)
         {
 
@@ -870,8 +862,12 @@ for (int i = 0; i < kTabCount; ++i)
         const ImVec2 size(portfolio::s(258.f), 0.0f);
         if (!st.PanelPosInit)
         {
-            st.PanelPos = ImVec2(ImMin(st.WinPos.x + kWinW + 18.0f, io.DisplaySize.x - size.x - 12.0f),
-                                 st.WinPos.y + 26.0f);
+            const float gap = portfolio::s(14.f);
+            float px = st.WinPos.x + kWinW + gap;
+            if (px + size.x + 12.0f > io.DisplaySize.x)
+                px = st.WinPos.x - size.x - gap;
+            st.PanelPos = ImVec2(ImClamp(px, 12.0f, ImMax(12.0f, io.DisplaySize.x - size.x - 12.0f)),
+                                 st.WinPos.y + portfolio::s(26.f));
             st.PanelPosInit = true;
         }
         const float panelMaxX = io.DisplaySize.x - size.x - 12.0f;
