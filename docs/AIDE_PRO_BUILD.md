@@ -46,13 +46,14 @@ FILE_LIST += $(wildcard $(LOCAL_PATH)/*.c*)
 
 ### Always do a clean rebuild after pulling
 
-The repo ships AIDE's build outputs (`build/`, `src/main/obj/`) from an older
-build, including compiled `ImGui` objects. `make` compares timestamps, so an
-incremental AIDE build can link objects built from **old** sources and keep
-reproducing bugs you already fixed in the tree — or fail on a header that no
-longer exists in the new sources.
+The AIDE/ndk-build output trees (`build/`, `src/main/obj/`, `src/main/libs/`)
+are no longer tracked, so a fresh clone starts clean. A device that pulled over
+an older checkout can still hold stale outputs, though — including compiled
+`ImGui` objects. `make` compares timestamps, so an incremental build can link
+objects built from **old** sources and keep reproducing bugs you already fixed
+in the tree — or fail on a header that no longer exists in the new sources.
 
-Before building after a pull, delete both output trees from the device:
+If those trees exist locally, delete them before building:
 
 ```sh
 rm -rf build src/main/obj src/main/libs
