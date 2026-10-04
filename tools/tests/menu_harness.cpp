@@ -39,7 +39,7 @@ static void FakeTab(int tab)
 
     if (tab == 0 || tab == 1 || tab == 2)
     {
-        BeginColumns();
+        EqBeginColumns();
         SectionLabel("COLUMN A");
         BeginGroupCard("eth_a");
         for (int i = 0; i < 8; ++i)
@@ -48,7 +48,7 @@ static void FakeTab(int tab)
             RowToggle(ICON_FA_EYE, lb[i], &tg[i]);
         }
         EndGroupCard();
-        NextColumn();
+        EqNextColumn();
         SectionLabel("COLUMN B");
         BeginGroupCard("eth_b");
         ComboRow(ICON_FA_SLIDERS_H, "Mode", &cb[0], optsA, 3);
@@ -57,7 +57,7 @@ static void FakeTab(int tab)
         RowSlider(ICON_FA_SLIDERS_H, "Distance", &sl[1], 0.0f, 100.0f, "%.0f");
         ColorRow(ICON_FA_EYE, "ESP colour", col4);
         EndGroupCard();
-        EndColumns();
+        EqEndColumns();
     }
     else if (tab == 3)
     {
@@ -94,7 +94,7 @@ static ImGuiIO* g_io = nullptr;
 static void Frame()
 {
     ImGui::NewFrame();
-    ethnir::Render(g_st);
+    ethnir::EqRender(g_st);
     ImGui::Render();
 }
 

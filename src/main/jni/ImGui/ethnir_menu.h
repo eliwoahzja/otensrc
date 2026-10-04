@@ -39,10 +39,10 @@
 //      idle and then calls OnSave() — never while a slider is being dragged.
 //
 //  Public API (consumed by Main.cpp / runtime_preview_menu.h):
-//    MenuState, Render(),
+//    MenuState, EqRender(),
 //    RowToggle(), RowSlider(), ComboRow(), ColorRow(), SegmentedRow(),
 //    KeybindRow(), SectionLabel(), BeginGroupCard(), EndGroupCard(),
-//    BeginColumns(), NextColumn(), EndColumns(), EqPassFilter()
+//    EqBeginColumns(), EqNextColumn(), EqEndColumns(), EqPassFilter()
 // ============================================================================
 
 namespace ethnir
@@ -270,6 +270,14 @@ namespace ethnir
     // ------------------------------------------------------------------
     //  Columns (two cards side by side, like the iOS inset groups)
     // ------------------------------------------------------------------
+    //  These carry the Eq* prefix on purpose. They are NOT ImGui's legacy
+    //  column API: ImGui already declares BeginColumns/NextColumn/EndColumns in
+    //  namespace ImGui, and every tab body here does `using namespace ethnir;`.
+    //  As soon as a translation unit also has `using namespace ImGui;` in scope,
+    //  an unqualified NextColumn()/EndColumns() is ambiguous and the NDK build
+    //  fails with "call to 'NextColumn' is ambiguous". The prefix removes the
+    //  collision outright instead of depending on which namespaces a caller
+    //  happens to import. tools/tests/compile_shape_check.cpp locks this in.
     struct ColumnState { bool Active = false; float X0 = 0, X1 = 0, W = 0, TopY = 0; int Col = 0; float Y[2] = { 0, 0 }; };
     inline ColumnState& EqCols() { static ColumnState c; return c; }
     inline float EqCardWidth()
@@ -279,7 +287,7 @@ namespace ethnir
         return ImGui::GetContentRegionAvail().x;
     }
 
-    inline void BeginColumns(float gap = kColGap)
+    inline void EqBeginColumns(float gap = kColGap)
     {
         ColumnState& c = EqCols();
         const ImVec2 p = ImGui::GetCursorScreenPos();
@@ -293,7 +301,7 @@ namespace ethnir
         c.Y[0] = c.Y[1] = p.y;
     }
 
-    inline void NextColumn()
+    inline void EqNextColumn()
     {
         ColumnState& c = EqCols();
         if (!c.Active || c.Col >= 1) return;
@@ -302,7 +310,7 @@ namespace ethnir
         ImGui::SetCursorScreenPos(ImVec2(c.X1, c.TopY));
     }
 
-    inline void EndColumns()
+    inline void EqEndColumns()
     {
         ColumnState& c = EqCols();
         if (!c.Active) return;
@@ -1059,7 +1067,7 @@ namespace ethnir
     // ------------------------------------------------------------------
     //  Main render
     // ------------------------------------------------------------------
-    inline void Render(MenuState& st)
+    inline void EqRender(MenuState& st)
     {
         EqState() = &st;
         st.HeaderPressed = -1;
@@ -1307,7 +1315,7 @@ namespace ethnir
         else if (st.DrawTab)
         {
             st.DrawTab(st.ActiveTab);
-            EndColumns();
+            EqEndColumns();
         }
         ImGui::EndChild();
         ImGui::PopStyleColor(2);

@@ -54,7 +54,7 @@ static void DrawTab(int)
 static ethnir::MenuState g_st;
 static ImGuiIO* g_io = nullptr;
 
-static void Frame() { ImGui::NewFrame(); ethnir::Render(g_st); ImGui::Render(); }
+static void Frame() { ImGui::NewFrame(); ethnir::EqRender(g_st); ImGui::Render(); }
 static void Click(float x, float y)
 {
     g_io->AddMousePosEvent(x, y);

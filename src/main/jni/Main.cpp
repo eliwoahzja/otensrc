@@ -216,7 +216,7 @@ static void RenderSkinsTabContent(float contentWidth, float contentHeight)
 }
 // Tab ids are the shell's own order (see ethnir::kTabs): 0 Players, 1 AimBot,
 // 2 World, 3 Skins, 4 Misc, 5 Config. Tabs that use the shell's two-column
-// layout (0-2) open their columns themselves via ethnir::BeginColumns().
+// layout (0-2) open their columns themselves via ethnir::EqBeginColumns().
 static void EthnirDrawTab(int tab)
 {
     const ImVec2 region = ImGui::GetContentRegionAvail();
@@ -803,7 +803,7 @@ EGLBoolean hook_eglSwapBuffers(EGLDisplay dpy, EGLSurface surface)
             // auto save: the shell debounces 500 ms after the last change and
             // never fires while a slider is held; writes are atomic (tmp+rename)
             menuState.OnSave = []() { SaveConfiguration("ethnir"); };
-            ethnir::Render(menuState);
+            ethnir::EqRender(menuState);
 
             if (menuState.HeaderPressed == 0)
             {

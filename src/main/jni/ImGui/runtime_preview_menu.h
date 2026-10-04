@@ -191,7 +191,7 @@ inline void RenderEspTab(float childWidth, float childHeight) {
     (void)childWidth;
     (void)childHeight;
     using namespace ethnir;
-    BeginColumns();
+    EqBeginColumns();
     SectionLabel("PLAYERS");
     BeginGroupCard("eth_esp");
     RowToggle(ICON_FA_EYE, "ESP Line", &Config.ESPMenu.isPlayerLine);
@@ -206,7 +206,7 @@ inline void RenderEspTab(float childWidth, float childHeight) {
     RowToggle(ICON_FA_EYE, "Yellow Wallhack", &Config.ExtraMenu.WallHack);
     RowToggle(ICON_FA_EYE, "Red Wallhack", &Config.ExtraMenu.RedWallhack);
     EndGroupCard();
-    NextColumn();
+    EqNextColumn();
     SectionLabel("ESP OPTIONS");
     BeginGroupCard("eth_esp_options");
     static const char *boxTypes[] = {"Fill", "Outline", "Corner", "3D"};
@@ -244,21 +244,21 @@ inline void RenderEspTab(float childWidth, float childHeight) {
     Config.ESPMenu.HealthPosition = (EspHealthPosition)g_espHealthPosition;
     Config.ESPMenu.EspStyle = (EspStyleTarget)g_espStyle;
     EndGroupCard();
-    EndColumns();
+    EqEndColumns();
 }
 
 inline void RenderAimTab(float childWidth, float childHeight) {
     (void)childWidth;
     (void)childHeight;
     using namespace ethnir;
-    BeginColumns();
+    EqBeginColumns();
     SectionLabel("AIMBOT");
     BeginGroupCard("eth_aim");
     RowToggle(ICON_FA_CROSSHAIRS, "Aimbot 360", &Config.Aim.Aimbot360);
     RowToggle(ICON_FA_CROSSHAIRS, "Bullet Track", &Config.Aim.AimSilent);
     RowSlider(ICON_FA_CROSSHAIRS, "Aim Assist Size", &Config.Aim.AimAssistSize, 0.0f, 100.0f, "%.0f");
     EndGroupCard();
-    NextColumn();
+    EqNextColumn();
     SectionLabel("COMBAT");
     BeginGroupCard("eth_combat");
     static const char *targets[] = {"Head", "Chest", "Body"};
@@ -275,14 +275,14 @@ inline void RenderAimTab(float childWidth, float childHeight) {
     Config.Aim.By = (EAim)aimBy;
     RowSlider(ICON_FA_CROSSHAIRS, "FOV Size", &Config.Aim.Cross, 0.0f, 100.0f, "%.0f");
     EndGroupCard();
-    EndColumns();
+    EqEndColumns();
 }
 
 inline void RenderMemoryTab(float childWidth, float childHeight) {
     (void)childWidth;
     (void)childHeight;
     using namespace ethnir;
-    BeginColumns();
+    EqBeginColumns();
     SectionLabel("COMBAT HACKS");
     BeginGroupCard("eth_combat_hacks");
     RowToggle(ICON_FA_BOLT, "Hitbox", &Config.ExtraMenu.Hit);
@@ -293,7 +293,7 @@ inline void RenderMemoryTab(float childWidth, float childHeight) {
     RowToggle(ICON_FA_BOLT, "Firerate", &Config.ExtraMenu.Fire);
     RowToggle(ICON_FA_BOLT, "Weapon Kinetic", &Config.ExtraMenu.Kinetic);
     EndGroupCard();
-    NextColumn();
+    EqNextColumn();
     SectionLabel("UTILITY HACKS");
     BeginGroupCard("eth_utility_hacks");
     RowToggle(ICON_FA_BOLT, "Unlock Blueprint", &Config.ExtraMenu.UnlockBlueprint);
@@ -312,7 +312,7 @@ inline void RenderMemoryTab(float childWidth, float childHeight) {
     RowSlider(ICON_FA_SLIDERS_H, "SpeedHack", &speedHackMultiplier, 0.5f, 2.0f, "%.1fx");
     RowSlider(ICON_FA_SLIDERS_H, "High Jump", &jumpHeightMultiplier, 0.5f, 5.0f, "%.2fx");
     EndGroupCard();
-    EndColumns();
+    EqEndColumns();
 }
 
 inline void RenderMiscTab(float contentWidth, float contentHeight) {

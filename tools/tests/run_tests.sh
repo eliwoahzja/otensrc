@@ -25,6 +25,22 @@ IMGUI_SRCS="$IMGUI/imgui.cpp $IMGUI/imgui_draw.cpp $IMGUI/imgui_widgets.cpp $IMG
 SUITES="menu_harness controls_harness"
 FAILED=""
 
+# Compile-only check that no public ethnir name can collide with an ImGui name
+# in a translation unit that imports both namespaces (the shape used by the tab
+# bodies). This is what stopped the device build failing with
+# "call to 'NextColumn' is ambiguous".
+compile_shape_check() {
+    echo ""
+    echo "=== compile_shape_check ==="
+    if "$CXX" $CXXFLAGS -fsyntax-only "$ROOT/tools/tests/compile_shape_check.cpp"; then
+        echo "ok   public API does not collide with ImGui names under 'using namespace'"
+        return 0
+    fi
+    echo "FAIL compile_shape_check (public API collides with ImGui names)"
+    FAILED="$FAILED compile_shape_check"
+    return 1
+}
+
 command -v "$CXX" >/dev/null 2>&1 || { echo "error: $CXX not found" >&2; exit 127; }
 mkdir -p "$BUILD"
 
@@ -49,6 +65,8 @@ run_suite() {
 for suite in $SUITES; do
     run_suite "$suite" "$suite.cpp" || true
 done
+
+compile_shape_check || true
 
 # SaveConfig getter suite.
 # SaveConfig.h binds to the game's `Config` settings struct, which lives in a
