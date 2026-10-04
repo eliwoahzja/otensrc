@@ -1,6 +1,9 @@
 #pragma once
 #include "imgui.h"
 #include "imgui_internal.h"
+#ifdef ETHNIR_LIQUID_SHADER
+#include "liquid_glass_shader.h"
+#endif
 
 namespace portfolio
 {
@@ -278,8 +281,24 @@ namespace portfolio
             const ImVec4 r(p0.x, p0.y, w, h);
             ImVec2 uv_min, uv_max;
             uv_for_screen_rect(r, uv_min, uv_max);
-            dl->AddImageRounded(backdrop, p0, p1, uv_min, uv_max, IM_COL32_WHITE, R);
 
+#ifdef ETHNIR_LIQUID_SHADER
+            // Real optics: SDF normals, UV lensing, per-channel dispersion and
+            // a Fresnel rim. Falls through to the draw-call version below if
+            // the program failed to build.
+            liquid::Params lp;
+            lp.rect_min = p0;
+            lp.rect_size = ImVec2(w, h);
+            lp.uv = ImVec4(uv_min.x, uv_min.y, uv_max.x, uv_max.y);
+            lp.radius = R;
+            if (liquid::draw(dl, (GLuint)(intptr_t)backdrop, lp))
+            {
+                dl->AddRect(p0 + ImVec2(0.5f, 0.5f), p1 - ImVec2(0.5f, 0.5f),
+                            IM_COL32(255, 255, 255, 26), R, 0, 1.f);
+                return;
+            }
+#endif
+            dl->AddImageRounded(backdrop, p0, p1, uv_min, uv_max, IM_COL32_WHITE, R);
             dl->AddRectFilled(p0, p1, IM_COL32(14, 14, 22, 80), R);
         }
         else
