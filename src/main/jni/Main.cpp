@@ -88,6 +88,10 @@ ImFont* icomoon_page = nullptr;
 static int g_GlWidth, g_GlHeight;
 static bool g_App = false;
 
+// Real-time backdrop texture (captures game frame each frame)
+static GLuint g_realtimeBackdrop = 0;
+static int g_backdropWidth = 0, g_backdropHeight = 0;
+
 struct My_Patches
 {
     MemoryPatch A1;
@@ -339,6 +343,25 @@ EGLBoolean hook_eglSwapBuffers(EGLDisplay dpy, EGLSurface surface)
         Config.Bline = 2.0f;
         Config.Pline = 2.0f;
         g_App = true;
+
+        // Create real-time backdrop texture (captures game frame each frame)
+        glGenTextures(1, &g_realtimeBackdrop);
+        g_backdropWidth = g_GlWidth;
+        g_backdropHeight = g_GlHeight;
+        glBindTexture(GL_TEXTURE_2D, g_realtimeBackdrop);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, g_GlWidth, g_GlHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+    }
+    else if (g_GlWidth != g_backdropWidth || g_GlHeight != g_backdropHeight)
+    {
+        // Resize backdrop texture if display size changed
+        g_backdropWidth = g_GlWidth;
+        g_backdropHeight = g_GlHeight;
+        glBindTexture(GL_TEXTURE_2D, g_realtimeBackdrop);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, g_GlWidth, g_GlHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
     }
 
     g_OmniTime += ImGui::GetIO().DeltaTime;
@@ -347,7 +370,11 @@ EGLBoolean hook_eglSwapBuffers(EGLDisplay dpy, EGLSurface surface)
     screenWidth = (float)g_GlWidth;
     screenHeight = (float)g_GlHeight;
     io->DisplaySize = ImVec2((float)g_GlWidth, (float)g_GlHeight);
-    
+
+    // CAPTURE REAL-TIME BACKDROP: copy current framebuffer (game's rendered frame)
+    glBindTexture(GL_TEXTURE_2D, g_realtimeBackdrop);
+    glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 0, 0, g_GlWidth, g_GlHeight);
+
     // Update portfolio theme scale for current frame
     portfolio::set_display_size(io->DisplaySize);
     portfolio::apply_scaled_style();
@@ -445,7 +472,7 @@ EGLBoolean hook_eglSwapBuffers(EGLDisplay dpy, EGLSurface surface)
             ImVec2 pillMax = ImVec2(pillMin.x + line_w, pillMin.y + click_h);
             
             // Liquid glass collapsed pill
-            portfolio::DrawLiquidGlassPanel(indicatorDraw, pillMin, pillMax, pillR);
+            portfolio::DrawLiquidGlassPanel(indicatorDraw, pillMin, pillMax, pillR, g_realtimeBackdrop ? (ImTextureID)(intptr_t)g_realtimeBackdrop : nullptr);
             
             GLuint collapsedLogo = LoadAstralTexture(astral_data, sizeof(astral_data));
             const float logoPad = portfolio::s(6.f) * c::scale * collapsedScaleSetting;
@@ -792,13 +819,8 @@ EGLBoolean hook_eglSwapBuffers(EGLDisplay dpy, EGLSurface surface)
             // forces the floating info overlay off every frame
             Config.ExtraMenu.ClearDisplay = true;
 
-            // Liquid-glass shell: the reference wallpaper is baked into the
-            // binary pre-blurred (IMAGE/glass_bg.h) and uploaded once at startup,
-            // so the shell draws real frosted glass with zero per-frame blur
-            // cost. If the upload ever fails, fall back to the painted shell.
-            menuState.Backdrop = runtime_preview_menu::g_ethnirGlassBackdrop.id
-                ? (ImTextureID)(intptr_t)runtime_preview_menu::g_ethnirGlassBackdrop.id
-                : nullptr;
+            // Real-time backdrop: captures game frame each frame
+            menuState.Backdrop = g_realtimeBackdrop ? (ImTextureID)(intptr_t)g_realtimeBackdrop : nullptr;
             menuState.DrawTab = EthnirDrawTab;
             // debounced 500ms auto save, never mid-drag; writes are atomic
             menuState.OnSave = []() { SaveConfiguration("ethnir"); };

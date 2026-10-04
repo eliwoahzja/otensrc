@@ -10,6 +10,8 @@
 #include <cctype>
 #include <cstdio>
 
+extern GLuint g_realtimeBackdrop;
+
 // ============================================================================
 //  ETHNIR — iOS Settings-style shell for the in-game overlay.
 //  Consumed by Main.cpp / runtime_preview_menu.h through the row helpers.
@@ -867,7 +869,7 @@ for (int i = 0; i < kTabCount; ++i)
         const float R = portfolio::s(portfolio::shell_round);
 
         // Liquid glass panel
-        portfolio::DrawLiquidGlassPanel(dl, p0, p1, R);
+        portfolio::DrawLiquidGlassPanel(dl, p0, p1, R, g_realtimeBackdrop ? (ImTextureID)(intptr_t)g_realtimeBackdrop : nullptr);
 
         // Title
         ImGui::SetCursorScreenPos({ p0.x + portfolio::s(16.f), p0.y + portfolio::s(15.f) });
