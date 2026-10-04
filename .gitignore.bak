@@ -7,6 +7,6 @@ tools/
 # AIDE / ndk-build outputs and the generated menu-test binaries: everything
 # under these trees is regenerated on the device or by sh tools/tests/run_tests.sh.
 # Never tracked - a fresh clone must start clean.
-
+build/
 src/main/obj/
 src/main/libs/

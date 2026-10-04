@@ -1,0 +1,6 @@
+# view AndroidManifest.xml #generated:34
+-keep class com.android.support.MainActivity { <init>(...); }
+
+# view AndroidManifest.xml #generated:51
+-keep class com.kazex404.imguigr.Menu { <init>(...); }
+
