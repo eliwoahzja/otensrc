@@ -316,11 +316,20 @@ inline void RenderMemoryTab(float childWidth, float childHeight) {
 }
 
 inline void RenderMiscTab(float contentWidth, float contentHeight) {
-    (void)contentHeight;
     const misc_tab::LayoutMetrics layout = misc_tab::CalculateLayout(contentWidth, g_activeChangelogTab);
+    const float columnGap = 16.0f;
+    const float columnWidth = ImMax(0.0f, ImFloor((contentWidth - columnGap) * 0.5f));
+    const float rightTopHeight = ImMax(0.0f, ImFloor((contentHeight - layout.rowGap) * 0.5f));
+    const float rightBottomHeight = ImMax(0.0f, contentHeight - layout.rowGap - rightTopHeight);
+    const float changelogHeight = ImMax(layout.changelogHeight, contentHeight - 20.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing,
+                        ImVec2(ImGui::GetStyle().ItemSpacing.x, layout.rowGap));
+
+    ethnir::EqBeginColumns();
+    ethnir::SectionLabel("CHANGELOG");
     {
         const ChildFrame changelog = BeginContentChild(
-            "CHANGELOG##MISC_CHANGELOG", ImVec2(contentWidth, layout.changelogHeight),
+            "CHANGELOG##MISC_CHANGELOG", ImVec2(columnWidth, changelogHeight),
             ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
         const float changelogTabGap = 5.0f;
         const float changelogTabH = 40.0f;
@@ -358,9 +367,11 @@ inline void RenderMiscTab(float contentWidth, float contentHeight) {
         EndContentChild(changelog);
     }
     misc_tab::ContentGap(layout.rowGap);
+    ethnir::EqNextColumn();
+    ethnir::SectionLabel("INFO");
     {
         const ChildFrame info = BeginContentChild(
-            "INFO##MISC_INFO", ImVec2(contentWidth, layout.infoHeight),
+            "INFO##MISC_INFO", ImVec2(columnWidth, rightTopHeight),
             ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
         misc_tab::DrawInfoSummary();
         EndContentChild(info);
@@ -368,49 +379,54 @@ inline void RenderMiscTab(float contentWidth, float contentHeight) {
     misc_tab::ContentGap(layout.rowGap);
     {
         const ChildFrame price = BeginContentChild(
-            "PRICELIST##MISC_PRICELIST", ImVec2(contentWidth, layout.priceHeight),
+            "PRICELIST##MISC_PRICELIST", ImVec2(columnWidth, rightBottomHeight),
             ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
         misc_tab::DrawPriceSummary("##runtime_misc_inline_prices");
         EndContentChild(price);
     }
+    ethnir::EqEndColumns();
+    ImGui::PopStyleVar();
 }
 
 inline void RenderSettingsTab(float contentWidth, float contentHeight) {
-    ImGuiStyle &style = ImGui::GetStyle();
-    const float columnGap = ImClamp(contentWidth * 0.022f, 12.0f, 18.0f);
     const float rowGap = 6.0f;
-    const float leftChildWidth = ImMax(0.0f, ImFloor((contentWidth - columnGap) * 0.5f));
-    const float rightChildWidth = ImMax(0.0f, contentWidth - columnGap - leftChildWidth);
+    const float columnGap = 16.0f;
+    const float childWidth = ImMax(0.0f, ImFloor((contentWidth - columnGap) * 0.5f));
     const float topChildHeight = ImMax(0.0f, ImFloor((contentHeight - rowGap) * 0.5f));
     const float bottomChildHeight = ImMax(0.0f, contentHeight - rowGap - topChildHeight);
-    const float startX = ImGui::GetCursorPosX();
-    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(style.ItemSpacing.x, rowGap));
-    ImGui::SetCursorPosX(startX);
-    custom::BeginGroup();
+    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing,
+                        ImVec2(ImGui::GetStyle().ItemSpacing.x, rowGap));
+
+    ethnir::EqBeginColumns();
+    ethnir::SectionLabel("ABOUT");
     {
         const ChildFrame licenseChild = BeginContentChild(
-            "LICENSE INFO##RUNTIME_LICENSE_INFO", ImVec2(leftChildWidth, topChildHeight));
+            "LICENSE INFO##RUNTIME_LICENSE_INFO", ImVec2(childWidth, topChildHeight));
         settings_tab::RenderLicenseCard();
         EndContentChild(licenseChild);
+    }
+    {
         const ChildFrame logoChild = BeginContentChild(
-            "LOGO SETTINGS##RUNTIME_LOGO_SETTINGS", ImVec2(leftChildWidth, bottomChildHeight));
+            "LOGO SETTINGS##RUNTIME_LOGO_SETTINGS", ImVec2(childWidth, bottomChildHeight));
         settings_tab::RenderLogoCard();
         EndContentChild(logoChild);
     }
-    custom::EndGroup();
-    ImGui::SameLine(0.0f, columnGap);
-    custom::BeginGroup();
+    ethnir::EqNextColumn();
+    ethnir::SectionLabel("CONFIGURATION");
     {
         const ChildFrame configChild = BeginContentChild(
-            "CONFIG MANAGEMENT##RUNTIME_CONFIG_MANAGEMENT", ImVec2(rightChildWidth, topChildHeight));
+            "CONFIG MANAGEMENT##RUNTIME_CONFIG_MANAGEMENT", ImVec2(childWidth, topChildHeight));
         settings_tab::RenderConfigCard();
         EndContentChild(configChild);
+    }
+    {
         const ChildFrame enhancementChild = BeginContentChild(
-            "ENHANCEMENT##RUNTIME_ENHANCEMENT", ImVec2(rightChildWidth, bottomChildHeight));
+            "ENHANCEMENT##RUNTIME_ENHANCEMENT", ImVec2(childWidth, bottomChildHeight));
         settings_tab::RenderEnhancementCard();
         EndContentChild(enhancementChild);
     }
-    custom::EndGroup();
+    ethnir::EqEndColumns();
+
     ImGui::PopStyleVar();
 }
 

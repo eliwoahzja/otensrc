@@ -158,7 +158,10 @@ static void RenderSkinsTabContent(float contentWidth, float contentHeight)
 {
     (void)contentWidth;
     (void)contentHeight;
+    ethnir::EqBeginColumns();
+    ethnir::SectionLabel("SKINS");
     RenderSkinCategoryContent(skinSubTab, true);
+    ethnir::EqNextColumn();
     ethnir::SectionLabel("CAMO MODIFIER");
     ethnir::BeginGroupCard("eth_camo");
     if (ethnir::RowToggle(nullptr, "Default / OFF", &camoOff)) {
@@ -213,9 +216,11 @@ static void RenderSkinsTabContent(float contentWidth, float contentHeight)
     ImGui::Dummy(ImVec2(0, 4));
     ImGui::TextDisabled("Only applies to [M] Mythic and [L] Legendary weapon skins.");
     ethnir::EndGroupCard();
+    ethnir::EqEndColumns();
 }
 // Tab ids follow ethnir::kTabs: 0 Players, 1 AimBot, 2 World, 3 Skins,
-// 4 Misc, 5 Config. Tabs 0-2 open their own columns via EqBeginColumns().
+// 4 Misc, 5 Config. Every tab lays itself out with the shell's own column and
+// card helpers, so all six read the same.
 static void EthnirDrawTab(int tab)
 {
     const ImVec2 region = ImGui::GetContentRegionAvail();
@@ -801,6 +806,14 @@ EGLBoolean hook_eglSwapBuffers(EGLDisplay dpy, EGLSurface surface)
             menuState.DrawTab = EthnirDrawTab;
             // debounced 500ms auto save, never mid-drag; writes are atomic
             menuState.OnSave = []() { SaveConfiguration("ethnir"); };
+
+            // Touch positions arrive in the game's own pixel space (Unity's
+            // Screen size), while io.DisplaySize is the raw EGL surface. Where
+            // those disagree a raw MouseDelta moves the window less far than the
+            // finger travels, so feed the shell the measured per-axis ratio.
+            menuState.DragScaleX = g_GlWidth  > 0 ? (float)get_width()  / (float)g_GlWidth  : 1.0f;
+            menuState.DragScaleY = g_GlHeight > 0 ? (float)get_height() / (float)g_GlHeight : 1.0f;
+
             ethnir::EqRender(menuState);
 
             if (menuState.HeaderPressed == 0)

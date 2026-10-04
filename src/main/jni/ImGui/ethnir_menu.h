@@ -58,6 +58,18 @@ namespace ethnir
         bool   PanelPosInit = false;
         bool   PanelDragging = false;
         float  SaveFlash  = 0.0f;               // "Saved" chip timer
+        // Touch space -> GL space. Touch positions come from the game in its
+        // own pixel space while io.DisplaySize is the raw EGL surface, so a raw
+        // MouseDelta under-moves the window. The host writes the measured ratio
+        // per axis here; 1.0 when both spaces agree.
+        float  DragScaleX = 1.0f;
+        float  DragScaleY = 1.0f;
+        // true when this frame's press landed on a real header control
+        bool   HeaderControl = false;
+        // pointer position when the drag started; the window is moved by the
+        // delta since this, never by io.MouseDelta, whose first frame after a
+        // press still carries the position from before the press
+        ImVec2 DragRef   = ImVec2(0.0f, 0.0f);
         bool   FrameSearchHit = false;
         bool   LastSearchHit  = true;
         bool   HelpChipPressedFrame = false;   // the "?" chip was tapped this frame
@@ -96,7 +108,7 @@ namespace ethnir
     struct Palette
     {
         ImVec4 base, scrim, text, textDim, textFaint;
-        ImVec4 cardBg, cardEdge, hover, side, sideEdge, switchOff, track, popupBg, sep;
+        ImVec4 cardBg, cardEdge, hover, side, sideEdge, switchOff, track, popupBg, sep, glassRim;
     };
 
     inline Palette EqPalDark()
@@ -109,6 +121,7 @@ namespace ethnir
         p.textFaint = ImVec4(0.550f, 0.580f, 0.645f, 1.00f);
         p.cardBg    = ImVec4(1.000f, 1.000f, 1.000f, 0.050f);
         p.cardEdge  = ImVec4(1.000f, 1.000f, 1.000f, 0.070f);
+        p.glassRim  = ImVec4(1.000f, 1.000f, 1.000f, 1.00f);
         p.hover     = ImVec4(1.000f, 1.000f, 1.000f, 0.070f);
         p.side      = ImVec4(0.000f, 0.000f, 0.000f, 0.180f);
         p.sideEdge  = ImVec4(1.000f, 1.000f, 1.000f, 0.055f);
@@ -129,6 +142,7 @@ namespace ethnir
         p.textFaint = ImVec4(0.510f, 0.540f, 0.600f, 1.00f);
         p.cardBg    = ImVec4(1.000f, 1.000f, 1.000f, 0.720f);
         p.cardEdge  = ImVec4(0.000f, 0.000f, 0.000f, 0.055f);
+        p.glassRim  = ImVec4(1.000f, 1.000f, 1.000f, 1.00f);
         p.hover     = ImVec4(0.000f, 0.000f, 0.000f, 0.040f);
         p.side      = ImVec4(1.000f, 1.000f, 1.000f, 0.520f);
         p.sideEdge  = ImVec4(0.000f, 0.000f, 0.000f, 0.055f);
@@ -170,6 +184,26 @@ namespace ethnir
     inline ImU32 EqAccent() { return main_runtime_theme::GetAccentU32(); }
     inline ImVec4 EqAccentVec() { return ImGui::ColorConvertU32ToFloat4(EqAccent()); }
     inline ImU32 EqAccentA(float a) { ImVec4 v = EqAccentVec(); v.w = a; return ImGui::GetColorU32(v); }
+
+    // iOS glass edge: a specular rim that is bright along the top and left and
+    // fades out toward the bottom and right. Four thin bars rather than one
+    // gradient-filled rounded rect, so the panel fill underneath is never
+    // painted twice and never doubles up its alpha.
+    inline void EqDrawGlassRim(ImDrawList* dl, const ImVec2& p0, const ImVec2& p1, float R, const Palette& pal)
+    {
+        const float t = 1.6f;
+        const float x0 = p0.x, y0 = p0.y, x1 = p1.x, y1 = p1.y;
+        const ImU32 hi  = EqColA(pal.glassRim, 0.55f);
+        const ImU32 dim = EqColA(pal.glassRim, 0.16f);
+        const ImU32 off = EqColA(pal.glassRim, 0.0f);
+        const float rx = ImMin(R, (x1 - x0) * 0.5f);
+        const float ry = ImMin(R, (y1 - y0) * 0.5f);
+
+        dl->AddRectFilledMultiColor(ImVec2(x0 + rx, y0), ImVec2(x1 - rx, y0 + t), hi, off, off, hi);
+        dl->AddRectFilledMultiColor(ImVec2(x0, y0 + ry), ImVec2(x0 + t, y1 - ry), hi, hi, dim, dim);
+        dl->AddRectFilledMultiColor(ImVec2(x1 - t, y0 + ry), ImVec2(x1, y1 - ry), dim, dim, off, off);
+        dl->AddRectFilledMultiColor(ImVec2(x0 + rx, y1 - t), ImVec2(x1 - rx, y1), dim, dim, dim, dim);
+    }
 
     inline void EqApplyAccentIndex(int index)
     {
@@ -749,6 +783,7 @@ namespace ethnir
             dl->AddRectFilled(ImVec2(x, p0.y), ImVec2(p1.x, p0.y + h * 0.22f), EqAccentA(0.030f), R);
         }
         dl->AddRectFilled(p0, p1, EqCol(pal.scrim), R);
+        EqDrawGlassRim(dl, p0, p1, R, pal);
     }
 
     inline void EqDrawSidebar(MenuState& st, const ImVec2& s0, const ImVec2& s1)
@@ -859,6 +894,7 @@ namespace ethnir
         dl->AddRectFilled(p0, p1, EqCol(pal.popupBg), R);
         dl->AddRectFilled(p0, ImVec2(p1.x, p0.y + 44.0f), EqColA(EqAccentVec(), 0.10f), R);
         dl->AddRect(p0 + ImVec2(0.5f, 0.5f), p1 - ImVec2(0.5f, 0.5f), EqCol(pal.cardEdge), R);
+        EqDrawGlassRim(dl, p0, p1, R, pal);
 
         // title + drag strip
         EqDrawTracked(dl, EqTextFont(), 12.0f, ImVec2(p0.x + 16.0f, p0.y + 15.0f), EqCol(pal.text), "QUICK SETTINGS", 0.8f);
@@ -955,6 +991,7 @@ namespace ethnir
         dl->AddShadowRect(p0, p1, IM_COL32(0, 0, 0, 110), 24.0f, ImVec2(0, 8), 0, R);
         dl->AddRectFilled(p0, p1, EqCol(pal.popupBg), R);
         dl->AddRect(p0 + ImVec2(0.5f, 0.5f), p1 - ImVec2(0.5f, 0.5f), EqCol(pal.cardEdge), R);
+        EqDrawGlassRim(dl, p0, p1, R, pal);
 
         EqDrawTracked(dl, EqTitleFont(), 14.0f, ImVec2(p0.x + 16.0f, p0.y + 14.0f), EqCol(pal.text), st.TitleText, 1.4f);
         EqDrawTracked(dl, EqTextFont(), 9.5f, ImVec2(p0.x + 18.0f, p0.y + 34.0f), EqColA(EqAccentVec(), 0.95f), st.SubtitleText, 1.0f);
@@ -1077,6 +1114,11 @@ namespace ethnir
         }
 
         // ---- top bar: Save pill · search · FPS · gear · minimise ----
+        // Marks whether this frame's press landed on a real header control.
+        // The drag test below cannot use IsAnyItemHovered(): the search field
+        // and its clear button register items that span the strip, which left
+        // the window undraggable wherever they reach.
+        st.HeaderControl = false;
         const ImVec2 h0(p0.x + kPad + kSideW + 16.0f, p0.y + kPad + 2.0f);
         const ImVec2 h1(p1.x - kPad, h0.y + 30.0f);
         const float contentW = h1.x - h0.x;
@@ -1142,6 +1184,12 @@ namespace ethnir
             const float searchW = ImMin(300.0f, ImMax(170.0f, contentW - 330.0f));
             const ImVec2 fmin(h0.x + (contentW - searchW) * 0.5f, h0.y);
             const ImVec2 fmax(fmin.x + searchW, h0.y + 30.0f);
+            if (io.MouseClicked[0])
+            {
+                if (ImGui::IsMouseHoveringRect(bmin, bmax))                        st.HeaderControl = true;
+                if (ImGui::IsMouseHoveringRect(fmin, fmax))                        st.HeaderControl = true;
+                if (ImGui::IsMouseHoveringRect(ImVec2(fmax.x + 8.0f, h0.y), h1))   st.HeaderControl = true;
+            }
             dl->AddRectFilled(fmin, fmax, EqCol(pal.cardBg), 15.0f);
             EqDrawGlyph(dl, ICON_FA_SEARCH, ImVec2(fmin.x + 17.0f, (fmin.y + fmax.y) * 0.5f), 11.0f, EqColA(pal.textFaint, 0.95f));
 
@@ -1175,23 +1223,24 @@ namespace ethnir
         }
 
         // ---- window dragging (header strip, when no widget is under it) ----
-        // Touch coords arrive divided by the platform's screen_scale while
-        // DisplaySize stays in raw pixels, so a raw MouseDelta under-moves the
-        // window. The multiplier below is a heuristic, not a measured value.
-        float dragScaleX = 1.0f, dragScaleY = 1.0f;
-        {
-            const ImVec2 dsize = io.DisplaySize;
-            if (dsize.x > 1.0f && io.MousePos.x > dsize.x * 0.999f) dragScaleX = 2.0f;
-            if (dsize.y > 1.0f && io.MousePos.y > dsize.y * 0.999f) dragScaleY = 2.0f;
-        }
         if (st.Dragging && !io.MouseDown[0]) st.Dragging = false;
-        if (!st.Dragging && io.MouseClicked[0] && ImGui::IsMouseHoveringRect(h0, h1) && !ImGui::IsAnyItemHovered())
-            st.Dragging = true;
-        if (st.Dragging && (io.MouseDelta.x != 0.0f || io.MouseDelta.y != 0.0f))
+        if (!st.Dragging && io.MouseClicked[0] && ImGui::IsMouseHoveringRect(h0, h1) && !st.HeaderControl)
         {
-            st.WinPos += ImVec2(io.MouseDelta.x * dragScaleX, io.MouseDelta.y * dragScaleY);
-            EqClampMenuPos(st, winSize, io);
-            ImGui::SetWindowPos(st.WinPos);
+            st.Dragging = true;
+            st.DragRef  = io.MousePos;
+        }
+        if (st.Dragging)
+        {
+            // Anchored to the press, so the frame the drag starts on cannot
+            // inherit a MouseDelta measured from wherever the pointer was before.
+            const ImVec2 move = io.MousePos - st.DragRef;
+            if (move.x != 0.0f || move.y != 0.0f)
+            {
+                st.WinPos += ImVec2(move.x * st.DragScaleX, move.y * st.DragScaleY);
+                EqClampMenuPos(st, winSize, io);
+                ImGui::SetWindowPos(st.WinPos);
+            }
+            st.DragRef = io.MousePos;
         }
 
         // ---- sidebar: its own BeginChild pane, clipped to its own rect ----
