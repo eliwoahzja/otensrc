@@ -747,7 +747,7 @@ namespace ethnir
         ImDrawList* dl = ImGui::GetWindowDrawList();
         if (EqCardRowIndex()++ > 0) EqRowSeparator(dl, p, p + ImVec2(w, h));
         if (rowHovered) dl->AddRectFilled(p, p + ImVec2(rowPressW, h), EqColA(pal.text, 0.025f), portfolio::s(portfolio::control_round));
-        EqDrawLabel(dl, ImVec2(p.x + portfolio::s(portfolio::box_pad_x), p.y + (h - portfolio::s(portfolio::row_label_font)) * 0.5f), clean, EqCol(hovered || rowHovered ? pal.text : pal.textDim), portfolio::s(portfolio::row_label_font));
+        EqDrawLabel(dl, ImVec2(p.x + portfolio::s(portfolio::box_pad_x), p.y + (h - portfolio::s(portfolio::row_label_font)) * 0.5f), clean, EqCol(rowHovered ? pal.text : pal.textDim), portfolio::s(portfolio::row_label_font));
 
         bool changed = false;
         const float ty = p.y + (h - segH) * 0.5f;

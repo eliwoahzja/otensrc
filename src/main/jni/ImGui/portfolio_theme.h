@@ -153,12 +153,6 @@ namespace portfolio
         recompute();
     }
 
-    // Extra padding added to hit rects on the horizontal axis. Rows sit 2px
-    // apart vertically, so widening them vertically would make adjacent rows
-    // fight over the same press; horizontally there is a whole column of slack.
-    inline float touch_pad_x() { return portfolio::s(10.f); }
-    inline float touch_pad_y() { return 2.f; }
-
     inline void set_percent(float percent)
     {
         manual_factor = ImMax(0.1f, percent * 0.01f);
@@ -167,6 +161,13 @@ namespace portfolio
 
     inline float s(float design_px) { return design_px * factor; }
     inline float px(float design_px) { return design_px * factor; }
+
+    // Extra padding added to hit rects on the horizontal axis. Rows sit 2px
+    // apart vertically, so widening them vertically would make adjacent rows
+    // fight over the same press; horizontally there is a whole column of slack.
+    // Declared after s(), which it calls.
+    inline float touch_pad_x() { return s(10.f); }
+    inline float touch_pad_y() { return 2.f; }
 
     // ============ ANIMATION ============
     inline constexpr float anim_slider_min = 0.f;
@@ -195,30 +196,46 @@ namespace portfolio
     }
 
     // ============ APPLY TO IMGUI STYLE ============
-    // Sets every field that ScaleAllSizes() touches back to an unscaled base,
-    // so apply_scaled_style() stays idempotent across frames.
+    // Resets every size-dependent field that ImGuiStyle::ScaleAllSizes()
+    // multiplies, so apply_scaled_style() is idempotent and safe to call every
+    // frame. ScaleAllSizes touches 24 fields and this version of ImGuiStyle has
+    // no FontSize member - setting one is a compile error.
     inline void apply_style()
     {
         ImGuiStyle& s = ImGui::GetStyle();
 
-        // Base (unscaled) size-dependent values
-        s.FontSize        = 16.f;
-        s.FramePadding    = ImVec2(8.f, 6.f);
-        s.ItemSpacing     = ImVec2(10.f, 8.f);
-        s.ItemInnerSpacing= ImVec2(6.f, 6.f);
-        s.IndentSpacing   = 20.f;
-        s.CellPadding     = ImVec2(4.f, 4.f);
-        s.TouchExtraPadding = ImVec2(kTouchTargetPx * 0.18f, kTouchTargetPx * 0.18f);
-        s.ScrollbarSize   = 6.f;
-        s.GrabMinSize     = 12.f;
+        // --- every field below is multiplied by ScaleAllSizes() ---
+        s.WindowPadding            = ImVec2(0.f, 0.f);
+        s.WindowRounding           = 0.f;
+        s.WindowMinSize            = ImVec2(32.f, 32.f);
+        s.ChildRounding            = 0.f;
+        s.PopupRounding            = 0.f;
+        s.FramePadding             = ImVec2(8.f, 6.f);
+        s.FrameRounding            = 0.f;
+        s.ItemSpacing              = ImVec2(10.f, 8.f);
+        s.ItemInnerSpacing         = ImVec2(6.f, 6.f);
+        s.CellPadding              = ImVec2(4.f, 4.f);
+        s.TouchExtraPadding        = ImVec2(kTouchTargetPx * 0.18f, kTouchTargetPx * 0.18f);
+        s.IndentSpacing            = 20.f;
+        s.ColumnsMinSpacing        = 5.f;
+        s.ScrollbarSize            = 6.f;
+        s.ScrollbarRounding        = 0.f;
+        s.GrabMinSize              = 12.f;
+        s.GrabRounding             = 0.f;
+        s.LogSliderDeadzone        = 0.f;
+        s.TabRounding              = 0.f;
+        s.TabMinWidthForCloseButton = FLT_MAX;   // ScaleAllSizes special-cases FLT_MAX
+        s.SeparatorTextPadding     = ImVec2(50.f, 50.f);
+        s.DisplayWindowPadding     = ImVec2(0.f, 0.f);
+        s.DisplaySafeAreaPadding   = ImVec2(0.f, 0.f);
+        s.MouseCursorScale         = 1.f;
+        // --- end ScaleAllSizes fields ---
 
-        s.WindowRounding   = 0.f;
         s.WindowBorderSize = 0.f;
-        s.WindowPadding    = { 0.f, 0.f };
-        s.AntiAliasedLines = true;
-        s.AntiAliasedFill  = true;
         s.ChildBorderSize  = 0.f;
         s.FrameBorderSize  = 0.f;
+        s.AntiAliasedLines = true;
+        s.AntiAliasedFill  = true;
 
         ImVec4* c = s.Colors;
         c[ImGuiCol_WindowBg]         = { 0.f, 0.f, 0.f, 0.f };
