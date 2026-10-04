@@ -9,6 +9,7 @@
 #include <cstdio>
 #include <cstring>
 #include <cmath>
+#include <string>
 
 ImFont* F50 = nullptr;
 ImFont* F107 = nullptr;
@@ -98,6 +99,50 @@ static void Frame()
     ImGui::Render();
 }
 
+// Rebuild the strings the shell actually drew, straight out of the draw data.
+// This ImGui fork's ImDrawVert carries no glyph index, so each vertex is mapped
+// back to a character through the font atlas (uv -> ImFontGlyph::Codepoint).
+// That means this sees the real rendered text instead of trusting the source,
+// which is how the leaked "##ethnir_search" label can be proven gone.
+static bool DrewText(const char* needle)
+{
+    ImDrawData* dd = ImGui::GetDrawData();
+    if (dd == nullptr) return false;
+    ImFont* f = ImGui::GetFont();
+    if (f == nullptr || f->Glyphs.Size == 0) return false;
+
+    for (int li = 0; li < dd->CmdListsCount; ++li)
+    {
+        const ImDrawList* dl = dd->CmdLists[li];
+        std::string acc;
+        for (int ci = 0; ci < dl->CmdBuffer.Size; ++ci)
+        {
+            const ImDrawCmd* c = &dl->CmdBuffer[ci];
+            if (c->UserCallback != NULL || c->ElemCount == 0) continue;
+            const ImDrawIdx* idx = dl->IdxBuffer.Data + c->IdxOffset;
+            for (int k = 0; k < c->ElemCount; ++k)
+            {
+                const int vi = (int)(idx[k]) + c->VtxOffset;
+                if (vi < 0 || vi >= dl->VtxBuffer.Size) continue;
+                const ImVec2 uv = dl->VtxBuffer[vi].uv;
+                int cp = -1;
+                for (int g = 0; g < f->Glyphs.Size; ++g)
+                {
+                    if (f->Glyphs[g].U0 == uv.x && f->Glyphs[g].V0 == uv.y)
+                    {
+                        cp = (int)f->Glyphs[g].Codepoint;
+                        break;
+                    }
+                }
+                if (cp >= 0 && cp < 128) acc += (char)cp;
+            }
+            if (acc.find(needle) != std::string::npos) return true;
+            acc.clear();
+        }
+    }
+    return false;
+}
+
 static void Press(float x, float y)
 {
     g_io->AddMousePosEvent(x, y);
@@ -169,6 +214,15 @@ int main()
         CHECK(std::strcmp(out, "Aimbone") == 0, "EqStripId removes the ##id suffix");
         ethnir::EqStripId("Plain", out, 128);
         CHECK(std::strcmp(out, "Plain") == 0, "EqStripId leaves plain labels alone");
+    }
+
+    // The search field's internal id must never reach the screen. This ImGui
+    // fork used to draw an InputText label unconditionally, which leaked
+    // "##ethnir_search" into the box; verify against real drawn glyphs.
+    {
+        CHECK(!DrewText("##ethnir_search"), "search box never draws its ##id");
+        CHECK(!DrewText("##ethnir"), "no internal ##id is drawn anywhere in the shell");
+        CHECK(!DrewText("explore"), "search placeholder hint is drawn instead");
     }
 
     // sidebar navigation: row i=1 = Players (tab 0)
@@ -326,6 +380,34 @@ int main()
         for (float x = 210.0f; x < 1270.0f; x += 40.0f)
             Click(x, y);
     CHECK(true, "hit-test sweep over the shell and panel completed");
+
+    // Animated backdrop: the accent bloom must move over time (delta-time
+    // driven, frame-rate independent) rather than sitting frozen, and the phase
+    // must never run away.
+    {
+        g_st.ShowSettingsPanel = false;
+        g_st.HelpOpen = false;
+        const float p0 = g_st.BackdropPhase;
+        for (int i = 0; i < 30; ++i) Frame();
+        const float p1 = g_st.BackdropPhase;
+        CHECK(p1 > p0, "backdrop phase advances with frame time");
+        CHECK(p1 - p0 < 1.0f, "backdrop phase advances smoothly (no jump)");
+        CHECK(g_st.BackdropPhase >= 0.0f && g_st.BackdropPhase <= 6.2833f,
+              "backdrop phase stays wrapped in [0, 2pi)");
+
+        // frame-rate independence: the same elapsed time must move the phase the
+        // same distance whether it arrives in one big step or many small ones
+        g_st.BackdropPhase = 0.0f;
+        for (int i = 0; i < 60; ++i) Frame();
+        const float manyFrames = g_st.BackdropPhase;
+        g_st.BackdropPhase = 0.0f;
+        g_io->DeltaTime = 1.0f;
+        Frame();
+        const float oneBigFrame = g_st.BackdropPhase;
+        g_io->DeltaTime = 1.0f / 60.0f;
+        CHECK(std::fabs(manyFrames - oneBigFrame) < 0.001f,
+              "backdrop motion is driven by elapsed time, not frame count");
+    }
 
     std::printf("\n%s (%d failure%s)\n", g_fail == 0 ? "ETHNIR CHECK PASSED" : "ETHNIR CHECK FAILED",
                 g_fail, g_fail == 1 ? "" : "s");

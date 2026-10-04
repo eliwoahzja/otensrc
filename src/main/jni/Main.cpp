@@ -794,11 +794,15 @@ EGLBoolean hook_eglSwapBuffers(EGLDisplay dpy, EGLSurface surface)
             main_runtime_theme::ApplyThemeState();
 
             static ethnir::MenuState menuState;
-            // The wallpaper is optional: hand the shell the texture only when it
-            // actually loaded, it paints its own gradient otherwise.
-            menuState.Backdrop = runtime_preview_menu::g_menuBackground.id != 0
-                ? (ImTextureID)(intptr_t)runtime_preview_menu::g_menuBackground.id
-                : nullptr;
+            // Clear Display is forced on: the floating info/watermark overlay
+            // stays suppressed every frame, so nothing else can re-enable it
+            // behind the user's back.
+            Config.ExtraMenu.ClearDisplay = true;
+
+            // The game's wallpaper art is no longer handed to the shell -- it
+            // dominated the menu and made the cards hard to read. The shell
+            // paints its own subtle animated backdrop instead.
+            menuState.Backdrop = nullptr;
             menuState.DrawTab = EthnirDrawTab;
             // auto save: the shell debounces 500 ms after the last change and
             // never fires while a slider is held; writes are atomic (tmp+rename)

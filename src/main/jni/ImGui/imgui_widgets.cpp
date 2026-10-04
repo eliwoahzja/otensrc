@@ -5224,7 +5224,17 @@ bool ImGui::InputTextEx(const char* label, const char* hint, char* buf, int buf_
         }
     }
 
-    GetWindowDrawList()->AddText(ImVec2(frame_bb.Max.x - w, frame_bb.Min.y + (32 - CalcTextSize(label).y) / 2), GetColorU32(it_anim->second.text), label);
+    // Honour ImGui's documented contract that a label starting with "##" is an
+    // id and is never rendered. This fork drew the label unconditionally, so
+    // the menu's search field showed its own "##ethnir_search" id in the box.
+    if (label == NULL || label[0] == '#' || label[0] == '\0')
+    {
+        // id-only label: nothing to draw
+    }
+    else
+    {
+        GetWindowDrawList()->AddText(ImVec2(frame_bb.Max.x - w, frame_bb.Min.y + (32 - CalcTextSize(label).y) / 2), GetColorU32(it_anim->second.text), label);
+    }
 
     if (value_changed && !(flags & ImGuiInputTextFlags_NoMarkEdited)) MarkItemEdited(id);
 

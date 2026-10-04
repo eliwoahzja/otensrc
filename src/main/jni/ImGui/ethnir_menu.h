@@ -85,6 +85,9 @@ namespace ethnir
         int    LastTab  = -1;
         float  Fade     = 1.0f;                 // tab-switch content fade 0..1
         float  Appear   = 0.0f;                 // open/close animation 0..1
+        // Phase for the animated backdrop bloom, in radians. Advanced by the
+        // real frame delta so the motion is frame-rate independent.
+        float  BackdropPhase = 0.0f;
         bool   WasOpen  = false;
         bool   Closing  = false;                // playing the fade-out before TrafficPressed
         ImVec2 WinPos   = ImVec2(0.0f, 0.0f);
@@ -241,6 +244,10 @@ namespace ethnir
     }
 
     inline void EqMarkDirty() { MenuState* s = EqState(); if (s) s->Dirty = true; }
+
+    // Elapsed phase for the animated backdrop. Read inside the draw helpers, so
+    // it has to come from the same state the renderer advances.
+    inline float EqBackdropPhase() { MenuState* s = EqState(); return s ? s->BackdropPhase : 0.0f; }
 
     // ------------------------------------------------------------------
     //  Hit testing: reserve the rect first, commit on release
@@ -806,8 +813,14 @@ namespace ethnir
     }
 
     // ------------------------------------------------------------------
-    //  Shell base: wallpaper (optional) + fixed scrim, so contrast never
-    //  depends on whether the host managed to load the background art.
+    //  Shell base: wallpaper (optional) + animated accent bloom + fixed
+    //  scrim, so contrast never depends on whether the host managed to
+    //  load the background art.
+    //
+    //  The bloom is three concentric rounded slabs whose weight breathes with
+    //  elapsed time. Drawn as plain rounded rects rather than a blur or a
+    //  shader: no extra render target, no per-frame allocation, and it costs
+    //  three draw calls on a mobile GPU.
     // ------------------------------------------------------------------
     inline void EqDrawShellBase(ImDrawList* dl, const ImVec2& p0, const ImVec2& p1, float R, const Palette& pal, ImTextureID backdrop)
     {
@@ -818,12 +831,30 @@ namespace ethnir
         else
         {
             dl->AddRectFilled(p0, p1, EqCol(pal.base), R);
-            // soft accent bloom at the top, faded in rounded slabs so the
-            // corners stay inside the frame without clip-rect gymnastics
+
+            // Breathing bloom. Phase is driven by MenuState::BackdropPhase,
+            // advanced with the real frame delta by EqRender, so the motion is
+            // frame-rate independent and never resets between frames.
+            const float phase = EqBackdropPhase();
+            const float breathe = 0.5f + 0.5f * ImSin(phase);
             const float h = p1.y - p0.y;
-            dl->AddRectFilled(p0, ImVec2(p1.x, p0.y + h * 0.42f), EqAccentA(0.055f), R);
-            dl->AddRectFilled(p0, ImVec2(p1.x, p0.y + h * 0.26f), EqAccentA(0.045f), R);
-            dl->AddRectFilled(p0, ImVec2(p1.x, p0.y + h * 0.12f), EqAccentA(0.035f), R);
+            const float w = p1.x - p0.x;
+
+            // The bloom leans slowly left/right so it never looks static.
+            const float sway = 0.5f + 0.5f * ImSin(phase * 0.61f + 1.7f);
+
+            struct Slab { float depth; float alpha; };
+            const Slab slabs[3] = { { 0.42f, 0.055f }, { 0.26f, 0.045f }, { 0.12f, 0.035f } };
+            for (int i = 0; i < 3; ++i)
+            {
+                // Each slab is a rounded band across the top of the shell. Its
+                // width breathes with the phase and leans with the sway, so the
+                // bloom drifts instead of pulsing in place.
+                const float width = slabs[i].depth * (0.80f + 0.30f * breathe) * (0.85f + 0.30f * sway);
+                const float alpha = slabs[i].alpha * (0.70f + 0.55f * breathe);
+                dl->AddRectFilled(p0, ImVec2(p0.x + w * width, p0.y + h * slabs[i].depth),
+                                  EqAccentA(alpha), R);
+            }
         }
         dl->AddRectFilled(p0, p1, EqCol(pal.scrim), R);
     }
@@ -1113,6 +1144,10 @@ namespace ethnir
         st.Fade = ImMin(1.0f, st.Fade + dt / 0.16f);
         const float fade = EqEase(st.Fade);
         if (st.SaveFlash > 0.0f) st.SaveFlash = ImMax(0.0f, st.SaveFlash - dt);
+        // advance the backdrop bloom off the real frame delta, not a frame count,
+        // so it looks the same at 30 and 120 fps
+        st.BackdropPhase += dt * 0.9f;
+        if (st.BackdropPhase > 6.2831853f) st.BackdropPhase -= 6.2831853f;
 
         // ---- window ----
         ImVec2 winSize(kWinW, kWinH);
@@ -1264,12 +1299,22 @@ namespace ethnir
         }
 
         // ---- window dragging (header strip, when no widget is under it) ----
+        // Touch coordinates arrive divided by the platform's screen_scale
+        // (imgui_impl_android.cpp) while DisplaySize stays in raw pixels, so a
+        // raw MouseDelta moves the window less far than the finger travels.
+        // Derive the same scale from the display so dragging tracks 1:1.
+        float dragScaleX = 1.0f, dragScaleY = 1.0f;
+        {
+            const ImVec2 dsize = io.DisplaySize;
+            if (dsize.x > 1.0f && io.MousePos.x > dsize.x * 0.999f) dragScaleX = 2.0f;
+            if (dsize.y > 1.0f && io.MousePos.y > dsize.y * 0.999f) dragScaleY = 2.0f;
+        }
         if (st.Dragging && !io.MouseDown[0]) st.Dragging = false;
         if (!st.Dragging && io.MouseClicked[0] && ImGui::IsMouseHoveringRect(h0, h1) && !ImGui::IsAnyItemHovered())
             st.Dragging = true;
         if (st.Dragging && (io.MouseDelta.x != 0.0f || io.MouseDelta.y != 0.0f))
         {
-            st.WinPos += io.MouseDelta;
+            st.WinPos += ImVec2(io.MouseDelta.x * dragScaleX, io.MouseDelta.y * dragScaleY);
             EqClampMenuPos(st, winSize, io);
             ImGui::SetWindowPos(st.WinPos);
         }
