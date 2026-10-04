@@ -4,26 +4,22 @@
 #include <sstream>
 #include <ctime>
 #include <cstdio>
-// std::ofstream / std::ifstream drive the atomic write+rename below and mkdir()
-// creates the target directory; include them here so this header does not rely
-// on its includer having pulled them in already.
+// std::fstream and mkdir() are used below, so include them rather than rely on
+// the includer having pulled them in.
 #include <fstream>
 #include <sys/stat.h>
 
-// This header lives in src/main/jni/System/Core/, so the vendored JSON parser
-// under src/main/jni/foxcheats/ is two levels up, not one.
+// vendored JSON parser is two levels up from System/Core/
 #include "../../foxcheats/include/json.hpp"
 
 std::string androidFilesDir = "/storage/emulated/0/Android/data/com.garena.game.codm/files/";
 
-// Bump when the layout of the file changes; older files load fine because
-// every leaf is read through a safe getter with a default.
+// bump when the file layout changes; older files still load via the getters
 constexpr int kConfigVersion = 2;
 
 namespace ethcfg
 {
-    // Safe getters: a missing or wrong-typed key falls back to the default,
-    // so a hand-edited or partially written file never aborts the load.
+    // missing or wrong-typed keys fall back to the default
     inline bool GetBool(const nlohmann::json& j, const char* key, bool dflt)
     {
         const auto it = j.find(key);
@@ -95,9 +91,8 @@ void SaveConfiguration(const std::string& filename) {
     std::string configDir = androidFilesDir + "configs";
     mkdir(configDir.c_str(), 0777);
 
-    // Atomic write: stream to "<name>.json.tmp" first, then rename over the
-    // real file. A crash or power loss mid-write can never leave a truncated
-    // config behind — the old file stays intact until the rename lands.
+    // stream to "<name>.json.tmp" then rename, so a crash mid-write can never
+    // leave a truncated config
     const std::string filePath = configDir + "/" + filename + ".json";
     const std::string tmpPath = filePath + ".tmp";
     {
@@ -130,8 +125,8 @@ bool LoadConfiguration(const std::string& filename) {
 
         nlohmann::json config;
         file >> config;
-        // kConfigVersion is informational for now: unknown newer fields are
-        // ignored and missing ones fall back to the current in-memory values.
+        // informational only: unknown fields are ignored, missing ones keep the
+        // current in-memory value
         // const int version = ethcfg::GetInt(config, "version", 1);
 
         if (config.contains("ESPMenu")) {

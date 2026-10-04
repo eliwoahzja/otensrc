@@ -43,20 +43,3 @@ android {
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
 }
-
-// Headless verification of the ImGui menu layer. The menu is header-only and
-// needs nothing but a host C++ compiler and the vendored ImGui sources, so the
-// suites run in CI (.github/workflows/menu-tests.yml) with no Android SDK, NDK
-// or device involved.
-//
-// Deliberately opt-in rather than hooked into assemble/preBuild: AIDE builds
-// this project on an Android device where neither `sh` nor `g++` exists, so
-// making it a build dependency would break the on-device build. Run it
-// explicitly with `gradle menuTests`, or via sh tools/tests/run_tests.sh.
-// Classic `task` syntax (not `tasks.register`) keeps this working on the older
-// Gradle that ships with AIDE.
-task menuTests(type: Exec) {
-    group = 'verification'
-    description = 'Runs the headless ImGui menu regression suites.'
-    commandLine 'sh', file('tools/tests/run_tests.sh').absolutePath
-}

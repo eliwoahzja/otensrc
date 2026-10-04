@@ -1,4 +1,8 @@
-# Build output from the headless ImGui test suites (tools/tests/run_tests.sh).
-# Regenerate with `sh tools/tests/run_tests.sh`; never commit the binaries or
-# the header the script generates from SaveConfig.h.
+# Local-only tooling. The browser preview under site/ and the headless C++
+# suites under tools/ stay on the machine that develops the menu; they are not
+# part of what ships to the device build.
+site/
+tools/
+
+# Binaries and the generated header from sh tools/tests/run_tests.sh
 build/menu-tests/

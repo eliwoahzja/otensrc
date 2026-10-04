@@ -214,9 +214,8 @@ static void RenderSkinsTabContent(float contentWidth, float contentHeight)
     ImGui::TextDisabled("Only applies to [M] Mythic and [L] Legendary weapon skins.");
     ethnir::EndGroupCard();
 }
-// Tab ids are the shell's own order (see ethnir::kTabs): 0 Players, 1 AimBot,
-// 2 World, 3 Skins, 4 Misc, 5 Config. Tabs that use the shell's two-column
-// layout (0-2) open their columns themselves via ethnir::EqBeginColumns().
+// Tab ids follow ethnir::kTabs: 0 Players, 1 AimBot, 2 World, 3 Skins,
+// 4 Misc, 5 Config. Tabs 0-2 open their own columns via EqBeginColumns().
 static void EthnirDrawTab(int tab)
 {
     const ImVec2 region = ImGui::GetContentRegionAvail();
@@ -794,18 +793,13 @@ EGLBoolean hook_eglSwapBuffers(EGLDisplay dpy, EGLSurface surface)
             main_runtime_theme::ApplyThemeState();
 
             static ethnir::MenuState menuState;
-            // Clear Display is forced on: the floating info/watermark overlay
-            // stays suppressed every frame, so nothing else can re-enable it
-            // behind the user's back.
+            // forces the floating info overlay off every frame
             Config.ExtraMenu.ClearDisplay = true;
 
-            // The game's wallpaper art is no longer handed to the shell -- it
-            // dominated the menu and made the cards hard to read. The shell
-            // paints its own subtle animated backdrop instead.
+            // the shell paints its own backdrop instead of the game's wallpaper art
             menuState.Backdrop = nullptr;
             menuState.DrawTab = EthnirDrawTab;
-            // auto save: the shell debounces 500 ms after the last change and
-            // never fires while a slider is held; writes are atomic (tmp+rename)
+            // debounced 500ms auto save, never mid-drag; writes are atomic
             menuState.OnSave = []() { SaveConfiguration("ethnir"); };
             ethnir::EqRender(menuState);
 
@@ -826,7 +820,6 @@ EGLBoolean hook_eglSwapBuffers(EGLDisplay dpy, EGLSurface surface)
                 runtime_preview_menu::CollapseMenu(refs);
             }
 
-            // the quick-settings panel owns the theme toggle now
             dark = menuState.Dark;
 
             if (Config.ExtraMenu.WallHack) {
