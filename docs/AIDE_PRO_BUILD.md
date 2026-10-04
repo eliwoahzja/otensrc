@@ -5,7 +5,7 @@ This repo has **no Android SDK/NDK in the Freebuff sandbox** (`ANDROID_HOME` and
 produced here — it needs your AIDE Pro + NDK on the device.
 
 The UI itself is previewed as a web page under `site/` (see section 6), which
-mirrors `src/main/jni/ImGui/equinox_menu.h`. This document covers getting the full
+mirrors `src/main/jni/ImGui/ethnir_menu.h`. This document covers getting the full
 APK built and running on the device.
 
 ## 1. Point AIDE Pro at the repo
@@ -43,7 +43,7 @@ FILE_LIST += $(wildcard $(LOCAL_PATH)/System/Texture/*.c*)
 FILE_LIST += $(wildcard $(LOCAL_PATH)/*.c*)
 ```
 
-`equinox_menu.h` is a header included by `Main.cpp`, so editing it requires no
+`ethnir_menu.h` is a header included by `Main.cpp`, so editing it requires no
 `Android.mk` change.
 
 ### Always do a clean rebuild after pulling
@@ -118,22 +118,30 @@ adb logcat -d | grep -E "AndroidRuntime|LoadLibrary|StartGame|ActivityManager: .
 - Fonts are built in `Main.cpp` lines ~258–305: `inter_semibold` 16f,
   `icomoon_page` 18f, `F107` icon font 25f (merged over `{0xe000, 0xf8ff}`),
   `F50` 30f.
-- Accent colour comes from `main_runtime_theme::g_menuHue = 0.78f`
-  (`imgui_settings.h`) — the purple in the preview (`#BF38FF`).
+- Accent colour comes from `main_runtime_theme::g_menuHue = 0.5833f`
+  (`imgui_settings.h`) — iOS system blue `#0A84FF`. Switches are iOS green
+  `#34C759`. The six accent presets (Blue / Teal / Green / Gold / Pink / Violet)
+  live in `ethnir::kAccents[]`.
+- Log output is tagged `ETHNIR` (`Includes/Logger.h`).
 
 ## 6. The site preview
 
-`site/` is a dependency-free page that recreates the Equinox shell in HTML/CSS/JS
-from the same constants as `equinox_menu.h` (780x480 shell, 186px sidebar, six
-tabs, purple accent, kCard/kEdge/kTextHi/kTextLo tokens). It is interactive:
+`site/` is a dependency-free page that recreates the Ethnir shell in HTML/CSS/JS
+from the same constants as `ethnir_menu.h` (880x520 shell, 200px sidebar, six
+tabs, iOS blue accent, frosted-glass cards, dark-first palette). It is
+interactive:
 
 - click the sidebar tabs — the accent pill slides and the content fades
 - type in the header search box — rows filter live, and `nomatch` shows the
   "NO MATCHES" card on the four filtering tabs
 - click a combo row — the dropdown opens (and flips above near the bottom)
 - drag the header strip — the window moves, clamped to the viewport
-- traffic lights: red collapses to the floating pill, yellow jumps to VISUALS,
-  green swaps the backdrop
+- drag the floating quick-settings panel — it repositions, clamped to the
+  viewport so rotation stays safe
+- the panel's segmented control switches Dark/Light, the accent swatches
+  recolour the whole shell, and the menu-bind row cycles its key
+- traffic lights: red collapses to the floating pill, the gear toggles the
+  quick-settings panel, green swaps the backdrop
 
 Serve it locally:
 
@@ -145,7 +153,70 @@ It is static, so any file server or host works; there is no build step.
 
 ## 7. Known-good state
 
-On device: the menu opens centred, the sidebar is darker than the content pane,
-one tab shows the accent pill, and toggles/sliders/combos respond to touch. In the
-site preview the same five behaviours are verifiable in a browser, which is the
-quickest place to check a layout-only change without a device round-trip.
+On device: the menu opens centred, the sidebar sits in its own `BeginChild` pane
+beside (never over) the content pane, one tab shows the sliding accent pill, and
+toggles/sliders/combos respond to touch. Controls commit on **release** inside
+their rect (`ethnir::EqPress`), so a drag that turns into a scroll never flips a
+toggle. In the site preview the same behaviours are verifiable in a browser,
+which is the quickest place to check a layout-only change without a device
+round-trip.
+
+## 8. Auto-save
+
+`ethnir::MenuState` debounces every change by 500 ms (`SaveDebounce`) and calls
+`MenuState::OnSave` — wired to `SaveConfiguration("ethnir")` in `Main.cpp`. The
+debounce timer never advances while `InputActive` is set, so a slider being held
+mid-drag cannot trigger a write; the save fires once the finger lifts. Writes go
+through `System/Core/SaveConfig.h`, which writes `ethnir.json.tmp`, flushes,
+checks the stream and renames over `ethnir.json` so a crash mid-write can never
+leave a truncated config. The file carries `"version": 2` and every key is read
+through `ethcfg::GetBool/GetFloat/GetInt`, which fall back to defaults for any
+key the file is missing.
+
+## 9. Headless menu tests
+
+The menu is a header-only UI layer, so its behaviour can be regression-tested
+with nothing but a host C++ compiler and the ImGui sources already vendored in
+this repository — no Android SDK, no NDK and no device. Three suites live in
+`tools/tests/` and are run by one script:
+
+```sh
+sh tools/tests/run_tests.sh      # exits non-zero if any check fails
+```
+
+| Suite | Covers |
+|---|---|
+| `menu_harness` | shell layout, separate child panes, `##id` stripping, release-commit rows, scroll-never-flips, auto-save debounce vs. held drags, search filtering, panel and shell controls, all six tabs, both backdrops, iOS palette |
+| `controls_harness` | dropdown sheet open/select/close, colour swatch cycling, keybind cycling, rotation clamping of the shell and settings panel |
+| `saveconfig_getters_harness` | `ethcfg` safe getters: missing and wrong-typed keys fall back to defaults, and malformed JSON is discarded rather than thrown |
+
+Run a single suite the same way — the script builds and executes them one at a
+time and prints each check. Binaries land in `build/menu-tests/`.
+
+### Running from Gradle
+
+```sh
+gradle menuTests
+```
+
+This is deliberately **opt-in and not** wired into `assemble`/`preBuild`: AIDE
+builds this project on an Android device where neither `sh` nor `g++` exists, so
+making it a build dependency would break the on-device build.
+
+### Running in CI
+
+`.github/workflows/menu-tests.yml` runs `run_tests.sh` on every push and pull
+request, and separately smoke-tests that the `site/` preview still serves its
+assets and has not regressed to the old Equinox markup.
+
+### Why the getter suite extracts its source
+
+`SaveConfig.h` binds to the game's `Config` settings struct (`Config.Aim`,
+`Config.ESPMenu`, `Config.ExtraMenu`) and its enums, which live in a private
+SDK header that is **not** part of this repository. The header therefore cannot
+be compiled on its own here. `run_tests.sh` extracts the `ethcfg` getter
+namespace verbatim out of the live `SaveConfig.h` into a generated header
+before compiling, so the checks always test the shipped source rather than a
+stale copy. Everything else in `SaveConfig.h` — the atomic write, the version
+key and the field mapping — is therefore covered by inspection and on-device
+runs, not by these suites.

@@ -1,7 +1,7 @@
 #pragma once
 #include "Call_ImGui.h"
 #include "imgui_settings.h"
-#include "equinox_menu.h"
+#include "ethnir_menu.h"
 #include "../System/Core/SaveConfig.h"
 #include "../System/UI/TextureLoader.h"
 #include "../System/UI/Logo.h"
@@ -190,9 +190,10 @@ inline void CopyLinkedEspColors(float *lineColor, float *boxColor, float *nameCo
 inline void RenderEspTab(float childWidth, float childHeight) {
     (void)childWidth;
     (void)childHeight;
-    using namespace equinox;
-    SectionLabel("ESP");
-    BeginGroupCard("eq_esp");
+    using namespace ethnir;
+    BeginColumns();
+    SectionLabel("PLAYERS");
+    BeginGroupCard("eth_esp");
     RowToggle(ICON_FA_EYE, "ESP Line", &Config.ESPMenu.isPlayerLine);
     RowToggle(ICON_FA_EYE, "ESP Box", &Config.ESPMenu.Box);
     RowToggle(ICON_FA_EYE, "ESP Skeleton", &Config.ESPMenu.Skeleton);
@@ -205,9 +206,9 @@ inline void RenderEspTab(float childWidth, float childHeight) {
     RowToggle(ICON_FA_EYE, "Yellow Wallhack", &Config.ExtraMenu.WallHack);
     RowToggle(ICON_FA_EYE, "Red Wallhack", &Config.ExtraMenu.RedWallhack);
     EndGroupCard();
-
+    NextColumn();
     SectionLabel("ESP OPTIONS");
-    BeginGroupCard("eq_esp_options");
+    BeginGroupCard("eth_esp_options");
     static const char *boxTypes[] = {"Fill", "Outline", "Corner", "3D"};
     static const char *linePositions[] = {"Top", "Mid", "Bottom"};
     static const char *healthPositions[] = {"Top", "Side"};
@@ -243,21 +244,23 @@ inline void RenderEspTab(float childWidth, float childHeight) {
     Config.ESPMenu.HealthPosition = (EspHealthPosition)g_espHealthPosition;
     Config.ESPMenu.EspStyle = (EspStyleTarget)g_espStyle;
     EndGroupCard();
+    EndColumns();
 }
 
 inline void RenderAimTab(float childWidth, float childHeight) {
     (void)childWidth;
     (void)childHeight;
-    using namespace equinox;
-    SectionLabel("AIMBOTS");
-    BeginGroupCard("eq_aim");
+    using namespace ethnir;
+    BeginColumns();
+    SectionLabel("AIMBOT");
+    BeginGroupCard("eth_aim");
     RowToggle(ICON_FA_CROSSHAIRS, "Aimbot 360", &Config.Aim.Aimbot360);
     RowToggle(ICON_FA_CROSSHAIRS, "Bullet Track", &Config.Aim.AimSilent);
     RowSlider(ICON_FA_CROSSHAIRS, "Aim Assist Size", &Config.Aim.AimAssistSize, 0.0f, 100.0f, "%.0f");
     EndGroupCard();
-
-    SectionLabel("COMBAT OPTIONS");
-    BeginGroupCard("eq_combat");
+    NextColumn();
+    SectionLabel("COMBAT");
+    BeginGroupCard("eth_combat");
     static const char *targets[] = {"Head", "Chest", "Body"};
     static const char *triggers[] = {"None", "Shooting", "Scoping"};
     static const char *targetBy[] = {"Distance", "FOV"};
@@ -272,37 +275,44 @@ inline void RenderAimTab(float childWidth, float childHeight) {
     Config.Aim.By = (EAim)aimBy;
     RowSlider(ICON_FA_CROSSHAIRS, "FOV Size", &Config.Aim.Cross, 0.0f, 100.0f, "%.0f");
     EndGroupCard();
+    EndColumns();
 }
 
 inline void RenderMemoryTab(float childWidth, float childHeight) {
     (void)childWidth;
     (void)childHeight;
-    using namespace equinox;
-    SectionLabel("MEMORY HACKS");
-    BeginGroupCard("eq_memory");
-    RowToggle(ICON_FA_BOLT, "Unlock Blueprint", &Config.ExtraMenu.UnlockBlueprint);
+    using namespace ethnir;
+    BeginColumns();
+    SectionLabel("COMBAT HACKS");
+    BeginGroupCard("eth_combat_hacks");
     RowToggle(ICON_FA_BOLT, "Hitbox", &Config.ExtraMenu.Hit);
     RowToggle(ICON_FA_BOLT, "No Recoil", &Config.ExtraMenu.Recoil);
     RowToggle(ICON_FA_BOLT, "No Spread", &Config.ExtraMenu.Spread);
     RowToggle(ICON_FA_BOLT, "No Shake", &Config.ExtraMenu.Shake);
     RowToggle(ICON_FA_BOLT, "No Overheat", &Config.ExtraMenu.Rpd);
+    RowToggle(ICON_FA_BOLT, "Firerate", &Config.ExtraMenu.Fire);
+    RowToggle(ICON_FA_BOLT, "Weapon Kinetic", &Config.ExtraMenu.Kinetic);
+    EndGroupCard();
+    NextColumn();
+    SectionLabel("UTILITY HACKS");
+    BeginGroupCard("eth_utility_hacks");
+    RowToggle(ICON_FA_BOLT, "Unlock Blueprint", &Config.ExtraMenu.UnlockBlueprint);
     RowToggle(ICON_FA_BOLT, "No Parachute", &Config.ExtraMenu.Parachute);
     RowToggle(ICON_FA_BOLT, "Anti Flashbang", &Config.ExtraMenu.Flash);
-    RowToggle(ICON_FA_BOLT, "Firerate", &Config.ExtraMenu.Fire);
     RowToggle(ICON_FA_BOLT, "Fast Dive", &Config.ExtraMenu.Diving);
     RowToggle(ICON_FA_BOLT, "Fast Reload", &Config.ExtraMenu.Reload);
     RowToggle(ICON_FA_BOLT, "Fast Scope", &Config.ExtraMenu.Scope);
     RowToggle(ICON_FA_BOLT, "Quick Switch", &Config.ExtraMenu.Switch);
-    RowToggle(ICON_FA_BOLT, "Weapon Kinetic", &Config.ExtraMenu.Kinetic);
     EndGroupCard();
 
-    SectionLabel("MOVEMENT SETTINGS");
-    BeginGroupCard("eq_movement");
+    SectionLabel("MOVEMENT");
+    BeginGroupCard("eth_movement");
     RowSlider(ICON_FA_SLIDERS_H, "Snowboard Speed", &SnowBsize, 0.0f, 100.0f, "%.1f");
     RowSlider(ICON_FA_SLIDERS_H, "Slide Distance", &SlideRange, 0.0f, 30.0f, "%.1f");
     RowSlider(ICON_FA_SLIDERS_H, "SpeedHack", &speedHackMultiplier, 0.5f, 2.0f, "%.1fx");
     RowSlider(ICON_FA_SLIDERS_H, "High Jump", &jumpHeightMultiplier, 0.5f, 5.0f, "%.2fx");
     EndGroupCard();
+    EndColumns();
 }
 
 inline void RenderMiscTab(float contentWidth, float contentHeight) {

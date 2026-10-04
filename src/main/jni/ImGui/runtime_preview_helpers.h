@@ -11,13 +11,13 @@ inline void DrawTopContainer(ImDrawList *drawList, const ImVec2 &min, const ImVe
         drawList->AddRectFilled(
             ImVec2(min.x - expand, min.y - expand * 0.35f + offsetY),
             ImVec2(max.x + expand, max.y + expand * 0.55f + offsetY),
-            IM_COL32(33, 8, 55, alpha),
+            IM_COL32(10, 26, 52, alpha),
             9.0f + expand
         );
     }
 
     drawList->AddRectFilled(min, max, IM_COL32(0, 0, 0, 176), 9.0f);
-    drawList->AddRect(min, max, IM_COL32(188, 110, 255, 170), 9.0f, 0, 1.0f);
+    drawList->AddRect(min, max, IM_COL32(10, 132, 255, 150), 9.0f, 0, 1.0f);
 
     const ImVec2 textSize = font->CalcTextSizeA(fontSize, FLT_MAX, 0.0f, label);
     const ImVec2 textPos(min.x + (size.x - textSize.x) * 0.5f, min.y + (size.y - textSize.y) * 0.5f);
@@ -133,7 +133,7 @@ inline bool DrawActionButton(const char *id, const char *label, float h = 50.0f)
     ImU32 bg = IM_COL32(12, 8, 20, 228);
     if (hovered) bg = IM_COL32(28, 16, 44, 238);
     if (held) bg = IM_COL32(42, 24, 64, 246);
-    const ImU32 border = IM_COL32(188, 110, 255, hovered ? 190 : 150);
+    const ImU32 border = IM_COL32(10, 132, 255, hovered ? 190 : 140);
     dl->AddRectFilled(p, p + size, bg, 10.0f);
     dl->AddRect(p, p + size, border, 10.0f, 0, 1.0f);
 
@@ -394,12 +394,12 @@ inline void PopNativeComboStyle() {
 }
 
 inline void PushNativeSliderStyle() {
-    ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.11f, 0.08f, 0.18f, 0.96f));
-    ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, ImVec4(0.16f, 0.10f, 0.25f, 0.98f));
-    ImGui::PushStyleColor(ImGuiCol_FrameBgActive, ImVec4(0.19f, 0.12f, 0.29f, 1.0f));
-    ImGui::PushStyleColor(ImGuiCol_SliderGrab, ImVec4(0.73f, 0.45f, 0.98f, 0.96f));
-    ImGui::PushStyleColor(ImGuiCol_SliderGrabActive, ImVec4(0.83f, 0.60f, 1.0f, 1.0f));
-    ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.64f, 0.43f, 0.90f, 0.78f));
+    ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.09f, 0.10f, 0.12f, 0.96f));
+    ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, ImVec4(0.13f, 0.14f, 0.17f, 0.98f));
+    ImGui::PushStyleColor(ImGuiCol_FrameBgActive, ImVec4(0.16f, 0.17f, 0.21f, 1.0f));
+    ImGui::PushStyleColor(ImGuiCol_SliderGrab, ImVec4(0.04f, 0.52f, 1.00f, 0.96f));
+    ImGui::PushStyleColor(ImGuiCol_SliderGrabActive, ImVec4(0.30f, 0.65f, 1.00f, 1.0f));
+    ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.20f, 0.22f, 0.26f, 0.78f));
     ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.96f, 0.95f, 1.0f, 0.98f));
     ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
     ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 6.0f);
@@ -443,11 +443,11 @@ inline void PopNativeButtonStyle() {
 }
 
 inline void PushNativeCheckboxStyle() {
-    ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.12f, 0.10f, 0.18f, 0.92f));
-    ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, ImVec4(0.16f, 0.12f, 0.24f, 0.96f));
-    ImGui::PushStyleColor(ImGuiCol_FrameBgActive, ImVec4(0.18f, 0.14f, 0.28f, 1.0f));
-    ImGui::PushStyleColor(ImGuiCol_CheckMark, ImVec4(0.75f, 0.56f, 1.0f, 1.0f));
-    ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.63f, 0.44f, 0.92f, 0.78f));
+    ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.10f, 0.11f, 0.13f, 0.92f));
+    ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, ImVec4(0.14f, 0.15f, 0.18f, 0.96f));
+    ImGui::PushStyleColor(ImGuiCol_FrameBgActive, ImVec4(0.17f, 0.18f, 0.22f, 1.0f));
+    ImGui::PushStyleColor(ImGuiCol_CheckMark, ImVec4(0.30f, 0.65f, 1.00f, 1.0f));
+    ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.22f, 0.24f, 0.28f, 0.78f));
     ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.95f, 0.94f, 0.99f, 0.97f));
     ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
     ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 4.0f);
@@ -486,8 +486,8 @@ inline void RenderInfoPopupModal() {
         ImGui::SetCursorScreenPos(ImVec2(headerCursor.x, headerCursor.y + closeButtonSize.y));
         ImGui::Dummy(ImVec2(contentAvail.x, 8.0f));
 
-        ImGui::PushStyleColor(ImGuiCol_TableRowBg, ImVec4(0.10f, 0.05f, 0.16f, 0.70f));
-        ImGui::PushStyleColor(ImGuiCol_TableRowBgAlt, ImVec4(0.14f, 0.08f, 0.22f, 0.78f));
+        ImGui::PushStyleColor(ImGuiCol_TableRowBg, ImVec4(0.08f, 0.09f, 0.11f, 0.70f));
+        ImGui::PushStyleColor(ImGuiCol_TableRowBgAlt, ImVec4(0.12f, 0.13f, 0.16f, 0.78f));
         if (ImGui::BeginTable("##RuntimeInfoTable", 2, ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_BordersInnerV | ImGuiTableFlags_RowBg)) {
             ImGui::TableSetupColumn("Field", ImGuiTableColumnFlags_WidthFixed, 132.0f);
             ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthStretch);
@@ -566,7 +566,7 @@ inline void RenderPriceListPopupModal() {
                 ImGui::TableSetColumnIndex(0);
                 ImGui::TextColored(ImVec4(0.96f, 0.96f, 0.98f, 0.94f), "%s", duration);
                 ImGui::TableSetColumnIndex(1);
-                ImGui::TextColored(ImVec4(0.90f, 0.78f, 1.0f, 0.96f), "%s", php);
+                ImGui::TextColored(ImVec4(0.72f, 0.84f, 1.0f, 0.96f), "%s", php);
                 ImGui::TableSetColumnIndex(2);
                 ImGui::TextColored(ImVec4(0.82f, 0.67f, 1.0f, 0.96f), "%s", dollars);
                 ++rowIndex;

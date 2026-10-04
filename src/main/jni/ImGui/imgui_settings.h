@@ -152,46 +152,46 @@ namespace c
 
     inline void ApplyTheme()
     {
-        accent = ImColor(188, 110, 255);
-        separator = ImColor(52, 28, 78);
+        accent = ImColor(10, 132, 255);        // iOS system blue #0A84FF
+        separator = ImColor(28, 34, 44);
 
-        bg::background = ImColor(4, 4, 6, 176);
-        child::background = ImColor(14, 0, 24, 200);
+        bg::background = ImColor(4, 5, 7, 176);
+        child::background = ImColor(10, 12, 16, 200);
         child::cap = ImColor(0, 0, 0, 124);
         child::padding = 13.0f;
         child::spacing = 13.0f;
 
-        page::background_active = ImColor(73, 33, 121, 255);
+        page::background_active = ImColor(30, 62, 112, 255);
         page::background = ImColor(0, 0, 0, 150);
-        page::text_hov = ImColor(231, 214, 255);
-        page::text = ImColor(154, 123, 201);
+        page::text_hov = ImColor(210, 226, 246);
+        page::text = ImColor(150, 163, 190);
 
         elements::background_hovered = ImColor(12, 12, 14, 184);
         elements::background = ImColor(0, 0, 0, 156);
 
-        checkbox::mark = ImColor(255, 246, 255);
-        checkbox::background_on = ImColor(188, 110, 255);
-        checkbox::background_off = ImColor(65, 49, 92);
-        checkbox::circle_inactive = ImColor(155, 134, 198);
+        checkbox::mark = ImColor(245, 249, 255);
+        checkbox::background_on = ImColor(52, 199, 89);         // iOS switch green #34C759
+        checkbox::background_off = ImColor(58, 62, 74);
+        checkbox::circle_inactive = ImColor(150, 158, 176);
 
-        text::text_active = ImColor(251, 245, 255);
-        text::text_hov = ImColor(194, 168, 234);
-        text::text = ImColor(136, 112, 176);
+        text::text_active = ImColor(245, 248, 252);
+        text::text_hov = ImColor(200, 214, 236);
+        text::text = ImColor(150, 163, 190);
 
         widget::background = ImColor(0, 0, 0, 146);
-        widget::outlinecolor = ImColor(90, 52, 136, 140);
+        widget::outlinecolor = ImColor(60, 68, 84, 140);
 
         button::background = ImColor(0, 0, 0, 152);
         button::background_hovered = ImColor(14, 14, 16, 178);
         button::background_active = ImColor(22, 22, 28, 198);
-        button::outline = ImColor(109, 67, 158, 150);
+        button::outline = ImColor(70, 80, 98, 150);
 
         ImGuiStyle& style = ImGui::GetStyle();
         style.ScrollbarSize = 5.0f;
-        style.Colors[ImGuiCol_ScrollbarBg] = ImVec4(0.06f, 0.03f, 0.10f, 0.72f);
-        style.Colors[ImGuiCol_ScrollbarGrab] = ImVec4(0.31f, 0.16f, 0.46f, 0.95f);
-        style.Colors[ImGuiCol_ScrollbarGrabHovered] = ImVec4(0.42f, 0.22f, 0.62f, 0.98f);
-        style.Colors[ImGuiCol_ScrollbarGrabActive] = ImVec4(0.51f, 0.28f, 0.76f, 1.0f);
+        style.Colors[ImGuiCol_ScrollbarBg] = ImVec4(0.05f, 0.06f, 0.08f, 0.72f);
+        style.Colors[ImGuiCol_ScrollbarGrab] = ImVec4(0.26f, 0.30f, 0.36f, 0.95f);
+        style.Colors[ImGuiCol_ScrollbarGrabHovered] = ImVec4(0.34f, 0.38f, 0.46f, 0.98f);
+        style.Colors[ImGuiCol_ScrollbarGrabActive] = ImVec4(0.42f, 0.48f, 0.58f, 1.0f);
     }
 
     inline void DrawWindowShadow(const ImVec2& menuSize)
@@ -204,7 +204,7 @@ namespace c
         shadowSettings.rings = 6;
         shadowSettings.spacingBetweenRings = 2;
         shadowSettings.samplesPerCornerSide = 2;
-        shadowSettings.shadowColor = ImGui::ColorConvertU32ToFloat4(IM_COL32(70, 22, 108, 235));
+        shadowSettings.shadowColor = ImGui::ColorConvertU32ToFloat4(IM_COL32(8, 20, 40, 225));
         shadowSettings.shadowSize = ImVec2(0.0f, 0.0f);
         drawRectangleShadowVerticesAdaptive(shadowSettings);
     }
@@ -230,13 +230,14 @@ namespace c
         }
 
         drawList->AddRectFilled(min, max, IM_COL32(10, 0, 18, 70), rounding);
-        drawList->AddRect(min, max, IM_COL32(188, 110, 255, 156), rounding, 0, 1.0f);
+        drawList->AddRect(min, max, IM_COL32(120, 170, 255, 120), rounding, 0, 1.0f);
     }
 }
 
 namespace main_runtime_theme
 {
-    inline float g_menuHue = 0.78f;
+    // iOS system blue (#0A84FF) everywhere the shell draws its accent
+    inline float g_menuHue = 0.5833f;
 
     inline ImVec4 GetAccentVec4(float alpha = 1.0f)
     {
@@ -260,7 +261,8 @@ namespace main_runtime_theme
 
     inline void ApplyAccentFromHue()
     {
-        ImGui::ColorConvertHSVtoRGB(g_menuHue, 0.78f, 1.0f, menu[0], menu[1], menu[2]);
+        // 0.96 saturation keeps the iOS system blue at hue 0.5833 (#0A84FF)
+        ImGui::ColorConvertHSVtoRGB(g_menuHue, 0.96f, 1.0f, menu[0], menu[1], menu[2]);
         menu[3] = 1.0f;
     }
 
@@ -312,7 +314,7 @@ namespace main_runtime_theme
         c::elements::background = ImColor(0.04f, 0.04f, 0.05f, 0.68f);
 
         c::checkbox::mark = ImColor(0.98f, 0.98f, 1.0f, 1.0f);
-        c::checkbox::background_on = ImColor(GetAccentTint(0.92f, 0.96f));
+        c::checkbox::background_on = ImColor(0.204f, 0.780f, 0.349f, 0.96f);   // iOS switch green
         c::checkbox::background_off = ImColor(0.14f, 0.14f, 0.17f, 0.94f);
         c::checkbox::circle_inactive = ImColor(0.46f, 0.48f, 0.56f, 0.94f);
 

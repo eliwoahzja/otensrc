@@ -25,7 +25,7 @@
 #include "oxorany/source/oxorany.cpp"
 #include "oxorany/source/oxorany_include.h"
 #include "MainFeatureIncludes.h"
-#include "ImGui/equinox_menu.h"
+#include "ImGui/ethnir_menu.h"
 #include "ImGui/runtime_preview_menu.h"
 
 class _BYTE;
@@ -159,9 +159,9 @@ static void RenderSkinsTabContent(float contentWidth, float contentHeight)
     (void)contentWidth;
     (void)contentHeight;
     RenderSkinCategoryContent(skinSubTab, true);
-    equinox::SectionLabel("CAMO MODIFIER");
-    equinox::BeginGroupCard("eq_camo");
-    if (equinox::RowToggle(nullptr, "Default / OFF", &camoOff)) {
+    ethnir::SectionLabel("CAMO MODIFIER");
+    ethnir::BeginGroupCard("eth_camo");
+    if (ethnir::RowToggle(nullptr, "Default / OFF", &camoOff)) {
         if (camoOff) {
             camoDiamond = false;
             camoRedSprite = false;
@@ -178,7 +178,7 @@ static void RenderSkinsTabContent(float contentWidth, float contentHeight)
             }
         }
     }
-    if (equinox::RowToggle(nullptr, "Diamond Camo", &camoDiamond)) {
+    if (ethnir::RowToggle(nullptr, "Diamond Camo", &camoDiamond)) {
         if (camoDiamond) {
             camoOff = false; camoRedSprite = false;
             for (const auto& getitem : itemData) {
@@ -194,7 +194,7 @@ static void RenderSkinsTabContent(float contentWidth, float contentHeight)
             }
         } else { camoOff = true; }
     }
-    if (equinox::RowToggle(nullptr, "Red Sprite Camo", &camoRedSprite)) {
+    if (ethnir::RowToggle(nullptr, "Red Sprite Camo", &camoRedSprite)) {
         if (camoRedSprite) {
             camoOff = false; camoDiamond = false;
             for (const auto& getitem : itemData) {
@@ -212,23 +212,24 @@ static void RenderSkinsTabContent(float contentWidth, float contentHeight)
     }
     ImGui::Dummy(ImVec2(0, 4));
     ImGui::TextDisabled("Only applies to [M] Mythic and [L] Legendary weapon skins.");
-    equinox::EndGroupCard();
+    ethnir::EndGroupCard();
 }
-
-static void EquinoxDrawTab(int tab)
+// Tab ids are the shell's own order (see ethnir::kTabs): 0 Players, 1 AimBot,
+// 2 World, 3 Skins, 4 Misc, 5 Config. Tabs that use the shell's two-column
+// layout (0-2) open their columns themselves via ethnir::BeginColumns().
+static void EthnirDrawTab(int tab)
 {
     const ImVec2 region = ImGui::GetContentRegionAvail();
-    const float columnGap = 10.0f;
-    const float childWidth = ImMax(0.0f, (region.x - columnGap) * 0.5f);
-    const float childHeight = ImMax(0.0f, region.y);
+    const float contentWidth = ImMax(0.0f, region.x);
+    const float contentHeight = ImMax(0.0f, region.y);
     switch (tab)
     {
-    case 0: runtime_preview_menu::RenderEspTab(childWidth, childHeight); break;
-    case 1: runtime_preview_menu::RenderAimTab(childWidth, childHeight); break;
-    case 2: runtime_preview_menu::RenderMemoryTab(childWidth, childHeight); break;
-    case 3: RenderSkinsTabContent(childWidth, childHeight); break;
-    case 4: runtime_preview_menu::RenderMiscTab(region.x, childHeight); break;
-    case 5: runtime_preview_menu::RenderSettingsTab(region.x, childHeight); break;
+    case 0: runtime_preview_menu::RenderEspTab(contentWidth, contentHeight); break;
+    case 1: runtime_preview_menu::RenderAimTab(contentWidth, contentHeight); break;
+    case 2: runtime_preview_menu::RenderMemoryTab(contentWidth, contentHeight); break;
+    case 3: RenderSkinsTabContent(contentWidth, contentHeight); break;
+    case 4: runtime_preview_menu::RenderMiscTab(contentWidth, contentHeight); break;
+    case 5: runtime_preview_menu::RenderSettingsTab(contentWidth, contentHeight); break;
     default: break;
     }
 }
@@ -792,12 +793,24 @@ EGLBoolean hook_eglSwapBuffers(EGLDisplay dpy, EGLSurface surface)
             c::UpdateTheme(dark, menu, ImGui::GetIO().DeltaTime);
             main_runtime_theme::ApplyThemeState();
 
-            static equinox::MenuState eqMenu;
-            eqMenu.Backdrop = (ImTextureID)(intptr_t)runtime_preview_menu::g_menuBackground.id;
-            eqMenu.DrawTab = EquinoxDrawTab;
-            equinox::Render(eqMenu);
+            static ethnir::MenuState menuState;
+            // The wallpaper is optional: hand the shell the texture only when it
+            // actually loaded, it paints its own gradient otherwise.
+            menuState.Backdrop = runtime_preview_menu::g_menuBackground.id != 0
+                ? (ImTextureID)(intptr_t)runtime_preview_menu::g_menuBackground.id
+                : nullptr;
+            menuState.DrawTab = EthnirDrawTab;
+            // auto save: the shell debounces 500 ms after the last change and
+            // never fires while a slider is held; writes are atomic (tmp+rename)
+            menuState.OnSave = []() { SaveConfiguration("ethnir"); };
+            ethnir::Render(menuState);
 
-            if (eqMenu.TrafficPressed == 0)
+            if (menuState.HeaderPressed == 0)
+            {
+                SaveConfiguration("ethnir");
+            }
+
+            if (menuState.TrafficPressed == 0)
             {
                 runtime_preview_menu::StateRefs refs{
                     dark, tabAlpha, tabAdd, page, activeTab,
@@ -808,23 +821,9 @@ EGLBoolean hook_eglSwapBuffers(EGLDisplay dpy, EGLSurface surface)
                 };
                 runtime_preview_menu::CollapseMenu(refs);
             }
-            else if (eqMenu.TrafficPressed == 1)
-            {
-                eqMenu.ActiveTab = 0;
-            }
-            else if (eqMenu.TrafficPressed == 2)
-            {
-                dark = !dark;
-            }
 
-            switch (eqMenu.HeaderPressed)
-            {
-            case 0: eqMenu.ActiveTab = 1; break;
-            case 1: eqMenu.ActiveTab = 0; break;
-            case 2: eqMenu.ActiveTab = 3; break;
-            case 3: eqMenu.ActiveTab = 5; break;
-            default: break;
-            }
+            // the quick-settings panel owns the theme toggle now
+            dark = menuState.Dark;
 
             if (Config.ExtraMenu.WallHack) {
                 Patches.A1.Modify();

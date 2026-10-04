@@ -59,5 +59,5 @@ createServer(async (req, res) => {
     res.end("500 — " + err.message + "\n");
   }
 }).listen(port, host, () => {
-  console.log(`equinox site preview -> http://${host}:${port}/ (root: ${root})`);
+  console.log(`ethnir site preview -> http://${host}:${port}/ (root: ${root})`);
 });

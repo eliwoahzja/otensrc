@@ -1209,7 +1209,7 @@ bool ImGui::Checkbox(const char* label, bool* v)
         draw_list->AddLine(
             ImVec2(row_bb.Min.x + 4.0f, separator_y),
             ImVec2(row_bb.Max.x - 4.0f, separator_y),
-            IM_COL32(188, 110, 255, hovered ? 36 : 22),
+            IM_COL32(10, 132, 255, hovered ? 36 : 22),
             1.0f
         );
 

@@ -11,7 +11,7 @@ enum LogType {
     oWARN  = 5
 };
 
-#define TAG OBFUSCATE("MWD-ASTRAL")
+#define TAG OBFUSCATE("ETHNIR")
 
 #define LOGD(...) ((void)__android_log_print(oDEBUG, TAG, __VA_ARGS__))
 #define LOGE(...) ((void)__android_log_print(oERROR, TAG, __VA_ARGS__))

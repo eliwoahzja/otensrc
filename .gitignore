@@ -1,0 +1,4 @@
+# Build output from the headless ImGui test suites (tools/tests/run_tests.sh).
+# Regenerate with `sh tools/tests/run_tests.sh`; never commit the binaries or
+# the header the script generates from SaveConfig.h.
+build/menu-tests/

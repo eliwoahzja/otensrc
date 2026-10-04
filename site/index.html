@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Equinox — glass menu preview</title>
+<title>ETHNIR — iOS-clean menu preview</title>
 <link rel="stylesheet" href="style.css" />
 </head>
 <body>
@@ -11,133 +11,152 @@
 <header class="hero">
   <div class="hero-brand">
     <span class="brand-mark" aria-hidden="true">
-      <svg viewBox="0 0 24 24" fill="#fff"><path d="M5.6 12.8V7.4l4.3 4.2L12 6.4l2.1 5.2 4.3-4.2v5.4H5.6z" opacity=".95"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round">
+        <path d="M4.5 17.5V6.5h11.5M4.5 12h9M4.5 17.5h13" stroke-linecap="round"/>
+      </svg>
     </span>
-    <span class="brand-name">Equinox</span>
-    <span class="brand-tag">glass menu preview</span>
+    <span class="brand-name">ETHNIR</span>
+    <span class="brand-tag">iOS-clean menu preview</span>
   </div>
 
-  <h1>The in-game menu, running in your browser.</h1>
+  <h1>The mod menu, rebuilt to feel like iOS.</h1>
   <p class="hero-sub">
-    A live recreation of <code>src/main/jni/ImGui/equinox_menu.h</code> — the same
-    780&times;480 shell, 186px sidebar, six tabs and glass tokens as the C++ overlay,
-    with none of the build round-trip of the old PNG harness.
+    A live recreation of <code>src/main/jni/ImGui/ethnir_menu.h</code> &mdash; the same
+    880&times;520 shell, 200px sidebar, two-column cards, right-aligned rows, iOS switches,
+    quick-settings panel and single accent colour as the C++ overlay, with none of the
+    build round-trip of the old PNG harness.
   </p>
 
   <ul class="chips">
-    <li>6 tabs</li>
-    <li>accent <span class="swatch" aria-hidden="true"></span> #BF38FF</li>
-    <li>glass shell 780&times;480</li>
+    <li>6 pages</li>
+    <li>two-column cards</li>
+    <li>iOS switches</li>
+    <li>accent <span class="swatch" id="heroSwatch" aria-hidden="true"></span> <span id="heroAccent">#389BFF</span></li>
     <li>no build step</li>
   </ul>
 </header>
 
 <main class="stage-wrap">
   <div class="stage" id="stage">
+   <div class="stage-inner" id="stageInner">
     <div class="scene" id="scene" aria-hidden="true">
-      <div class="scene-glow g1"></div>
-      <div class="scene-glow g2"></div>
-      <div class="scene-glow g3"></div>
-      <div class="scene-horizon"></div>
-      <div class="scene-hud">
-        <span class="hud-pill"></span>
-        <span class="hud-line"></span>
-        <span class="hud-line short"></span>
+      <div class="stars"></div>
+      <div class="aurora a1"></div>
+      <div class="aurora a2"></div>
+      <div class="aurora a3"></div>
+      <div class="ridge r1"></div>
+      <div class="ridge r2"></div>
+      <div class="ridge r3"></div>
+      <div class="trees"></div>
+      <div class="game-hud">
+        <span class="hud-tag">NO NETWORK — EXIT IN 04:20</span>
       </div>
     </div>
 
-    <!-- ================= collapsed indicator (traffic light 1) ================= -->
-    <div class="omni" id="omni" hidden>
-      <span class="omni-glow"></span>
-      <span class="omni-pill">
-        <span class="omni-shimmer"></span>
-        <span class="omni-logo">
-          <svg viewBox="0 0 24 24" fill="none" stroke="#7fd8ff" stroke-width="1.7">
-            <path d="M12 3.2 14.1 8l5.1-1.6-2.7 4.5 3.6 3.6-5.1.6.4 5.1-4-3.3-4 3.3.4-5.1-5.1-.6 3.6-3.6L3.8 6.4 8.9 8z"/>
-            <circle cx="12" cy="12" r="2.6" fill="#7fd8ff" stroke="none"/>
-          </svg>
-        </span>
-        <span class="omni-fps"><b id="omniFps">60</b> FPS</span>
-      </span>
+    <!-- collapsed pill (mirrors the host's omni bar after Minimise) -->
+    <div class="pill" id="pill" hidden>
+      <span class="pill-dot"></span>
+      <b>ETHNIR</b>
+      <span id="pillFps">60 FPS</span>
     </div>
 
     <!-- ============================== menu shell ============================== -->
-    <section class="shell" id="shell" aria-label="Equinox menu preview">
-      <div class="shell-glass"></div>
-      <div class="shell-topline"></div>
+    <section class="shell" id="shell" aria-label="Ethnir menu preview">
+      <div class="shell-base"></div>
+      <div class="shell-wall" id="shellWall"></div>
+      <div class="shell-scrim"></div>
 
-      <!-- sidebar -->
-      <aside class="sidebar">
-        <div class="logo">
-          <svg class="logo-crown" viewBox="0 0 24 24" aria-hidden="true">
-            <defs>
-              <linearGradient id="lg" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0" stop-color="#d9a6ff" />
-                <stop offset="0.55" stop-color="#8a2be2" />
-                <stop offset="1" stop-color="#2a0b45" />
-              </linearGradient>
-            </defs>
-            <rect width="24" height="24" rx="6" fill="url(#lg)" />
-            <rect x="0.5" y="0.5" width="23" height="23" rx="5.5" fill="none" stroke="rgba(255,255,255,.24)" />
-            <path d="M6.5 15V9.6l3.5 3 2-4.6 2 4.6 3.5-3V15z" fill="rgba(255,255,255,.94)" />
-          </svg>
-        </div>
-        <div class="brand-text">
-          <span class="brand-title">Equinox</span>
-          <span class="brand-caps">MOD MENU</span>
-        </div>
-        <div class="sidebar-rule"></div>
+      <div class="brand" id="brand">ETHNIR<i class="tick"></i></div>
 
-        <nav class="tabs" id="tabs"></nav>
-        <span class="tab-pill" id="tabPill"></span>
-
-        <div class="status-card">
-          <span class="status-avatar">W</span>
-          <span class="status-title">CODM: Garnoe | v1.0.87</span>
-          <span class="status-sub">White Crowns Official</span>
-          <span class="status-dot"></span>
+      <aside class="side">
+        <nav class="nav" id="nav"></nav>
+        <div class="side-foot">
+          <button class="help" id="helpBtn" type="button" title="How to use">?</button>
+          <span class="side-caption">MOD MENU</span>
         </div>
       </aside>
 
-      <!-- header -->
-      <header class="head" id="head">
-        <div class="search" id="search">
-          <span class="search-icon" data-icon="search"></span>
-          <input id="searchInput" type="text" placeholder="Search features" autocomplete="off" spellcheck="false" />
-          <button class="search-clear" id="searchClear" type="button" title="Clear" data-icon="times" hidden></button>
+      <header class="topbar" id="topbar">
+        <button class="save" id="saveBtn" type="button">
+          <span class="save-ic" id="saveIcon"></span>
+          <span id="saveLabel">Save</span>
+        </button>
+
+        <div class="search" id="searchBox">
+          <span class="search-ic" id="searchIcon"></span>
+          <input id="searchInput" type="text" placeholder="explore 0 functions..." autocomplete="off" spellcheck="false" />
+          <button class="search-clear" id="clearBtn" type="button" title="Clear" hidden></button>
         </div>
-        <div class="quick" id="quick"></div>
-        <div class="fps"><span class="fps-icon" data-icon="gauge"></span><span id="fpsText">FPS 60</span></div>
-        <div class="traffic" id="traffic"></div>
+
+        <span class="fps" id="fpsText">60 FPS</span>
+        <button class="iconbtn" id="gearBtn" type="button" title="Quick settings"></button>
+        <button class="iconbtn" id="minBtn" type="button" title="Minimise"></button>
       </header>
 
-      <!-- content -->
       <div class="content" id="content">
-        <div class="content-inner" id="contentInner"></div>
-        <div class="no-match" id="noMatch" hidden>
-          <span class="no-match-icon" data-icon="search"></span>
+        <div class="pane" id="pane"></div>
+        <div class="nomatch" id="nomatch" hidden>
+          <span class="nomatch-ic" id="nomatchIcon"></span>
           <strong>NO MATCHES</strong>
           <em>Try a different keyword.</em>
         </div>
       </div>
 
-      <div class="drop" id="drop" hidden></div>
+      <div class="helpcard" id="helpCard" hidden>
+        <div class="helpcard-title">ETHNIR<i class="tick"></i></div>
+        <div class="helpcard-sub">MOD MENU</div>
+        <ul>
+          <li>Drag the top bar to move the window.</li>
+          <li>Search filters the active page instantly.</li>
+          <li>The gear opens quick settings.</li>
+          <li>The dash collapses the menu to the pill.</li>
+        </ul>
+      </div>
+
     </section>
+
+    <!-- ========================== quick settings panel ========================= -->
+    <aside class="panel" id="panel" aria-label="Quick settings">
+      <div class="panel-head" id="panelHead">QUICK SETTINGS</div>
+      <div class="panel-rows" id="panelRows"></div>
+    </aside>
+
+    <div class="drop" id="drop" hidden></div>
+   </div>
   </div>
 </main>
 
 <section class="hints">
   <h2>Try it</h2>
-  <ul>
-    <li><b>Tab switching.</b> The accent pill slides down the sidebar gutter and the pane fades in, exactly like the damped animation in <code>equinox_menu.h</code>.</li>
-    <li><b>Search.</b> Type <code>esp</code> to filter rows on VISUALS; type <code>nomatch</code> for the “NO MATCHES” card used by the filtering tabs.</li>
-    <li><b>Rows.</b> Toggles flip, sliders drag, combos open a dropdown that flips above the row near the pane’s bottom edge.</li>
-    <li><b>Header.</b> Drag the strip to move the window, tap the crosshair / eye / list / cog shortcuts, or use the traffic lights: red collapses to the floating pill, yellow jumps to VISUALS, green swaps the backdrop.</li>
-  </ul>
+  <div class="hint-grid">
+    <div class="hint">
+      <h3>Pages</h3>
+      <p>AimBot, Players, World, Skins, Misc and Config. The accent highlight slides to the active row and the pane fades in, exactly like the damped animation in <code>ethnir_menu.h</code>.</p>
+    </div>
+    <div class="hint">
+      <h3>Search</h3>
+      <p>Type <code>esp</code> to filter the row lists — the placeholder counts the functions on the page, and a keyword that matches nothing shows the &ldquo;NO MATCHES&rdquo; card.</p>
+    </div>
+    <div class="hint">
+      <h3>Rows</h3>
+      <p>Labels toggle switches, sliders drag on the accent track, combos open a menu that flips above the row near the pane&rsquo;s bottom edge, colour chips cycle the palette.</p>
+    </div>
+    <div class="hint">
+      <h3>Quick settings</h3>
+      <p>The gear shows the floating panel: theme, animation speed, accent colour and the menu bind. Minimise collapses to the pill, Save flashes a confirmation.</p>
+    </div>
+  </div>
+
+  <div class="playground">
+    <button class="pg" id="pgWall" type="button">Toggle in-menu wallpaper</button>
+    <button class="pg" id="pgTheme" type="button">Switch dark / light</button>
+    <button class="pg" id="pgAccent" type="button">Cycle accent colour</button>
+    <button class="pg" id="pgAnim" type="button">Animation speed 0.5x / 2x</button>
+  </div>
 </section>
 
 <footer class="page-foot">
-  <span>Recreation target: <code>src/main/jni/ImGui/equinox_menu.h</code></span>
+  <span>Recreation target: <code>src/main/jni/ImGui/ethnir_menu.h</code></span>
   <span>Build &amp; device notes: <code>docs/AIDE_PRO_BUILD.md</code></span>
 </footer>
 

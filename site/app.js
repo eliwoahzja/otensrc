@@ -1,657 +1,818 @@
 /* ============================================================================
-   Equinox glass menu — site preview behaviour.
+   ETHNIR — site preview behaviour.
 
-   Mirrors src/main/jni/ImGui/equinox_menu.h: the same 780x480 shell, six tabs,
-   search filter, damped pill, combo popups that flip above the row, and the
-   traffic lights (collapse / jump to VISUALS / swap the backdrop).
+   Mirrors src/main/jni/ImGui/ethnir_menu.h: the same 880x520 shell, 200px
+   sidebar, six pages (AimBot / Players / World / Skins / Misc / Config),
+   two-column cards headed by uppercase sections, rows that read label-left /
+   control-right, iOS switches, an 84px accent slider track, a search hint that
+   counts the functions on the page, the NO MATCHES card on the four filtered
+   pages, combo menus that flip above the row, the floating quick-settings
+   panel, the "?" help card, aving Save confirmation and the minimise pill.
    ========================================================================== */
 (function () {
   "use strict";
 
   /* ------------------------------- icons -------------------------------- */
 
-  var ICONS = {
-    eye: '<path d="M1.3 8S3.8 3.2 8 3.2 14.7 8 14.7 8 12.2 12.8 8 12.8 1.3 8 1.3 8z"/><circle cx="8" cy="8" r="2.5"/>',
-    crosshair: '<circle cx="8" cy="8" r="5.1"/><path d="M8 0.6v3M8 12.4v3M0.6 8h3M12.4 8h3"/>',
+  var PATHS = {
+    crosshair: '<circle cx="8" cy="8" r="5.4"/><path d="M8 0.6v3.2M8 12.2v3.2M0.6 8h3.2M12.2 8h3.2"/>',
+    users: '<circle cx="6" cy="5.6" r="2.6"/><path d="M1.6 13.4c0-2.4 2-4.1 4.4-4.1s4.4 1.7 4.4 4.1"/><path d="M11 4.2a2.2 2.2 0 0 1 0 4.4"/>',
+    globe: '<circle cx="8" cy="8" r="6.2"/><path d="M1.8 8h12.4M8 1.8c1.9 2.1 1.9 10.3 0 12.4M8 1.8c-1.9 2.1-1.9 10.3 0 12.4"/>',
+    list: '<path d="M5.6 3.6h9M5.6 8h9M5.6 12.4h9"/><circle cx="2.4" cy="3.6" r="0.9" fill="currentColor" stroke="none"/><circle cx="2.4" cy="8" r="0.9" fill="currentColor" stroke="none"/><circle cx="2.4" cy="12.4" r="0.9" fill="currentColor" stroke="none"/>',
+    sliders: '<path d="M2 4.6h12M2 11.4h12"/><circle cx="5.6" cy="4.6" r="1.9"/><circle cx="10.4" cy="11.4" r="1.9"/>',
+    cog: '<circle cx="8" cy="8" r="2.9"/><path d="M8 1.2v2.1M8 12.7v2.1M1.2 8h2.1M12.7 8h2.1M3.2 3.2l1.5 1.5M11.3 11.3l1.5 1.5M12.8 3.2l-1.5 1.5M4.7 11.3l-1.5 1.5"/>',
+    search: '<circle cx="7.1" cy="7.1" r="4.7"/><path d="M10.6 10.6 14 14"/>',
+    save: '<path d="M3 2.2h7.6L14 5.8v8H3z"/><path d="M5.6 2.2v3.6h5V2.2M5.6 13.8v-4h5v4"/>',
+    minus: '<path d="M3 8h10"/>',
+    times: '<path d="M3.2 3.2l9.6 9.6M12.8 3.2 3.2 12.8"/>',
+    check: '<path d="M2.4 8.6 6 12.2 13.6 3.8"/>',
+    chev: '<path d="M1.6 4.2 5 7.6l3.4-3.4"/>',
+    eye: '<path d="M1.3 8S3.8 3.2 8 3.2 14.7 8 14.7 8 12.2 12.8 8 12.8 1.3 8 1.3 8z"/><circle cx="8" cy="8" r="2.4"/>',
     bolt: '<path d="M9.4 1 3.4 9h3.3l-1.1 6 6-8H8.3z"/>',
-    list: '<path d="M5.4 3.4h9.2M5.4 8h9.2M5.4 12.6h9.2"/><path d="M1.9 3.4h.01M1.9 8h.01M1.9 12.6h.01" stroke-linecap="round" stroke-width="2"/>',
-    sliders: '<path d="M2 4.2h12M2 11.8h12"/><circle cx="5.4" cy="4.2" r="1.7"/><circle cx="10.6" cy="11.8" r="1.7"/>',
-    cog: '<circle cx="8" cy="8" r="3"/><path d="M8 1.1v2M8 12.9v2M1.1 8h2M12.9 8h2M3.1 3.1l1.4 1.4M11.5 11.5l1.4 1.4M12.9 3.1l-1.4 1.4M4.5 11.5 3.1 12.9"/>',
-    search: '<circle cx="7" cy="7" r="4.6"/><path d="M10.4 10.4 14 14"/>',
-    times: '<path d="M2 2l10 10M12 2 2 12"/>',
-    check: '<path d="M2 8.4 6 12.4 14 3.6"/>',
-    gauge: '<path d="M1.6 11.3a6.4 6.4 0 1 1 12.8 0"/><path d="M8 11.3 11.2 6"/>',
     shield: '<path d="M8 1.4l5.4 2v4.1c0 3.2-2.2 5.8-5.4 7.1-3.2-1.3-5.4-3.9-5.4-7.1V3.4z"/>',
-    clock: '<circle cx="8" cy="8" r="6"/><path d="M8 4.4V8l2.6 1.6"/>',
-    tag: '<path d="M2 7.2V2.6h4.6L14 10l-4.4 4.4z"/><circle cx="4.9" cy="4.9" r="1"/>'
+    clock: '<circle cx="8" cy="8" r="6"/><path d="M8 4.4V8l2.6 1.6"/>'
   };
 
-  function icon(name, cls) {
-    return '<span class="' + (cls || "ricon") + '" aria-hidden="true"><svg viewBox="0 0 16 16" fill="none" ' +
-      'stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">' +
-      (ICONS[name] || ICONS.eye) + "</svg></span>";
-  }
-
-  function decorateIcons(root) {
-    var nodes = root.querySelectorAll("[data-icon]");
-    for (var i = 0; i < nodes.length; i++) {
-      var el = nodes[i];
-      el.innerHTML = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" ' +
-        'stroke-linecap="round" stroke-linejoin="round">' + (ICONS[el.dataset.icon] || ICONS.eye) + "</svg>";
-    }
+  function ic(name, cls) {
+    return '<svg class="' + (cls || "ic") + '" viewBox="0 0 16 16" fill="none" stroke="currentColor" ' +
+      'stroke-width="1.45" stroke-linecap="round" stroke-linejoin="round">' + (PATHS[name] || PATHS.eye) + "</svg>";
   }
 
   /* -------------------------------- data -------------------------------- */
 
-  var TABS = [
-    { icon: "eye", label: "VISUALS" },
-    { icon: "crosshair", label: "AIMBOT" },
-    { icon: "bolt", label: "MEMORY" },
-    { icon: "list", label: "SKINS" },
-    { icon: "sliders", label: "MISC" },
-    { icon: "cog", label: "SETTINGS" }
+  var NAV = [
+    { tab: 1, icon: "crosshair", label: "AimBot" },
+    { tab: 0, icon: "users", label: "Players" },
+    { tab: 2, icon: "globe", label: "World" },
+    { tab: 3, icon: "list", label: "Skins" },
+    { tab: 4, icon: "sliders", label: "Misc" },
+    { tab: 5, icon: "cog", label: "Config" }
   ];
 
-  var QUICK = [
-    { tab: 1, icon: "crosshair", title: "Aimbot" },
-    { tab: 0, icon: "eye", title: "Visuals" },
-    { tab: 3, icon: "list", title: "Skins" },
-    { tab: 5, icon: "cog", title: "Settings" }
+  // hue / 0.78 saturation / 1.0 value — the same maths as ApplyAccentFromHue()
+  var ACCENTS = [
+    { name: "Blue", hue: 0.5837 },
+    { name: "Teal", hue: 0.49 },
+    { name: "Green", hue: 0.36 },
+    { name: "Gold", hue: 0.115 },
+    { name: "Pink", hue: 0.93 },
+    { name: "Violet", hue: 0.74 }
   ];
 
-  function toggle(label, on, iconName) { return { type: "toggle", label: label, on: !!on, icon: iconName }; }
-  function slider(label, value, min, max, fmt, iconName) {
-    return { type: "slider", label: label, value: value, min: min, max: max, fmt: fmt, icon: iconName };
+  var BINDS = ["Num 0", "Num 1", "F1", "F4", "Home", "None"];
+  var COLOR_CYCLE = ["#00D4FF", "#00D278", "#FF3C50", "#FFC832", "#0A84FF", "#FFFFFF"];
+
+  function toggle(label, on) { return { kind: "toggle", label: label, on: !!on }; }
+  function slider(label, value, min, max, fmt) { return { kind: "slider", label: label, value: value, min: min, max: max, fmt: fmt }; }
+  function combo(label, options, value) { return { kind: "combo", label: label, options: options, value: value }; }
+  function color(label, hex) { return { kind: "color", label: label, hex: hex }; }
+  function kv(label, value) { return { kind: "kv", label: label, value: value }; }
+  function note(text) { return { kind: "note", text: text }; }
+  function bullet(icon, text) { return { kind: "bullet", icon: icon, text: text }; }
+  function section(label) { return { kind: "section", label: label }; }
+  function card(rows) { return { kind: "card", rows: rows }; }
+  function cols(a, b) { return { kind: "cols", cols: [a, b] }; }
+  function chips(items, active) { return { kind: "chips", items: items, active: active }; }
+
+  /* segmented control — mirrors SegmentedRow() in ethnir_menu.h */
+  function renderSeg(spec) {
+    var track = el("span", "segtrack");
+    spec.items.forEach(function (item, i) {
+      var b = el("button", "segbtn" + (i === spec.active ? " on" : ""), item);
+      b.type = "button";
+      b.setAttribute("data-v", String(i));
+      b.setAttribute("aria-pressed", i === spec.active ? "true" : "false");
+      b.addEventListener("click", function (ev) {
+        ev.stopPropagation();
+        spec.active = i;
+        var sibs = track.children;
+        for (var k = 0; k < sibs.length; k++) {
+          sibs[k].classList.toggle("on", k === i);
+          sibs[k].setAttribute("aria-pressed", k === i ? "true" : "false");
+        }
+        if (spec.onChange) spec.onChange(i);
+      });
+      track.appendChild(b);
+    });
+    return track;
   }
-  function combo(label, options, value, iconName) {
-    return { type: "combo", label: label, options: options, value: value, icon: iconName };
-  }
+  function seg(label, items, active) { return { kind: "seg", label: label, items: items, active: active }; }
+  function buttons(items) { return { kind: "buttons", items: items }; }
 
-  /* Tab content copied from runtime_preview_menu.h / Main.cpp where the overlay
-     defines it; the custom cards (misc, settings) use their real section titles
-     with representative rows. */
-  var CONTENT = [
-    [ /* 0 VISUALS */
-      { label: "ESP", card: [
-        toggle("ESP Line", true, "eye"), toggle("ESP Box", true, "eye"),
-        toggle("ESP Skeleton", true, "eye"), toggle("ESP Health", true, "eye"),
-        toggle("ESP Name", true, "eye"), toggle("ESP Distance", true, "eye"),
-        toggle("ESP Count", false, "eye"), toggle("360 Alert", false, "eye"),
-        toggle("Show AimLine", false, "eye"),
-        toggle("Yellow Wallhack", true, "eye"), toggle("Red Wallhack", false, "eye")
-      ] },
-      { label: "ESP OPTIONS", card: [
-        combo("Box Type", ["Fill", "Outline", "Corner", "3D"], 0, "sliders"),
-        combo("Line Position", ["Top", "Mid", "Bottom"], 0, "sliders"),
-        combo("Health Position", ["Top", "Side"], 0, "sliders"),
-        combo("ESP Style", ["None", "3D Sphere", "Player Signal"], 0, "sliders"),
-        { type: "color", label: "Player ESP Color", color: "#00d4ff", icon: "eye" },
-        { type: "color", label: "Bot ESP Color", color: "#00d278", icon: "eye" }
-      ] }
+  /* Row data transcribed from runtime_preview_menu.h and Main.cpp */
+  var PAGES = {
+    1: [cols(
+      [section("AIMBOT"), card([
+        toggle("Aimbot 360", true),
+        toggle("Bullet Track", true),
+        slider("Aim Assist Size", 0, 0, 100, "%.0f")
+      ])],
+      [section("COMBAT"), card([
+        combo("Location", ["Head", "Chest", "Body"], 0),
+        combo("Trigger", ["None", "Shooting", "Scoping"], 1),
+        combo("Target By", ["Distance", "FOV"], 0),
+        slider("FOV Size", 45, 0, 100, "%.0f")
+      ])]
+    )],
+    0: [cols(
+      [section("PLAYERS"), card([
+        toggle("ESP Line", true), toggle("ESP Box", true), toggle("ESP Skeleton", true),
+        toggle("ESP Health", true), toggle("ESP Name", true), toggle("ESP Distance", true),
+        toggle("ESP Count", false), toggle("360 Alert", false), toggle("Show AimLine", false),
+        toggle("Yellow Wallhack", true), toggle("Red Wallhack", false)
+      ])],
+      [section("ESP OPTIONS"), card([
+        combo("Box Type", ["Fill", "Outline", "Corner", "3D"], 1),
+        combo("Line Position", ["Top", "Mid", "Bottom"], 0),
+        combo("Health Position", ["Top", "Side"], 0),
+        combo("ESP Style", ["None", "3D Sphere", "Player Signal"], 0),
+        color("Player ESP Color", "#00D4FF"),
+        color("Bot ESP Color", "#00D278")
+      ])]
+    )],
+    2: [cols(
+      [section("COMBAT HACKS"), card([
+        toggle("Hitbox", true), toggle("No Recoil", true), toggle("No Spread", true),
+        toggle("No Shake", false), toggle("No Overheat", false), toggle("Firerate", true),
+        toggle("Weapon Kinetic", false)
+      ])],
+      [section("UTILITY HACKS"), card([
+        toggle("Unlock Blueprint", true), toggle("No Parachute", false), toggle("Anti Flashbang", false),
+        toggle("Fast Dive", false), toggle("Fast Reload", true), toggle("Fast Scope", false),
+        toggle("Quick Switch", false)
+      ]),
+      section("MOVEMENT"), card([
+        slider("Snowboard Speed", 0, 0, 100, "%.1f"),
+        slider("Slide Distance", 0, 0, 30, "%.1f"),
+        slider("SpeedHack", 1, 0.5, 2, "%.1fx"),
+        slider("High Jump", 1, 0.5, 5, "%.2fx")
+      ])]
+    )],
+    3: [
+      chips(["Character", "Watch", "Deadbox", "Plane", "Weapon", "Camo"], 4),
+      section("WEAPON SKINS"), card([
+        kv("AK117", "Default"), kv("QQ9", "Default"), kv("DL Q33", "Default"),
+        kv("Kilo Bolt-Action", "Default"), kv("PDW-57", "Default")
+      ]),
+      section("CAMO MODIFIER"), card([
+        toggle("Default / OFF", true), toggle("Diamond Camo", false), toggle("Red Sprite Camo", false),
+        note("Only applies to [M] Mythic and [L] Legendary weapon skins.")
+      ])
     ],
-    [ /* 1 AIMBOT */
-      { label: "AIMBOTS", card: [
-        toggle("Aimbot 360", true, "crosshair"),
-        toggle("Bullet Track", true, "crosshair"),
-        slider("Aim Assist Size", 0, 0, 100, "%.0f", "crosshair")
-      ] },
-      { label: "COMBAT OPTIONS", card: [
-        combo("Location", ["Head", "Chest", "Body"], 0, "crosshair"),
-        combo("Trigger", ["None", "Shooting", "Scoping"], 0, "crosshair"),
-        combo("Target By", ["Distance", "FOV"], 0, "crosshair"),
-        slider("FOV Size", 45, 0, 100, "%.0f", "crosshair")
-      ] }
+    4: [
+      section("CHANGELOG"), card([
+        chips(["FEATURES", "FIXES", "UPDATES"], 0),
+        kv("March 10, 2026", ""),
+        bullet("shield", "<b>New Ethnir shell</b> — iOS-clean rows, two-column cards and a quiet accent."),
+        bullet("bolt", "<b>Quick settings panel</b> — theme, animation speed, accent and menu bind in one place."),
+        bullet("clock", "<b>Backdrop fallback</b> — the shell paints its own wallpaper when no texture is bound.")
+      ]),
+      section("INFO"), card([kv("Version", "v2.0"), kv("Loader", "Online"), kv("Build", "2026")]),
+      section("PRICELIST"), card([
+        kv("1 Day", "\u20b150 / $1"), kv("1 Week", "\u20b1250 / $5"),
+        kv("1 Month", "\u20b1600 / $12"), kv("Lifetime", "\u20b11200 / $24")
+      ])
     ],
-    [ /* 2 MEMORY */
-      { label: "MEMORY HACKS", card: [
-        toggle("Unlock Blueprint", true, "bolt"), toggle("Hitbox", true, "bolt"),
-        toggle("No Recoil", true, "bolt"), toggle("No Spread", true, "bolt"),
-        toggle("No Shake", false, "bolt"), toggle("No Overheat", false, "bolt"),
-        toggle("No Parachute", false, "bolt"), toggle("Anti Flashbang", false, "bolt"),
-        toggle("Firerate", true, "bolt"), toggle("Fast Dive", false, "bolt"),
-        toggle("Fast Reload", true, "bolt"), toggle("Fast Scope", false, "bolt"),
-        toggle("Quick Switch", false, "bolt"), toggle("Weapon Kinetic", false, "bolt")
-      ] },
-      { label: "MOVEMENT SETTINGS", card: [
-        slider("Snowboard Speed", 0, 0, 100, "%.1f", "sliders"),
-        slider("Slide Distance", 6, 0, 30, "%.1f", "sliders"),
-        slider("SpeedHack", 1, 0.5, 2, "%.1fx", "sliders"),
-        slider("High Jump", 1, 0.5, 5, "%.2fx", "sliders")
-      ] }
-    ],
-    [ /* 3 SKINS */
-      { type: "chiptabs", items: ["Character", "Watch", "Deadbox", "Plane", "Weapon", "Camo"], active: 4 },
-      { label: "WEAPON SKINS", card: [
-        { type: "kv", label: "AK117", value: "Default" },
-        { type: "kv", label: "QQ9", value: "Default" },
-        { type: "kv", label: "DL Q33", value: "Default" },
-        { type: "kv", label: "Kilo Bolt-Action", value: "Default" },
-        { type: "kv", label: "PDW-57", value: "Default" }
-      ] },
-      { label: "CAMO MODIFIER", card: [
-        toggle("Default / OFF", true),
-        toggle("Diamond Camo", false),
-        toggle("Red Sprite Camo", false),
-        { type: "note", text: "Only applies to [M] Mythic and [L] Legendary weapon skins." }
-      ] }
-    ],
-    [ /* 4 MISC */
-      { label: "CHANGELOG", card: [
-        { type: "chiptabs", items: ["FEATURES", "FIXES", "UPDATES"], active: 0 },
-        { type: "date", text: "March 10, 2026" },
-        { type: "bullet", icon: "shield", text: "<b>New glass menu shell</b> — animated tabs, damped accent pill and a live search filter." },
-        { type: "bullet", icon: "bolt", text: "<b>ESP styles</b> — 3D sphere and player signal added to the ESP Style combo." },
-        { type: "bullet", icon: "clock", text: "<b>Faster injection</b> — the loader now reuses the cached lib when it is unchanged." }
-      ] },
-      { label: "INFO", card: [
-        { type: "kv", label: "Version", value: "v1.0.87" },
-        { type: "kv", label: "Loader", value: "Online" },
-        { type: "kv", label: "Build", value: "2026" }
-      ] },
-      { label: "PRICELIST", card: [
-        { type: "kv", label: "1 Day", value: "\u20b150 / $1" },
-        { type: "kv", label: "1 Week", value: "\u20b1250 / $5" },
-        { type: "kv", label: "1 Month", value: "\u20b1600 / $12" },
-        { type: "kv", label: "Lifetime", value: "\u20b11200 / $24" }
-      ] }
-    ],
-    [ /* 5 SETTINGS */
-      { type: "cardgrid", cards: [
-        { label: "LICENSE INFO", card: [
-          { type: "kv", label: "Licensed to", value: "White Crowns" },
-          { type: "kv", label: "Plan", value: "Lifetime" },
-          { type: "kv", label: "Expires", value: "Never" }
-        ] },
-        { label: "LOGO SETTINGS", card: [
-          slider("Logo Size", 1, 0.1, 2, "%.2fx", "tag"),
-          slider("Logo Opacity", 1, 0, 1, "%.2f", "eye"),
-          toggle("Show Logo", true, "tag")
-        ] },
-        { label: "CONFIG MANAGEMENT", card: [
-          { type: "buttons", items: ["SAVE", "LOAD", "RESET"] }
-        ] },
-        { label: "ENHANCEMENT", card: [
-          toggle("Streamer Mode", false, "shield"),
-          toggle("Low Latency", true, "bolt"),
-          slider("UI Scale", 1, 0.8, 1.4, "%.2fx", "sliders")
-        ] }
-      ] }
-    ]
-  ];
+    5: [cols(
+      [section("LICENSE INFO"), card([kv("Licensed to", "White Crowns"), kv("Plan", "Lifetime"), kv("Expires", "Never")]),
+       section("LOGO SETTINGS"), card([
+         slider("Logo Size", 1, 0.1, 2, "%.2fx"),
+         slider("Logo Opacity", 1, 0, 1, "%.2f"),
+         toggle("Show Logo", true)
+       ])],
+      [section("CONFIG MANAGEMENT"), card([buttons(["SAVE", "LOAD", "RESET"])]),
+       section("ENHANCEMENT"), card([
+         toggle("Streamer Mode", false), toggle("Low Latency", true),
+         slider("UI Scale", 1, 0.8, 1.4, "%.2fx")
+       ])]
+    )]
+  };
+
+  var FILTERABLE = { toggle: 1, slider: 1, combo: 1, color: 1 };
+  var QUERY_TABS = { 0: 1, 1: 1, 2: 1, 3: 1 };   // pages that run RowToggle/RowSlider/ComboRow
 
   /* ------------------------------ elements ------------------------------ */
 
   var stage = document.getElementById("stage");
+  var stageInner = document.getElementById("stageInner");
   var shell = document.getElementById("shell");
-  var scene = document.getElementById("scene");
-  var tabsEl = document.getElementById("tabs");
-  var pillEl = document.getElementById("tabPill");
-  var inner = document.getElementById("contentInner");
-  var contentEl = document.getElementById("content");
-  var noMatchEl = document.getElementById("noMatch");
-  var dropEl = document.getElementById("drop");
-  var searchEl = document.getElementById("searchInput");
-  var clearEl = document.getElementById("searchClear");
+  var nav = document.getElementById("nav");
+  var pane = document.getElementById("pane");
+  var content = document.getElementById("content");
+  var nomatch = document.getElementById("nomatch");
+  var drop = document.getElementById("drop");
+  var panel = document.getElementById("panel");
+  var panelRows = document.getElementById("panelRows");
+  var panelHead = document.getElementById("panelHead");
+  var searchInput = document.getElementById("searchInput");
+  var clearBtn = document.getElementById("clearBtn");
+  var saveBtn = document.getElementById("saveBtn");
+  var saveIcon = document.getElementById("saveIcon");
+  var saveLabel = document.getElementById("saveLabel");
+  var gearBtn = document.getElementById("gearBtn");
+  var minBtn = document.getElementById("minBtn");
+  var helpBtn = document.getElementById("helpBtn");
+  var helpCard = document.getElementById("helpCard");
   var fpsText = document.getElementById("fpsText");
-  var fpsIcon = document.querySelector(".fps-icon");
-  var omni = document.getElementById("omni");
-  var omniFps = document.getElementById("omniFps");
+  var pill = document.getElementById("pill");
+  var pillFps = document.getElementById("pillFps");
+  var heroSwatch = document.getElementById("heroSwatch");
+  var heroAccent = document.getElementById("heroAccent");
 
-  var state = { tab: 0, search: "", scale: 1, ox: 0, oy: 0, collapsed: false };
+  var state = {
+    tab: 1,
+    search: "",
+    dark: true,
+    panel: true,
+    accent: 0,
+    anim: 1,
+    bind: 0,
+    wall: false,
+    collapsed: false,
+    scale: 1
+  };
   var openCombo = null;
+  var saveTimer = null;
 
-  /* ------------------------------- layout ------------------------------- */
+  function el(tag, cls, html) {
+    var n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (html != null) n.innerHTML = html;
+    return n;
+  }
+
+  /* ------------------------------ palette ------------------------------- */
+
+  function hsvToRgb(h, s, v) {
+    var c = v * s;
+    var hp = (h - Math.floor(h)) * 6;
+    var x = c * (1 - Math.abs((hp % 2) - 1));
+    var r = 0, g = 0, b = 0;
+    if (hp < 1) { r = c; g = x; }
+    else if (hp < 2) { r = x; g = c; }
+    else if (hp < 3) { g = c; b = x; }
+    else if (hp < 4) { g = x; b = c; }
+    else if (hp < 5) { r = x; b = c; }
+    else { r = c; b = x; }
+    var m = v - c;
+    return [Math.round((r + m) * 255), Math.round((g + m) * 255), Math.round((b + m) * 255)];
+  }
+
+  function accentRgb(i) { return hsvToRgb(ACCENTS[i].hue, 0.78, 1.0); }
+
+  function hex(rgb) {
+    return "#" + rgb.map(function (v) { return ("0" + v.toString(16)).slice(-2).toUpperCase(); }).join("");
+  }
+
+  function applyAccent() {
+    var rgb = accentRgb(state.accent);
+    var css = "rgb(" + rgb.join(",") + ")";
+    document.documentElement.style.setProperty("--accent", css);
+    document.documentElement.style.setProperty("--accent-soft", "rgba(" + rgb.join(",") + ",0.22)");
+    heroSwatch.style.background = css;
+    heroAccent.textContent = hex(rgb);
+    var sws = panelRows.querySelectorAll(".sw");
+    for (var i = 0; i < sws.length; i++) {
+      var c = accentRgb(i);
+      sws[i].style.background = "rgb(" + c.join(",") + ")";
+      sws[i].style.color = "rgb(" + c.join(",") + ")";
+      sws[i].setAttribute("aria-pressed", i === state.accent ? "true" : "false");
+    }
+  }
+
+  function applyTheme() {
+    stage.dataset.theme = state.dark ? "dark" : "light";
+    renderPanelRows();
+    applyAccent();
+  }
+
+  function applyAnim() {
+    document.documentElement.style.setProperty("--anim", String(state.anim));
+  }
+
+  /* -------------------------------- layout ------------------------------ */
 
   function layout() {
-    var s = Math.min(1.7, Math.max(0.62, (window.innerWidth - 80) / 780));
+    var avail = Math.min(window.innerWidth - 48, 1400);
+    var s = Math.min(1.12, Math.max(0.4, avail / 1156));
     state.scale = s;
-    stage.style.width = 780 * s + "px";
-    stage.style.height = 480 * s + "px";
-    shell.style.transform = "scale(" + s + ")";
-    place();
+    stage.style.width = (1156 * s) + "px";
+    stage.style.height = (520 * s) + "px";
+    stageInner.style.transform = "scale(" + s + ")";
   }
 
-  function place() {
-    shell.style.left = state.ox * state.scale + "px";
-    shell.style.top = state.oy * state.scale + "px";
-  }
+  /* -------------------------------- nav --------------------------------- */
 
-  /* ------------------------------- sidebar ------------------------------ */
-
-  function renderTabs() {
-    tabsEl.innerHTML = "";
-    TABS.forEach(function (tab, i) {
-      var b = document.createElement("button");
+  function renderNav() {
+    nav.innerHTML = "";
+    var hl = el("span", "nav-hl");
+    nav.appendChild(hl);
+    NAV.forEach(function (item, i) {
+      var b = el("button", "tab", ic(item.icon) + "<span>" + item.label + "</span><i class=\"dot\"></i>");
       b.type = "button";
-      b.className = "tab" + (i === state.tab ? " active" : "");
-      b.innerHTML = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" ' +
-        'stroke-linecap="round" stroke-linejoin="round">' + ICONS[tab.icon] + "</svg><span>" + tab.label + "</span>";
-      b.addEventListener("click", function () { setTab(i); });
-      tabsEl.appendChild(b);
+      b.setAttribute("aria-current", item.tab === state.tab ? "true" : "false");
+      if (item.tab === state.tab) hl.style.top = (i * 38) + "px";
+      b.addEventListener("click", function () { setTab(item.tab, i); });
+      nav.appendChild(b);
     });
-    pillEl.style.top = 89 + 36 * state.tab + "px";
+    nav._hl = hl;
   }
 
-  function setTab(i) {
-    if (state.tab === i) return;
-    state.tab = i;
-    var kids = tabsEl.children;
-    for (var k = 0; k < kids.length; k++) kids[k].classList.toggle("active", k === i);
-    pillEl.style.top = 89 + 36 * i + "px";
-    closeDrop();
-    renderContent();
-    applySearch();
-    contentEl.scrollTop = 0;
-  }
-
-  /* ------------------------------- content ------------------------------ */
-
-  function cardEl(block, wide) {
-    var wrap = document.createElement("div");
-    var card = document.createElement("div");
-    card.className = "card";
-    if (block.label) {
-      var h = document.createElement("h4");
-      h.className = "card-title";
-      h.textContent = block.label;
-      wrap.appendChild(h);
+  function setTab(tab, index) {
+    if (state.tab === tab) return;
+    state.tab = tab;
+    var tabs = nav.querySelectorAll(".tab");
+    for (var i = 0; i < tabs.length; i++) {
+      tabs[i].setAttribute("aria-current", NAV[i].tab === tab ? "true" : "false");
+      if (NAV[i].tab === tab) nav._hl.style.top = (i * 38) + "px";
     }
-    wrap.appendChild(card);
-    wrap.className = "block" + (wide ? " wide" : "");
-    return { wrap: wrap, card: card };
-  }
-
-  function renderContent() {
-    inner.innerHTML = "";
-    inner.hidden = false;
-    noMatchEl.hidden = true;
     closeDrop();
-    var blocks = CONTENT[state.tab];
-
-    blocks.forEach(function (block) {
-      if (block.type === "chiptabs") {
-        var strip = document.createElement("div");
-        strip.className = "chiprow";
-        block.items.forEach(function (item, i) {
-          var b = document.createElement("button");
-          b.type = "button";
-          b.className = "chipbtn" + (i === block.active ? " active" : "");
-          b.textContent = item;
-          b.addEventListener("click", function () {
-            block.active = i;
-            var sibs = strip.children;
-            for (var s = 0; s < sibs.length; s++) sibs[s].classList.toggle("active", s === i);
-          });
-          strip.appendChild(b);
-        });
-        inner.appendChild(strip);
-        return;
-      }
-
-      if (block.type === "cardgrid") {
-        var grid = document.createElement("div");
-        grid.className = "cardgrid";
-        block.cards.forEach(function (sub) {
-          var parts = cardEl(sub, true);
-          sub.card.forEach(function (row) { parts.card.appendChild(renderRow(row)); });
-          grid.appendChild(parts.wrap);
-        });
-        inner.appendChild(grid);
-        return;
-      }
-
-      var made = cardEl(block);
-      block.card.forEach(function (row) { made.card.appendChild(renderRow(row)); });
-      inner.appendChild(made.wrap);
-    });
-
-    // fade the pane in, the way Render() fades content on a tab switch
-    inner.classList.add("fade");
-    void inner.offsetWidth;   // commit the faded state so the transition runs
-    window.requestAnimationFrame(function () { inner.classList.remove("fade"); });
+    renderPane();
+    applySearch();
+    content.scrollTop = 0;
   }
+
+  /* ------------------------------- rows --------------------------------- */
 
   function fmtValue(fmt, v) {
     if (fmt === "%.0f") return String(Math.round(v));
     if (fmt === "%.1f") return v.toFixed(1);
     if (fmt === "%.2f") return v.toFixed(2);
+    if (fmt === "%.0f%%") return Math.round(v) + "%";
     if (fmt === "%.1fx") return v.toFixed(1) + "x";
     if (fmt === "%.2fx") return v.toFixed(2) + "x";
     return String(v);
   }
 
-  function renderRow(row) {
-    var el;
-    if (row.type === "toggle") {
-      el = document.createElement("div");
-      el.className = "row toggle" + (row.on ? " on" : "");
-      el.innerHTML = (row.icon ? icon(row.icon) : "") +
-        '<span class="rlabel">' + row.label + "</span>" +
-        '<span class="switch"><span class="knob"></span></span>';
-      el.addEventListener("click", function () {
-        row.on = !row.on;
-        el.classList.toggle("on", row.on);
+  function renderRow(spec) {
+    var node;
+    var label;
+
+    if (spec.kind === "toggle") {
+      node = el("div", "row toggle" + (spec.on ? " on" : ""),
+        '<span class="rlabel">' + spec.label + '</span><span class="switch"><i></i></span>');
+      node.addEventListener("click", function () {
+        spec.on = !spec.on;
+        node.classList.toggle("on", spec.on);
       });
-    } else if (row.type === "slider") {
-      el = document.createElement("div");
-      el.className = "row slider";
-      el.innerHTML = '<div class="slabel">' + (row.icon ? icon(row.icon) : "") +
-        "<span>" + row.label + "</span></div>" +
-        '<span class="spill"></span>' +
-        '<span class="strack"><span class="sfill"></span><span class="sknob"></span></span>';
-      var track = el.querySelector(".strack");
-      var fill = el.querySelector(".sfill");
-      var knob = el.querySelector(".sknob");
-      var spill = el.querySelector(".spill");
+    } else if (spec.kind === "slider") {
+      node = el("div", "row slider",
+        '<span class="rlabel">' + spec.label + '</span><span class="rvalue"></span>' +
+        '<span class="track"><span class="fill"></span><span class="knob"></span></span>');
+      var rvalue = node.querySelector(".rvalue");
+      var track = node.querySelector(".track");
+      var fill = node.querySelector(".fill");
+      var knob = node.querySelector(".knob");
       var paint = function () {
-        var t = (row.value - row.min) / (row.max - row.min);
-        t = Math.max(0, Math.min(1, t));
-        spill.textContent = fmtValue(row.fmt, row.value);
-        fill.style.width = t * 100 + "%";
-        knob.style.left = t * track.clientWidth + "px";
+        var t = Math.max(0, Math.min(1, (spec.value - spec.min) / (spec.max - spec.min)));
+        rvalue.textContent = fmtValue(spec.fmt, spec.value);
+        fill.style.width = (t * 100) + "%";
+        knob.style.left = (t * 84) + "px";
       };
       var setFromX = function (clientX) {
         var r = track.getBoundingClientRect();
         var t = Math.max(0, Math.min(1, (clientX - r.left) / (r.width || 1)));
-        row.value = row.min + t * (row.max - row.min);
+        spec.value = spec.min + t * (spec.max - spec.min);
         paint();
+        if (spec.onChange) spec.onChange(spec.value);
       };
-      el.addEventListener("pointerdown", function (ev) {
+      node.addEventListener("pointerdown", function (ev) {
         ev.preventDefault();
-        el.classList.add("active");
+        node.classList.add("active");
         setFromX(ev.clientX);
         var move = function (e) { setFromX(e.clientX); };
         var up = function () {
-          el.classList.remove("active");
+          node.classList.remove("active");
           window.removeEventListener("pointermove", move);
           window.removeEventListener("pointerup", up);
         };
         window.addEventListener("pointermove", move);
         window.addEventListener("pointerup", up);
       });
-      requestAnimationFrame(paint);
-      el._paint = paint;
-    } else if (row.type === "combo") {
-      el = document.createElement("div");
-      el.className = "row combo";
-      el.innerHTML = (row.icon ? icon(row.icon) : "") +
-        '<span class="rlabel">' + row.label + "</span>" +
-        '<span class="cvalue">' + row.options[row.value] + "</span>" +
-        '<span class="chev"><svg viewBox="0 0 8 8" fill="none" stroke="currentColor" stroke-width="1.4" ' +
-        'stroke-linecap="round"><path d="M1 2.6 4 5.4 7 2.6"/></svg></span>';
-      el.addEventListener("click", function () { openDrop(row, el); });
-    } else if (row.type === "color") {
-      el = document.createElement("div");
-      el.className = "row color";
-      el.innerHTML = (row.icon ? icon(row.icon) : "") +
-        '<span class="rlabel">' + row.label + "</span>" +
-        '<span class="chex"></span><span class="chip"></span>';
-      var PALETTE = ["#00d4ff", "#00d278", "#ff3c50", "#ffc832", "#bf38ff", "#ffffff"];
-      var paintColor = function () {
-        el.querySelector(".chip").style.background = row.color;
-        el.querySelector(".chex").textContent = row.color.toUpperCase();
+      paint();
+      node._paint = paint;
+    } else if (spec.kind === "combo") {
+      node = el("div", "row combo",
+        '<span class="rlabel">' + spec.label + '</span>' +
+        '<span class="rvalue">' + spec.options[spec.value] + "</span>" +
+        '<span class="chev">' + ic("chev") + "</span>");
+      node.addEventListener("click", function () { openDrop(spec, node); });
+    } else if (spec.kind === "color") {
+      node = el("div", "row color",
+        '<span class="rlabel">' + spec.label + '</span><span class="rhex">' + spec.hex + '</span><span class="chip"></span>');
+      var chip = node.querySelector(".chip");
+      var paintChip = function () {
+        chip.style.background = spec.hex;
+        node.querySelector(".rhex").textContent = spec.hex;
       };
-      el.addEventListener("click", function () {
-        var i = (PALETTE.indexOf(row.color) + 1) % PALETTE.length;
-        row.color = PALETTE[i];
-        paintColor();
+      node.addEventListener("click", function () {
+        var i = (COLOR_CYCLE.indexOf(spec.hex) + 1) % COLOR_CYCLE.length;
+        spec.hex = COLOR_CYCLE[i];
+        paintChip();
       });
-      paintColor();
-    } else if (row.type === "kv") {
-      el = document.createElement("div");
-      el.className = "row kv";
-      el.innerHTML = "<span>" + row.label + "</span><b>" + row.value + "</b>";
-      el._filterable = false;
-    } else if (row.type === "bullet") {
-      el = document.createElement("div");
-      el.className = "row bullet";
-      el.innerHTML = icon(row.icon) + "<span>" + row.text + "</span>";
-      el._filterable = false;
-    } else if (row.type === "buttons") {
-      el = document.createElement("div");
-      el.className = "row btnrow";
-      row.items.forEach(function (label) {
-        var b = document.createElement("button");
+      paintChip();
+    } else if (spec.kind === "kv") {
+      node = el("div", "row kv", "<span>" + spec.label + "</span>" + (spec.value ? "<b>" + spec.value + "</b>" : ""));
+    } else if (spec.kind === "note") {
+      node = el("div", "row note", spec.text);
+    } else if (spec.kind === "seg") {
+      node = el("div", "row segrow");
+      node.appendChild(el("span", "rlabel", spec.label || ""));
+      node.appendChild(renderSeg(spec));
+    } else if (spec.kind === "bullet") {
+      node = el("div", "row bullet", ic(spec.icon) + "<span>" + spec.text + "</span>");
+    } else if (spec.kind === "buttons") {
+      node = el("div", "row btnrow");
+      spec.items.forEach(function (labelText) {
+        var b = el("button", "minibtn", labelText);
         b.type = "button";
-        b.className = "minibtn";
-        b.textContent = label;
         b.addEventListener("click", function () {
-          b.textContent = label === "RESET" ? "RESET" : "OK";
-          window.setTimeout(function () { b.textContent = label; }, 900);
+          b.textContent = labelText === "RESET" ? labelText : "OK";
+          window.setTimeout(function () { b.textContent = labelText; }, 900);
         });
-        el.appendChild(b);
+        node.appendChild(b);
       });
-      el._filterable = false;
-    } else if (row.type === "note") {
-      el = document.createElement("div");
-      el.className = "row note";
-      el.textContent = row.text;
-      el._filterable = false;
-    } else { /* date */
-      el = document.createElement("div");
-      el.className = "row kv";
-      el.innerHTML = "<span>" + row.text + "</span>";
-      el._filterable = false;
     }
-    el._row = row;
-    if (el._filterable === undefined) el._filterable = (row.type === "toggle" || row.type === "slider" || row.type === "combo");
-    return el;
+    node._spec = spec;
+    return node;
+  }
+
+  function renderBlocks(blocks) {
+    var frag = document.createDocumentFragment();
+    blocks.forEach(function (block) {
+      if (block.kind === "cols") {
+        var wrap = el("div", "cols");
+        block.cols.forEach(function (column) {
+          var col = el("div", "col");
+          col.appendChild(renderBlocks(column));
+          wrap.appendChild(col);
+        });
+        frag.appendChild(wrap);
+        return;
+      }
+      
+      if (block.kind === "chips") {
+        var strip = el("div", "chiprow");
+        block.items.forEach(function (item, i) {
+          var b = el("button", "chipbtn", item);
+          b.type = "button";
+          b.setAttribute("aria-pressed", i === block.active ? "true" : "false");
+          b.addEventListener("click", function () {
+            block.active = i;
+            var sibs = strip.children;
+            for (var k = 0; k < sibs.length; k++) sibs[k].setAttribute("aria-pressed", k === i ? "true" : "false");
+          });
+          strip.appendChild(b);
+        });
+        frag.appendChild(strip);
+        return;
+      }
+      if (block.kind === "section") {
+        frag.appendChild(el("h4", "section", block.label));
+        return;
+      }
+      var cardNode = el("div", "card");
+      block.rows.forEach(function (row) { cardNode.appendChild(renderRow(row)); });
+      frag.appendChild(cardNode);
+    });
+    return frag;
+  }
+
+  function renderPane() {
+    closeDrop();
+    pane.innerHTML = "";
+    pane.hidden = false;
+    nomatch.hidden = true;
+    pane.appendChild(renderBlocks(PAGES[state.tab] || []));
+    // fade the pane in, the way Render() fades content on a tab switch
+    pane.classList.add("fade");
+    void pane.offsetWidth;
+    window.requestAnimationFrame(function () { pane.classList.remove("fade"); });
   }
 
   /* ------------------------------- search ------------------------------- */
 
+  function functionCount() {
+    var rows = pane.querySelectorAll(".row");
+    var n = 0;
+    for (var i = 0; i < rows.length; i++) if (rows[i]._spec && FILTERABLE[rows[i]._spec.kind]) n++;
+    return n;
+  }
+
+  function updateHint() {
+    searchInput.placeholder = "explore " + functionCount() + " functions...";
+  }
+
   function applySearch() {
     var q = state.search.trim().toLowerCase();
     var filtering = q.length > 0;
-    clearEl.hidden = !filtering;
-    var queryTabs = state.tab >= 0 && state.tab <= 3;   // RowToggle/RowSlider/ComboRow tabs
-    // Mirrors FrameSearchHit / LastSearchHit: a tab only counts as "has hits"
-    // when one of the EqPassFilter rows matched, so the placeholder replaces the
-    // whole pane - unfiltered custom rows and all.
+    clearBtn.hidden = !filtering;
+    var queryPage = !!QUERY_TABS[state.tab];
     var anyMatch = !filtering;
 
-    var blocks = inner.querySelectorAll(".block");
-    for (var b = 0; b < blocks.length; b++) {
-      var rows = blocks[b].querySelectorAll(".row");
-      var shownHere = 0;
-      for (var i = 0; i < rows.length; i++) {
-        var row = rows[i]._row;
-        var show = true;
-        if (filtering && queryTabs && rows[i]._filterable) {
-          show = row && row.label ? row.label.toLowerCase().indexOf(q) !== -1 : true;
-          if (show) anyMatch = true;
-        }
-        rows[i].hidden = !show;
-        if (show) shownHere++;
+    var rows = pane.querySelectorAll(".row");
+    for (var i = 0; i < rows.length; i++) {
+      var spec = rows[i]._spec;
+      var show = true;
+      if (filtering && queryPage && spec && FILTERABLE[spec.kind]) {
+        show = spec.label.toLowerCase().indexOf(q) !== -1;
+        if (show) anyMatch = true;
       }
-      blocks[b].hidden = shownHere === 0;
+      rows[i].hidden = !show;
+    }
+    // a card with every row filtered out collapses, like the auto-fit child
+    var cards = pane.querySelectorAll(".card");
+    for (var c = 0; c < cards.length; c++) {
+      var visible = cards[c].querySelectorAll(".row:not([hidden])").length;
+      cards[c].hidden = visible === 0;
     }
 
-    var showNoMatch = filtering && queryTabs && !anyMatch;
-    noMatchEl.hidden = !showNoMatch;
-    inner.hidden = showNoMatch;
+    var showNoMatch = filtering && queryPage && !anyMatch;
+    nomatch.hidden = !showNoMatch;
+    pane.hidden = showNoMatch;
     if (showNoMatch) closeDrop();
-
-    // sliders re-paint after being re-shown (their width was 0 while hidden)
-    var sliders = inner.querySelectorAll(".row.slider");
-    for (var s = 0; s < sliders.length; s++) {
-      if (sliders[s]._paint) sliders[s]._paint();
-    }
+    updateHint();
   }
 
-  /* ------------------------------- dropdown ------------------------------ */
+  /* ------------------------------ dropdown ------------------------------ */
 
   function closeDrop() {
-    dropEl.hidden = true;
-    dropEl.innerHTML = "";
+    drop.hidden = true;
+    drop.innerHTML = "";
     if (openCombo) openCombo.classList.remove("open");
     openCombo = null;
   }
 
-  function openDrop(row, rowEl) {
+  function openDrop(spec, rowEl) {
     if (openCombo === rowEl) { closeDrop(); return; }
     closeDrop();
     openCombo = rowEl;
     rowEl.classList.add("open");
-    dropEl.innerHTML = "";
-
-    row.options.forEach(function (opt, i) {
-      var d = document.createElement("div");
-      d.className = "di" + (i === row.value ? " sel" : "");
-      d.innerHTML = "<span>" + opt + "</span>" +
-        (i === row.value ? '<span class="check"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" ' +
-          'stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' + ICONS.check + "</svg></span>" : "");
+    drop.innerHTML = "";
+    spec.options.forEach(function (opt, i) {
+      var d = el("div", "di", "<span>" + opt + "</span>");
+      d.setAttribute("aria-selected", i === spec.value ? "true" : "false");
       d.addEventListener("click", function () {
-        row.value = i;
-        var value = rowEl.querySelector(".cvalue");
+        spec.value = i;
+        var value = rowEl.querySelector(".rvalue");
         if (value) value.textContent = opt;
+        if (spec.onChange) spec.onChange(i);
         closeDrop();
       });
-      dropEl.appendChild(d);
+      drop.appendChild(d);
     });
-    dropEl.hidden = false;
+    drop.hidden = false;
     positionDrop();
   }
 
-  /* Anchored to the row every frame, the way ComboRow() sets the popup position
-     from the row rect, so scrolling the pane moves the panel with its row
-     instead of dismissing it. */
+  // Anchored to the row every frame (ComboRow() sets the popup from the row
+  // rect), so scrolling the pane moves the menu with its row.
   function positionDrop() {
-    if (!openCombo || !openCombo._row) return;
-    var pane = contentEl.getBoundingClientRect();
+    if (!openCombo || !openCombo._spec) return;
+    var shellRect = stageInner.getBoundingClientRect();
     var r = openCombo.getBoundingClientRect();
-    if (r.bottom < pane.top - 1 || r.top > pane.bottom + 1) { closeDrop(); return; }
+    var paneRect = content.getBoundingClientRect();
+    if (r.bottom < paneRect.top - 1 || r.top > paneRect.bottom + 1) { closeDrop(); return; }
 
-    var box = shell.getBoundingClientRect();
-    var s = box.width / 780;
-    var x = (r.left - box.left) / s;
+    var s = state.scale || 1;
+    var x = (r.left - shellRect.left) / s;
     var w = r.width / s;
-    var itemH = 26, pad = 6;
-    var h = openCombo._row.options.length * itemH + pad * 2 + 2;
-    var y = (r.bottom - box.top) / s + 4;
-    if (y + h > 466) y = (r.top - box.top) / s - h - 4;   // flip above near the bottom
+    var itemH = 28;
+    var h = openCombo._spec.options.length * itemH + 10 + 2;
+    var y = (r.bottom - shellRect.top) / s + 4;
+    if (y + h > 512 && (r.top - shellRect.top) / s - h - 4 > 0) y = (r.top - shellRect.top) / s - h - 4;
 
-    dropEl.style.left = Math.max(212, Math.min(x, 766 - w)) + "px";
-    dropEl.style.top = y + "px";
-    dropEl.style.width = w + "px";
+    drop.style.left = Math.max(8, Math.min(x, 1156 - 12 - w)) + "px";
+    drop.style.top = Math.max(8, y) + "px";
+    drop.style.width = w + "px";
   }
 
-  /* ------------------------------- header -------------------------------- */
+  /* ------------------------------- panel -------------------------------- */
 
-  function renderHeader() {
-    var quick = document.getElementById("quick");
-    quick.innerHTML = "";
-    QUICK.forEach(function (q) {
-      var b = document.createElement("button");
+  function renderPanelRows() {
+    panelRows.innerHTML = "";
+    var themeB = seg("Theme", ["Dark", "Light"], state.dark ? 0 : 1);
+    themeB.onChange = function (v) { state.dark = v === 0; applyTheme(); };
+
+    var animPct = Math.round(state.anim * 100);
+    var animS = slider("Animation", animPct, 50, 200, "%.0f%%");
+    animS.onChange = function (v) { state.anim = Math.round(v) / 100; applyAnim(); };
+
+    panelRows.appendChild(renderRow(themeB));
+    panelRows.appendChild(renderRow(animS));
+
+    var accentRow = el("div", "row accent",
+      '<span class="rlabel">Accent color</span><span class="swatches"></span>');
+    var swatches = accentRow.querySelector(".swatches");
+    ACCENTS.forEach(function (a, i) {
+      var b = el("button", "sw");
       b.type = "button";
-      b.className = "qbtn";
-      b.title = q.title;
-      b.innerHTML = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" ' +
-        'stroke-linecap="round" stroke-linejoin="round">' + ICONS[q.icon] + "</svg>";
-      b.addEventListener("click", function () { setTab(q.tab); });
-      quick.appendChild(b);
+      b.title = a.name;
+      b.setAttribute("aria-pressed", i === state.accent ? "true" : "false");
+      b.addEventListener("click", function (ev) {
+        ev.stopPropagation();
+        state.accent = i;
+        applyAccent();
+      });
+      swatches.appendChild(b);
     });
+    panelRows.appendChild(accentRow);
 
-    var traffic = document.getElementById("traffic");
-    traffic.innerHTML = "";
-    [{ t: "Collapse" }, { t: "Jump to VISUALS" }, { t: "Swap backdrop" }].forEach(function (spec, i) {
-      var b = document.createElement("button");
-      b.type = "button";
-      b.className = "tdot";
-      b.dataset.light = i;
-      b.title = spec.t;
-      b.innerHTML = "<i></i>";
-      b.addEventListener("click", function () { trafficLight(i); });
-      traffic.appendChild(b);
+    var bindRow = el("div", "row bindrow", '<span class="rlabel">Menu bind</span><span class="bind">' + BINDS[state.bind] + "</span>");
+    bindRow.addEventListener("click", function () {
+      state.bind = (state.bind + 1) % BINDS.length;
+      bindRow.querySelector(".bind").textContent = BINDS[state.bind];
+    });
+    panelRows.appendChild(bindRow);
+    applyAccent();
+  }
+
+  function dragPanel() {
+    var dragging = false;
+    var start = null;
+    panelHead.addEventListener("pointerdown", function (ev) {
+      ev.preventDefault();
+      dragging = true;
+      var r = panel.getBoundingClientRect();
+      var stageRect = stageInner.getBoundingClientRect();
+      start = {
+        x: (r.left - stageRect.left) / state.scale,
+        y: (r.top - stageRect.top) / state.scale,
+        px: ev.clientX,
+        py: ev.clientY
+      };
+      panelHead.style.cursor = "grabbing";
+    });
+    window.addEventListener("pointermove", function (ev) {
+      if (!dragging) return;
+      var nx = start.x + (ev.clientX - start.px) / state.scale;
+      var ny = start.y + (ev.clientY - start.py) / state.scale;
+      panel.style.left = Math.max(4, Math.min(nx, 1156 - 262)) + "px";
+      panel.style.top = Math.max(4, Math.min(ny, 460)) + "px";
+    });
+    window.addEventListener("pointerup", function () {
+      dragging = false;
+      panelHead.style.cursor = "grab";
     });
   }
 
-  function trafficLight(i) {
-    if (i === 0) {
-      state.collapsed = true;
-      shell.hidden = true;
-      omni.hidden = false;
-      closeDrop();
-    } else if (i === 1) {
-      setTab(0);
-    } else {
-      scene.classList.toggle("light");
-    }
+  /* -------------------------------- header ------------------------------ */
+
+  function flashSave() {
+    saveBtn.dataset.flash = "1";
+    saveIcon.innerHTML = ic("check");
+    saveLabel.textContent = "Saved";
+    if (saveTimer) window.clearTimeout(saveTimer);
+    saveTimer = window.setTimeout(function () {
+      saveBtn.dataset.flash = "0";
+      saveIcon.innerHTML = ic("save");
+      saveLabel.textContent = "Save";
+    }, 1600);
+  }
+
+  function setCollapsed(collapsed) {
+    state.collapsed = collapsed;
+    shell.hidden = collapsed;
+    panel.hidden = collapsed || !state.panel;
+    helpCard.hidden = true;
+    pill.hidden = !collapsed;
+    if (collapsed) closeDrop();
   }
 
   function updateFps() {
     var fps = 55 + Math.round(Math.random() * 7);
-    fpsText.textContent = "FPS " + fps;
-    omniFps.textContent = String(fps);
-    fpsIcon.classList.toggle("warn", fps < 55 && fps >= 30);
-    fpsIcon.classList.toggle("bad", fps < 30);
+    fpsText.textContent = fps + " FPS";
+    pillFps.textContent = fps + " FPS";
   }
 
-  /* ------------------------------ interactions --------------------------- */
+  /* ------------------------------ interactions -------------------------- */
 
-  searchEl.addEventListener("input", function () {
-    state.search = searchEl.value;
+  function wire() {
+    document.getElementById("searchIcon").innerHTML = ic("search");
+    document.getElementById("nomatchIcon").innerHTML = ic("search");
+    document.getElementById("clearBtn").innerHTML = ic("times");
+    saveIcon.innerHTML = ic("save");
+    gearBtn.innerHTML = ic("cog");
+    minBtn.innerHTML = ic("minus");
+
+    searchInput.addEventListener("input", function () {
+      state.search = searchInput.value;
+      applySearch();
+    });
+
+    clearBtn.addEventListener("click", function () {
+      searchInput.value = "";
+      state.search = "";
+      applySearch();
+      searchInput.focus();
+    });
+
+    saveBtn.addEventListener("click", flashSave);
+
+    gearBtn.addEventListener("click", function () {
+      state.panel = !state.panel;
+      panel.hidden = !state.panel;
+      gearBtn.setAttribute("aria-pressed", state.panel ? "true" : "false");
+      closeDrop();
+    });
+    gearBtn.setAttribute("aria-pressed", state.panel ? "true" : "false");
+
+    minBtn.addEventListener("click", function () { setCollapsed(true); });
+    pill.addEventListener("click", function () { setCollapsed(false); });
+
+    helpBtn.addEventListener("click", function (ev) {
+      ev.stopPropagation();
+      helpCard.hidden = !helpCard.hidden;
+      helpBtn.setAttribute("aria-expanded", helpCard.hidden ? "false" : "true");
+    });
+
+    content.addEventListener("scroll", positionDrop);
+
+    document.addEventListener("pointerdown", function (ev) {
+      if (helpCard.contains(ev.target) || helpBtn.contains(ev.target)) return;
+      if (!helpCard.hidden) {
+        helpCard.hidden = true;
+        helpBtn.setAttribute("aria-expanded", "false");
+      }
+      if (drop.hidden) return;
+      if (drop.contains(ev.target)) return;
+      if (openCombo && openCombo.contains(ev.target)) return;
+      closeDrop();
+    }, true);
+
+    document.addEventListener("keydown", function (ev) {
+      if (ev.key === "Escape") {
+        closeDrop();
+        helpCard.hidden = true;
+        helpBtn.setAttribute("aria-expanded", "false");
+      }
+    });
+
+    // drag the window by the top bar, mirroring Render()'s header drag zone
+    var topbar = document.getElementById("topbar");
+    var origin = { x: 0, y: 0 };
+    topbar.addEventListener("pointerdown", function (ev) {
+      if (ev.target.closest(".save, .iconbtn, .search")) return;
+      ev.preventDefault();
+      var sx = ev.clientX, sy = ev.clientY;
+      var box = shell.getBoundingClientRect();
+      var innerRect = stageInner.getBoundingClientRect();
+      origin.x = (box.left - innerRect.left) / state.scale;
+      origin.y = (box.top - innerRect.top) / state.scale;
+      var move = function (e) {
+        var dx = (e.clientX - sx) / state.scale;
+        var dy = (e.clientY - sy) / state.scale;
+        // EqClampMenuPos(): keep at least ~120px of the shell in the panel
+        var nx = Math.max(120 - 880, Math.min(1156 - 120, origin.x + dx));
+        var ny = Math.max(40 - 520, Math.min(520 - 40, origin.y + dy));
+        shell.style.left = nx + "px";
+        shell.style.top = ny + "px";
+      };
+      var up = function () {
+        window.removeEventListener("pointermove", move);
+        window.removeEventListener("pointerup", up);
+      };
+      window.addEventListener("pointermove", move);
+      window.addEventListener("pointerup", up);
+    });
+
+    // playground
+    document.getElementById("pgWall").addEventListener("click", function () {
+      state.wall = !state.wall;
+      shell.dataset.wall = state.wall ? "on" : "off";
+    });
+    document.getElementById("pgTheme").addEventListener("click", function () {
+      state.dark = !state.dark;
+      applyTheme();
+    });
+    document.getElementById("pgAccent").addEventListener("click", function () {
+      state.accent = (state.accent + 1) % ACCENTS.length;
+      applyAccent();
+    });
+    document.getElementById("pgAnim").addEventListener("click", function () {
+      state.anim = state.anim === 1 ? 2 : (state.anim === 2 ? 0.5 : 1);
+      applyAnim();
+      renderPanelRows();
+    });
+  }
+
+  /* -------------------------------- start ------------------------------- */
+
+  function start() {
+    wire();
+    renderNav();
+    renderPanelRows();
+    dragPanel();
+    renderPane();
     applySearch();
-  });
+    applyAccent();
+    applyAnim();
+    applyTheme();
+    layout();
+    updateFps();
+    window.setInterval(updateFps, 1100);
+    window.addEventListener("resize", function () { layout(); positionDrop(); });
+  }
 
-  clearEl.addEventListener("click", function () {
-    searchEl.value = "";
-    state.search = "";
-    searchEl.focus();
-    applySearch();
-  });
-
-  omni.addEventListener("click", function () {
-    state.collapsed = false;
-    omni.hidden = true;
-    shell.hidden = false;
-  });
-
-  contentEl.addEventListener("scroll", positionDrop);
-
-  document.addEventListener("pointerdown", function (ev) {
-    if (dropEl.hidden) return;
-    if (dropEl.contains(ev.target)) return;
-    if (openCombo && openCombo.contains(ev.target)) return;
-    closeDrop();
-  }, true);
-
-  document.addEventListener("keydown", function (ev) {
-    if (ev.key === "Escape") closeDrop();
-  });
-
-  // drag the window by the header strip, the way Render() drags on h0..h1
-  var head = document.getElementById("head");
-  head.addEventListener("pointerdown", function (ev) {
-    if (ev.target.closest(".search, .qbtn, .tdot")) return;
-    ev.preventDefault();
-    var startX = ev.clientX, startY = ev.clientY;
-    var ox = state.ox, oy = state.oy;
-    var move = function (e) {
-      var dx = (e.clientX - startX) / state.scale;
-      var dy = (e.clientY - startY) / state.scale;
-      // EqClampMenuPos(): keep at least ~120px of the 780px shell in the panel
-      state.ox = Math.max(120 - 780, Math.min(660, ox + dx));
-      state.oy = Math.max(48, Math.min(432, oy + dy));
-      place();
-    };
-    var up = function () {
-      window.removeEventListener("pointermove", move);
-      window.removeEventListener("pointerup", up);
-    };
-    window.addEventListener("pointermove", move);
-    window.addEventListener("pointerup", up);
-  });
-
-  window.addEventListener("resize", layout);
-
-  /* -------------------------------- start -------------------------------- */
-
-  decorateIcons(document);
-  renderTabs();
-  renderHeader();
-  renderContent();
-  layout();
-  updateFps();
-  window.setInterval(updateFps, 1100);
+  start();
 })();
