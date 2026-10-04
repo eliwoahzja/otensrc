@@ -151,9 +151,23 @@ namespace portfolio
     }
 
     // ============ APPLY TO IMGUI STYLE ============
+    // Sets every field that ScaleAllSizes() touches back to an unscaled base,
+    // so apply_scaled_style() stays idempotent across frames.
     inline void apply_style()
     {
         ImGuiStyle& s = ImGui::GetStyle();
+
+        // Base (unscaled) size-dependent values
+        s.FontSize        = 16.f;
+        s.FramePadding    = ImVec2(8.f, 6.f);
+        s.ItemSpacing     = ImVec2(10.f, 8.f);
+        s.ItemInnerSpacing= ImVec2(6.f, 6.f);
+        s.IndentSpacing   = 20.f;
+        s.CellPadding     = ImVec2(4.f, 4.f);
+        s.TouchExtraPadding = ImVec2(4.f, 4.f);
+        s.ScrollbarSize   = 6.f;
+        s.GrabMinSize     = 12.f;
+
         s.WindowRounding   = 0.f;
         s.WindowBorderSize = 0.f;
         s.WindowPadding    = { 0.f, 0.f };
@@ -161,7 +175,6 @@ namespace portfolio
         s.AntiAliasedFill  = true;
         s.ChildBorderSize  = 0.f;
         s.FrameBorderSize  = 0.f;
-        s.ScrollbarSize    = 0.f;
 
         ImVec4* c = s.Colors;
         c[ImGuiCol_WindowBg]         = { 0.f, 0.f, 0.f, 0.f };
@@ -173,8 +186,13 @@ namespace portfolio
         c[ImGuiCol_ScrollbarGrabActive]  = { 0.f, 0.f, 0.f, 0.f };
     }
 
+    // ScaleAllSizes() MULTIPLIES the live style values, so it is only valid
+    // once per context. Calling it per frame compounds padding/spacing without
+    // bound. apply_style() resets every size-dependent field to a base value,
+    // so scaling immediately after apply_style() is idempotent.
     inline void apply_scaled_style()
     {
+        apply_style();                 // reset to unscaled base first
         ImGui::GetStyle().ScaleAllSizes(factor);
         ImGui::GetIO().FontGlobalScale = 1.f;
     }
@@ -183,9 +201,33 @@ namespace portfolio
     inline ImVec4 accent_vec4(float alpha = 1.f) { return { g_accent.x, g_accent.y, g_accent.z, alpha }; }
     inline ImU32 accent_u32(float alpha = 1.f) { return ImGui::GetColorU32(accent_vec4(alpha)); }
 
+    // UV window covering screen-space rect `r` inside a full-screen capture.
+    // `r` is (x, y, w, h) in the same space as io.DisplaySize.
+    inline void uv_for_screen_rect(const ImVec4& r, ImVec2& uv_min, ImVec2& uv_max)
+    {
+        const ImVec2 disp = ImGui::GetIO().DisplaySize;
+        if (disp.x <= 0.f || disp.y <= 0.f)
+        {
+            uv_min = ImVec2(0.f, 0.f);
+            uv_max = ImVec2(1.f, 1.f);
+            return;
+        }
+        uv_min = ImVec2(ImClamp(r.x / disp.x, 0.f, 1.f), ImClamp(r.y / disp.y, 0.f, 1.f));
+        uv_max = ImVec2(ImClamp((r.x + r.z) / disp.x, 0.f, 1.f), ImClamp((r.y + r.w) / disp.y, 0.f, 1.f));
+        // Rounding can collapse the window; keep a sliver so the sampler has
+        // something with non-zero extent.
+        if (uv_max.x <= uv_min.x) uv_max.x = ImMin(1.f, uv_min.x + 1e-4f);
+        if (uv_max.y <= uv_min.y) uv_max.y = ImMin(1.f, uv_min.y + 1e-4f);
+    }
+
     // ============ LIQUID GLASS RENDERING ============
     // Apple-style liquid glass: neutral interior + specular rim + chromatic aberration edge
-    inline void DrawLiquidGlassPanel(ImDrawList* dl, const ImVec2& p0, const ImVec2& p1, float R, ImTextureID backdrop = nullptr, float backdropBlur = 0.f)
+    //
+    // `backdrop`, when set, is a capture of the whole screen (the live game
+    // frame). It is sampled with UVs derived from the panel rect so the panel
+    // shows the part of the game that is actually behind it, not a squashed
+    // copy of the entire frame.
+    inline void DrawLiquidGlassPanel(ImDrawList* dl, const ImVec2& p0, const ImVec2& p1, float R, ImTextureID backdrop = nullptr)
     {
         const float w = p1.x - p0.x;
         const float h = p1.y - p0.y;
@@ -194,10 +236,13 @@ namespace portfolio
         // 1. Drop shadow (large, soft)
         dl->AddShadowRect(p0, p1, IM_COL32(0, 0, 0, 120), 40.f, ImVec2(0, 16), 0, R);
 
-        // 2. Backdrop (blurred or solid)
+        // 2. Backdrop: sample only the screen region behind this panel.
         if (backdrop)
         {
-            dl->AddImageRounded(backdrop, p0, p1, ImVec2(0,0), ImVec2(1,1), IM_COL32_WHITE, R);
+            const ImVec4 r(p0.x, p0.y, w, h);
+            ImVec2 uv_min, uv_max;
+            uv_for_screen_rect(r, uv_min, uv_max);
+            dl->AddImageRounded(backdrop, p0, p1, uv_min, uv_max, IM_COL32_WHITE, R);
             // Dark tint for text contrast (portfolio: rgba(14,14,22,0.18→0.32))
             dl->AddRectFilled(p0, p1, IM_COL32(14, 14, 22, 80), R);
         }
@@ -307,8 +352,11 @@ namespace portfolio
     }
 
     // Liquid glass button (portfolio style: rounded, icon+label, hover states)
+    // iconSize / textSize are explicit because this repo's ImGui has no
+    // fonts::size() helper to query a font's pixel size from.
     inline void DrawLiquidGlassButton(ImDrawList* dl, const ImVec2& p0, const ImVec2& p1, float R, 
-        const char* icon, const char* label, ImFont* iconFont, ImFont* textFont, 
+        const char* icon, const char* label, ImFont* iconFont, float iconSize,
+        ImFont* textFont, float textSize,
         bool hovered, bool pressed, bool active)
     {
         ImU32 bgCol = pressed ? IM_COL32(0, 0, 0, 120) : (hovered ? IM_COL32(255, 255, 255, 30) : IM_COL32(255, 255, 255, 15));
@@ -326,62 +374,42 @@ namespace portfolio
             IM_COL32(255, 255, 255, 0), IM_COL32(255, 255, 255, 60)
         );
 
-        float cx = (p0.x + p1.x) * 0.5f;
-        float cy = (p0.y + p1.y) * 0.5f;
+        const float cx = (p0.x + p1.x) * 0.5f;
+        const float cy = (p0.y + p1.y) * 0.5f;
+        const float gap = 8.f;
+        const float labelW = (label && textFont) ? textFont->CalcTextSizeA(textSize, FLT_MAX, 0.f, label).x : 0.f;
+        const float totalW = (icon ? iconSize : 0.f) + ((icon && label) ? gap : 0.f) + labelW;
 
+        float x = cx - totalW * 0.5f;
         if (icon && iconFont)
         {
-            const float iconSize = ImMin(p1.y - p0.y, p1.x - p0.x) * 0.5f;
-            ImVec2 iconPos = { cx - iconSize * 0.5f, cy - iconSize * 0.5f };
-            if (label && textFont)
-            {
-                // Icon left of label
-                float labelW = textFont->CalcTextSizeA(fonts::size(textFont), FLT_MAX, 0, label).x;
-                float totalW = iconSize + 8.f + labelW;
-                iconPos.x = cx - totalW * 0.5f;
-                iconPos.y = cy - iconSize * 0.5f;
-                // Draw icon
-                dl->AddText(iconFont, iconSize, iconPos, textCol, icon);
-                // Draw label
-                dl->AddText(textFont, fonts::size(textFont), 
-                    { iconPos.x + iconSize + 8.f, cy - fonts::size(textFont) * 0.5f }, textCol, label);
-            }
-            else
-            {
-                // Icon only
-                dl->AddText(iconFont, iconSize, iconPos, textCol, icon);
-            }
+            // AddText's position is the text baseline top-left; nudge up by a
+            // third of the line so the glyphs sit optically centred.
+            dl->AddText(iconFont, iconSize, ImVec2(x, cy - iconSize * 0.5f), textCol, icon);
+            x += iconSize + gap;
         }
-        else if (label && textFont)
-        {
-            // Label only
-            dl->AddText(textFont, fonts::size(textFont), 
-                { cx - textFont->CalcTextSizeA(fonts::size(textFont), FLT_MAX, 0, label).x * 0.5f,
-                  cy - fonts::size(textFont) * 0.5f }, textCol, label);
-        }
+        if (label && textFont)
+            dl->AddText(textFont, textSize, ImVec2(x, cy - textSize * 0.5f), textCol, label);
     }
 
-    // Liquid glass search field
+    // Liquid glass search field background only. The glyph and the text field
+    // are drawn by the caller so they use this project's icon set and the
+    // real ImGui input widget.
     inline void DrawLiquidGlassSearchField(ImDrawList* dl, const ImVec2& p0, const ImVec2& p1, float R,
-        const char* placeholder, ImFont* textFont, ImFont* iconFont, bool focused, bool hovered)
+        bool focused, bool hovered)
     {
-        ImU32 bgCol = focused ? IM_COL32(255, 255, 255, 25) : (hovered ? IM_COL32(255, 255, 255, 15) : IM_COL32(255, 255, 255, 10));
+        ImU32 bgCol     = focused ? IM_COL32(255, 255, 255, 25) : (hovered ? IM_COL32(255, 255, 255, 15) : IM_COL32(255, 255, 255, 10));
         ImU32 borderCol = focused ? accent_u32(0.55f) : (hovered ? IM_COL32(255, 255, 255, 40) : IM_COL32(255, 255, 255, 15));
-        ImU32 textCol = IM_COL32(255, 255, 255, 220);
-        ImU32 placeholderCol = IM_COL32(255, 255, 255, 60);
 
         dl->AddRectFilled(p0, p1, bgCol, R);
         dl->AddRect(p0 + ImVec2(0.5f, 0.5f), p1 - ImVec2(0.5f, 0.5f), borderCol, R, 0, 1.f);
 
-        // Search icon
-        if (iconFont)
-        {
-            const float iconSize = s(24.f);
-            dl->AddText(iconFont, iconSize, 
-                { p0.x + s(24.f), p0.y + (p1.y - p0.y - iconSize) * 0.5f },
-                IM_COL32(255, 255, 255, 150), "\xEF\x80\x82"); // search icon
-        }
-
-        // Placeholder or input handled by ImGui InputText overlay
+        // Specular top highlight, same as the other glass surfaces
+        dl->AddRectFilledMultiColor(
+            { p0.x + R, p0.y + 0.5f },
+            { p1.x - R, p0.y + 1.5f },
+            IM_COL32(255, 255, 255, 50), IM_COL32(255, 255, 255, 0),
+            IM_COL32(255, 255, 255, 0), IM_COL32(255, 255, 255, 50)
+        );
     }
 }

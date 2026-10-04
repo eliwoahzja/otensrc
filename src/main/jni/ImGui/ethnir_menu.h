@@ -3,14 +3,13 @@
 #include "imgui_internal.h"
 #include "imgui_settings.h"
 #include "portfolio_theme.h"
+#include "realtime_backdrop.h"
 #include "Icon.h"
 #include <functional>
 #include <cmath>
 #include <cstring>
 #include <cctype>
 #include <cstdio>
-
-extern GLuint g_realtimeBackdrop;
 
 // ============================================================================
 //  ETHNIR — iOS Settings-style shell for the in-game overlay.
@@ -80,15 +79,31 @@ namespace ethnir
         int    LastRowCount   = 0;
     };
 
-    constexpr float kWinW     = portfolio::s(portfolio::window_w);
-    constexpr float kWinH     = portfolio::s(portfolio::window_h);
-    constexpr float kPad      = portfolio::s(14.f);
-    constexpr float kBrandH   = portfolio::s(30.f);
-    constexpr float kSideW    = portfolio::s(portfolio::sidebar_w);
-    constexpr float kColGap   = portfolio::s(portfolio::column_gap);
-    constexpr float kRadius   = portfolio::s(portfolio::shell_round);
-    constexpr float kRowH     = portfolio::s(portfolio::settings_row_h);
-    constexpr float kSliderH  = portfolio::s(32.f);
+    // portfolio::s() reads the runtime scale factor, so these cannot be
+    // constexpr. Read them after portfolio::set_display_size() has run.
+    inline float kWinW     = portfolio::s(portfolio::window_w);
+    inline float kWinH     = portfolio::s(portfolio::window_h);
+    inline float kPad      = portfolio::s(14.f);
+    inline float kBrandH   = portfolio::s(30.f);
+    inline float kSideW    = portfolio::s(portfolio::sidebar_w);
+    inline float kColGap   = portfolio::s(portfolio::column_gap);
+    inline float kRadius   = portfolio::s(portfolio::shell_round);
+    inline float kRowH     = portfolio::s(portfolio::settings_row_h);
+    inline float kSliderH  = portfolio::s(32.f);
+
+    // Refresh the scale-derived metrics after the display size changes.
+    inline void RefreshMetrics()
+    {
+        kWinW    = portfolio::s(portfolio::window_w);
+        kWinH    = portfolio::s(portfolio::window_h);
+        kPad     = portfolio::s(14.f);
+        kBrandH  = portfolio::s(30.f);
+        kSideW   = portfolio::s(portfolio::sidebar_w);
+        kColGap  = portfolio::s(portfolio::column_gap);
+        kRadius  = portfolio::s(portfolio::shell_round);
+        kRowH    = portfolio::s(portfolio::settings_row_h);
+        kSliderH = portfolio::s(32.f);
+    }
 
     // iOS system colours
     constexpr ImVec4 kSwitchOn(0.204f, 0.780f, 0.349f, 1.0f);   // #34C759 green switches
@@ -869,7 +884,7 @@ for (int i = 0; i < kTabCount; ++i)
         const float R = portfolio::s(portfolio::shell_round);
 
         // Liquid glass panel
-        portfolio::DrawLiquidGlassPanel(dl, p0, p1, R, g_realtimeBackdrop ? (ImTextureID)(intptr_t)g_realtimeBackdrop : nullptr);
+        portfolio::DrawLiquidGlassPanel(dl, p0, p1, R, st.Backdrop);
 
         // Title
         ImGui::SetCursorScreenPos({ p0.x + portfolio::s(16.f), p0.y + portfolio::s(15.f) });
@@ -1115,7 +1130,8 @@ for (int i = 0; i < kTabCount; ++i)
                 portfolio::DrawLiquidGlassButton(dl, bmin, bmax, R, 
                     st.SaveFlash > 0.0f ? ICON_FA_CHECK : ICON_FA_SAVE,
                     st.SaveFlash > 0.0f ? "Saved" : "Save",
-                    EqIconFont(), EqTextFont(),
+                    EqIconFont(), portfolio::s(16.f),
+                    EqTextFont(), portfolio::s(13.f),
                     saveHov, saveHeld, false);
             }
 
@@ -1149,7 +1165,8 @@ for (int i = 0; i < kTabCount; ++i)
                 portfolio::DrawLiquidGlassButton(dl, bmin, bmax, R,
                     i == 0 ? ICON_FA_COG : ICON_FA_MINUS,
                     nullptr,
-                    EqIconFont(), EqTextFont(),
+                    EqIconFont(), iconSize,
+                    nullptr, 0.f,
                     hov, held, on);
             }
 
@@ -1167,13 +1184,16 @@ for (int i = 0; i < kTabCount; ++i)
             }
 
             // Draw liquid glass search background
-            portfolio::DrawLiquidGlassSearchField(dl, fmin, fmax, searchR, "", EqTextFont(), EqIconFont(), false, false);
+            const bool searchHov = ImGui::IsMouseHoveringRect(fmin, fmax);
+            portfolio::DrawLiquidGlassSearchField(dl, fmin, fmax, searchR, false, searchHov);
+            EqDrawGlyph(dl, ICON_FA_SEARCH,
+                        ImVec2(fmin.x + portfolio::s(22.f), (fmin.y + fmax.y) * 0.5f),
+                        portfolio::s(11.f), EqColA(pal.textFaint, 0.95f));
 
-            // Search icon (drawn by DrawLiquidGlassSearchField, but we also need placeholder)
             char hint[64];
             ImFormatString(hint, IM_ARRAYSIZE(hint), "explore %d functions...", st.LastRowCount);
-            ImGui::SetCursorScreenPos({ fmin.x + portfolio::s(48.f), fmin.y + (searchH - ImGui::GetFrameHeight()) * 0.5f });
-            ImGui::PushItemWidth(searchW - portfolio::s(48.f) - portfolio::s(24.f));
+            ImGui::SetCursorScreenPos({ fmin.x + portfolio::s(40.f), fmin.y + (searchH - ImGui::GetFrameHeight()) * 0.5f });
+            ImGui::PushItemWidth(searchW - portfolio::s(40.f) - portfolio::s(30.f));
             ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, { 0.f, 0.f });
             ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0, 0, 0, 0));
             ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, ImVec4(0, 0, 0, 0));
