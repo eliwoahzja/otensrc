@@ -187,7 +187,16 @@ namespace backdrop
 
         glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
         glBindFramebuffer(GL_DRAW_FRAMEBUFFER, g_fbo);
-        glBlitFramebuffer(0, 0, screenW, screenH, 0, 0, tw, th,
+        // Vertical flip on purpose. A GL framebuffer origin is bottom-left, so a
+        // plain 0..screenH source rect stores the bottom of the game screen in
+        // texel row 0. ImGui's draw space has y growing downward and samples
+        // uv (0,0) at the top-left of the rect, so the scene rendered upside
+        // down inside the glass. Reading the source rect top-down (screenH -> 0)
+        // puts the top of the screen in row 0, which is what ImGui expects. A
+        // negative source height is legal because the read and draw
+        // framebuffers differ. The two blur passes are symmetric, so they
+        // preserve whatever orientation the blit produces.
+        glBlitFramebuffer(0, screenH, screenW, 0, 0, 0, tw, th,
                           GL_COLOR_BUFFER_BIT, GL_LINEAR);
 
         blurPass(prog, g_texA, g_fboB, tw, th, 1.5f / (float)tw, 0.f);

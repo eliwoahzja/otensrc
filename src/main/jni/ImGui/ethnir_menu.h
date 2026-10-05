@@ -1150,7 +1150,7 @@ for (int i = 0; i < kTabCount; ++i)
 
         st.HeaderControl = false;
         const ImVec2 h0(p0.x + kPad + kSideW + 16.0f, p0.y + kPad + 2.0f);
-        const ImVec2 h1(p1.x - kPad, h0.y + 30.0f);
+        const ImVec2 h1(p1.x - kPad, h0.y + portfolio::s(portfolio::topbar_row_y) + portfolio::s(portfolio::topbar_row_h));
         const float contentW = h1.x - h0.x;
 
         if (!st.Closing)
@@ -1289,7 +1289,13 @@ for (int i = 0; i < kTabCount; ++i)
         const ImVec2 s1(p0.x + kPad + kSideW, p1.y - kPad);
         EqDrawSidebar(st, s0, s1);
 
-        const ImVec2 c0(h0.x, h1.y + 14.0f);
+        // Start below the whole topbar band, not below h1. h1.y used to be a hardcoded
+        // unscaled 30 while the header controls inside it scale to
+        // topbar_row_y + topbar_row_h = 70 design px, leaving a
+        // (70 - 30 - 14) * factor gap that put the first section header under
+        // the Save pill: 15.5px at factor 0.85. topbar_h is the reference's own
+        // value for where content begins.
+        const ImVec2 c0(h0.x, p0.y + kPad + portfolio::s(portfolio::topbar_h));
         const ImVec2 c1(p1.x - kPad, p1.y - kPad);
         ImGui::PushStyleVar(ImGuiStyleVar_Alpha, fade);
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(2, 2));
