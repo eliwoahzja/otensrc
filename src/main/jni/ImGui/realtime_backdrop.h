@@ -162,12 +162,67 @@ namespace backdrop
         glUseProgram(0);
     }
 
+    // GL state the blur passes touch. It all has to go back the way it came.
+    // ImGui's GL3 backend backs the viewport up on entry and restores it on
+    // exit, so it faithfully re-installs whatever we leave behind. A viewport
+    // left at the downscaled capture size therefore survives the swap and
+    // confines the game to a tw x th rect in the bottom-left corner next frame.
+    struct ShellGLState
+    {
+        GLint viewport[4], scissor[4];
+        GLint readFbo, drawFbo;
+        GLint program, activeTex, texture2D;
+        GLint srcRGB, dstRGB, srcA, dstA;
+        GLboolean depthTest, blend, cullFace, scissorTest;
+    };
+
+    inline ShellGLState captureGL()
+    {
+        ShellGLState s;
+        glGetIntegerv(GL_VIEWPORT, s.viewport);
+        glGetIntegerv(GL_SCISSOR_BOX, s.scissor);
+        glGetIntegerv(GL_READ_FRAMEBUFFER_BINDING, &s.readFbo);
+        glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &s.drawFbo);
+        glGetIntegerv(GL_CURRENT_PROGRAM, &s.program);
+        glGetIntegerv(GL_ACTIVE_TEXTURE, &s.activeTex);
+        glGetIntegerv(GL_TEXTURE_BINDING_2D, &s.texture2D);
+        glGetIntegerv(GL_BLEND_SRC_RGB, &s.srcRGB);
+        glGetIntegerv(GL_BLEND_DST_RGB, &s.dstRGB);
+        glGetIntegerv(GL_BLEND_SRC_ALPHA, &s.srcA);
+        glGetIntegerv(GL_BLEND_DST_ALPHA, &s.dstA);
+        s.depthTest   = glIsEnabled(GL_DEPTH_TEST);
+        s.blend       = glIsEnabled(GL_BLEND);
+        s.cullFace    = glIsEnabled(GL_CULL_FACE);
+        s.scissorTest = glIsEnabled(GL_SCISSOR_TEST);
+        return s;
+    }
+
+    inline void restoreGL(const ShellGLState& s)
+    {
+        glBindFramebuffer(GL_READ_FRAMEBUFFER, (GLuint)s.readFbo);
+        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, (GLuint)s.drawFbo);
+        glViewport(s.viewport[0], s.viewport[1], s.viewport[2], s.viewport[3]);
+        glScissor(s.scissor[0], s.scissor[1], s.scissor[2], s.scissor[3]);
+        if (s.scissorTest) glEnable(GL_SCISSOR_TEST); else glDisable(GL_SCISSOR_TEST);
+        if (s.depthTest)   glEnable(GL_DEPTH_TEST);   else glDisable(GL_DEPTH_TEST);
+        if (s.blend)       glEnable(GL_BLEND);        else glDisable(GL_BLEND);
+        if (s.cullFace)    glEnable(GL_CULL_FACE);    else glDisable(GL_CULL_FACE);
+        glBlendFuncSeparate(s.srcRGB, s.dstRGB, s.srcA, s.dstA);
+        glUseProgram((GLuint)s.program);
+        glActiveTexture((GLenum)s.activeTex);
+        glBindTexture(GL_TEXTURE_2D, (GLuint)s.texture2D);
+    }
+
     inline GLuint update(int screenW, int screenH)
     {
         if (screenW <= 0 || screenH <= 0) return 0;
         if (g_tried && !g_ok) return 0;
 
         while (glGetError() != GL_NO_ERROR) { }
+
+        // Snapshot the game's GL state before any capture/blur work, so every
+        // path below can hand it back exactly as it was found.
+        const ShellGLState prev = captureGL();
 
         const GLuint prog = blurProgram();
         if (!prog) { g_tried = true; return 0; }
@@ -202,7 +257,8 @@ namespace backdrop
         blurPass(prog, g_texA, g_fboB, tw, th, 1.5f / (float)tw, 0.f);
         blurPass(prog, g_texB, g_fbo,  tw, th, 0.f, 1.5f / (float)th);
 
-        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        // Hand the game's own state back before anything else can observe it.
+        restoreGL(prev);
 
         if (glGetError() != GL_NO_ERROR) { destroy(); g_tried = true; return 0; }
 
