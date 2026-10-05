@@ -162,11 +162,6 @@ namespace backdrop
         glUseProgram(0);
     }
 
-    // GL state the blur passes touch. It all has to go back the way it came.
-    // ImGui's GL3 backend backs the viewport up on entry and restores it on
-    // exit, so it faithfully re-installs whatever we leave behind. A viewport
-    // left at the downscaled capture size therefore survives the swap and
-    // confines the game to a tw x th rect in the bottom-left corner next frame.
     struct ShellGLState
     {
         GLint viewport[4], scissor[4];
@@ -220,8 +215,6 @@ namespace backdrop
 
         while (glGetError() != GL_NO_ERROR) { }
 
-        // Snapshot the game's GL state before any capture/blur work, so every
-        // path below can hand it back exactly as it was found.
         const ShellGLState prev = captureGL();
 
         const GLuint prog = blurProgram();
@@ -240,31 +233,16 @@ namespace backdrop
             g_w = tw; g_h = th;
         }
 
-        // Mobile GPUs are tile-based and keep the back buffer in a
-        // tile-compressed form until the frame is fully resolved. Reading it
-        // without waiting leaves whole tiles undefined, which is what produced
-        // the black rectangles in the backdrop. Force the game's frame to land
-        // before we sample it.
         glFinish();
 
         glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
         glBindFramebuffer(GL_DRAW_FRAMEBUFFER, g_fbo);
-        // Vertical flip on purpose. A GL framebuffer origin is bottom-left, so a
-        // plain 0..screenH source rect stores the bottom of the game screen in
-        // texel row 0. ImGui's draw space has y growing downward and samples
-        // uv (0,0) at the top-left of the rect, so the scene rendered upside
-        // down inside the glass. Reading the source rect top-down (screenH -> 0)
-        // puts the top of the screen in row 0, which is what ImGui expects. A
-        // negative source height is legal because the read and draw
-        // framebuffers differ. The two blur passes are symmetric, so they
-        // preserve whatever orientation the blit produces.
         glBlitFramebuffer(0, screenH, screenW, 0, 0, 0, tw, th,
                           GL_COLOR_BUFFER_BIT, GL_LINEAR);
 
         blurPass(prog, g_texA, g_fboB, tw, th, 1.5f / (float)tw, 0.f);
         blurPass(prog, g_texB, g_fbo,  tw, th, 0.f, 1.5f / (float)th);
 
-        // Hand the game's own state back before anything else can observe it.
         restoreGL(prev);
 
         if (glGetError() != GL_NO_ERROR) { destroy(); g_tried = true; return 0; }

@@ -10,10 +10,6 @@ namespace portfolio
 
     inline ImVec4 g_accent = { 0x61/255.f, 0x5D/255.f, 0xCE/255.f, 1.f };
 
-    // Glass fill, driven by the active theme. These used to be hardcoded to a
-    // 63%-opaque near-black, which is what made light mode unreadable: the
-    // palette flipped the text to near-black but the panel stayed black behind
-    // it. EqSyncGlassTheme() in ethnir_menu.h drives them.
     inline ImVec4 g_glass_veil  = { 14/255.f, 14/255.f, 22/255.f, 80/255.f };
     inline ImVec4 g_glass_tint  = { 0.f,       0.f,       0.f,       160/255.f };
     inline ImVec4 g_glass_shade = { 14/255.f, 14/255.f, 22/255.f };
@@ -293,9 +289,6 @@ namespace portfolio
             uv_for_screen_rect(r, uv_min, uv_max);
 
 #ifdef ETHNIR_LIQUID_SHADER
-            // Real optics: SDF normals, UV lensing, per-channel dispersion and
-            // a Fresnel rim. Falls through to the draw-call version below if
-            // the program failed to build.
             liquid::Params lp;
             lp.rect_min = p0;
             lp.rect_size = ImVec2(w, h);

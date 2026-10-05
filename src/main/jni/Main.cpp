@@ -360,11 +360,6 @@ EGLBoolean hook_eglSwapBuffers(EGLDisplay dpy, EGLSurface surface)
 
     if (windowCollapsed)
     {
-        // Minimised: draw nothing at all. The old version painted a liquid-glass
-        // pill with the astral logo and an FPS readout, which is the floating
-        // artefact we do not want. The restore target is now an invisible hit
-        // area at the top centre of the screen, where a thumb naturally rests
-        // over the game's own top bar. Tapping anywhere in it reopens the menu.
         const ImVec2 disp = ImGui::GetIO().DisplaySize;
         const float zw = disp.x * 0.18f;
         const float zh = disp.y * 0.20f;
@@ -683,7 +678,6 @@ EGLBoolean hook_eglSwapBuffers(EGLDisplay dpy, EGLSurface surface)
             uncollapseOpenAnim = ImClamp(
                 uncollapseOpenAnim + ImGui::GetIO().DeltaTime * 5.0f, 0.0f, 1.0f);
             float openEase = uncollapseOpenAnim * uncollapseOpenAnim
-                             * (3.0f - 2.0f * uncollapseOpenAnim);
             float openAlpha = 0.2f + 0.8f * openEase;
             ImGui::PushStyleVar(ImGuiStyleVar_Alpha, openAlpha);
 

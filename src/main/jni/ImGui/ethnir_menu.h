@@ -27,8 +27,6 @@ namespace ethnir
         int TrafficPressed = -1;
 
         bool  Dark              = true;
-        // Hidden until the gear icon opens it. It used to default to on, which
-        // is why it overlapped the shell on startup.
         bool  ShowSettingsPanel = false;
         bool  HelpOpen          = false;
         float AnimSpeed         = 1.0f;
@@ -155,9 +153,6 @@ namespace ethnir
     inline MenuState*& EqState() { static MenuState* s = nullptr; return s; }
     inline Palette EqPal() { MenuState* s = EqState(); return (s && !s->Dark) ? EqPalLight() : EqPalDark(); }
 
-    // Keep the glass fill in step with the palette. Dark reproduces the
-    // original near-black tint exactly; light switches to a milky white so the
-    // near-black text EqPalLight() returns stays readable over a game backdrop.
     inline void EqSyncGlassTheme(bool dark)
     {
         if (dark)
@@ -256,11 +251,6 @@ namespace ethnir
         return ImGui::GetContentRegionAvail().x;
     }
 
-    // Reference: widgets::*_row() all take an explicit ImRect. Ours still drove
-    // rows off the cursor, which is why the widget code could not be lifted
-    // across. EqNextRow() hands out the rect for the next row and advances the
-    // cursor, so a widget can be written the reference way while every existing
-    // call site keeps its signature.
     inline ImRect EqNextRow()
     {
         const ImVec2 p = ImGui::GetCursorScreenPos();
@@ -270,9 +260,6 @@ namespace ethnir
         return ImRect(p, ImVec2(p.x + w, p.y + h));
     }
 
-    // Reference: widgets::toggle_rect() - right-aligned, inset by box_pad_x,
-    // snapped to whole pixels so a fractional scale factor cannot produce a
-    // half-pixel track edge.
     inline ImRect EqToggleRect(const ImRect& row)
     {
         const float w = ImFloor(portfolio::s(portfolio::toggle_w) + 0.5f);
@@ -283,7 +270,6 @@ namespace ethnir
         return ImRect(ImVec2(right - w, top), ImVec2(right, top + h));
     }
 
-    // Reference: widgets::draw_row_hover() - a faint wash, not a hard fill.
     inline void EqRowHover(ImDrawList* dl, const ImRect& row, float t)
     {
         if (t < 0.01f) return;
@@ -458,14 +444,11 @@ namespace ethnir
         char clean[128];
         EqStripId(label, clean, IM_ARRAYSIZE(clean));
 
-        // Reference: the whole row owns the hit test, not the switch.
         ImGuiID gid = ImGui::GetCurrentWindow()->GetID(label);
         ImGui::ItemAdd(row, gid);
         bool hovered = false, held = false;
         const bool pressed = ImGui::ButtonBehavior(row, gid, &hovered, &held, ImGuiButtonFlags_None);
         ImGui::KeepAliveID(gid);
-        // InputActive must mean "a finger is down": keying it off hovered left it
-        // stuck after a tap and the auto-save debounce reset every frame.
         if (held) { if (EqState()) EqState()->InputActive = true; }
         if (pressed) { *v = !*v; EqMarkDirty(); }
 
@@ -504,9 +487,6 @@ namespace ethnir
         const ImVec2 vs = EqTextFont()->CalcTextSizeA(labelSize, FLT_MAX, 0.0f, buf);
         const float pad = portfolio::s(portfolio::box_pad_x);
 
-        // A narrow row (the quick-settings panel) has no room for label + value +
-        // full-width track, and the value then draws on top of the label - the
-        // "Animation100%" pile-up - so fall back to the compact track.
         float trackW = portfolio::s(portfolio::slider_w);
         const float needed = pad + ls.x + portfolio::s(8.f) + vs.x + portfolio::s(10.f) + trackW;
         if (needed > w) trackW = portfolio::s(portfolio::compact_slider_w);
@@ -522,7 +502,6 @@ namespace ethnir
             const float t = ImSaturate((io.MousePos.x - trackX) / trackW);
             const float nv = v_min + t * (v_max - v_min);
             changed = (nv != *v);
-            *v = nv;
             if (changed) EqMarkDirty();
         }
 
@@ -536,7 +515,6 @@ namespace ethnir
         EqDrawLabel(dl, ImVec2(p.x + portfolio::s(portfolio::box_pad_x), p.y + (h - labelSize) * 0.5f), clean,
                     EqCol(hovered || held ? pal.text : pal.textDim), labelSize);
 
-        // Safety net if the row shrinks past what the compact-track check assumed.
         const float valueX = ImMax(trackX - vs.x - portfolio::s(10.f),
                                    pad + ls.x + portfolio::s(8.f));
         EqDrawLabel(dl, ImVec2(valueX, p.y + (h - labelSize) * 0.5f),
@@ -572,7 +550,6 @@ namespace ethnir
         (void)icon;
         if (!EqPassFilter(label)) return false;
         if (count <= 0) return false;
-        *current = ImClamp(*current, 0, count - 1);
         ImGuiIO& io = ImGui::GetIO();
         const Palette pal = EqPal();
         const ImVec2 p = ImGui::GetCursorScreenPos();
@@ -661,7 +638,6 @@ namespace ethnir
     inline bool SegmentedRow(const char* label, int* current, const char* const* items, int count)
     {
         if (count <= 0) return false;
-        *current = ImClamp(*current, 0, count - 1);
         if (!EqPassFilter(label)) return false;
         const Palette pal = EqPal();
         const ImVec2 p = ImGui::GetCursorScreenPos();
@@ -713,7 +689,6 @@ namespace ethnir
     inline bool KeybindRow(const char* label, int* bind, const char* const* binds, int count)
     {
         if (count <= 0) return false;
-        *bind = ImClamp(*bind, 0, count - 1);
         if (!EqPassFilter(label)) return false;
         const Palette pal = EqPal();
         const ImVec2 p = ImGui::GetCursorScreenPos();
@@ -780,7 +755,6 @@ namespace ethnir
         const float itemPitch = portfolio::s(portfolio::sidebar_tab_h + portfolio::sidebar_tabs_gap);
         const float itemH = portfolio::s(portfolio::sidebar_tab_h);
 
-        // activeRow removed: the per-tab gradient replaced the sliding highlight
 for (int i = 0; i < kTabCount; ++i)
         {
 
@@ -840,6 +814,54 @@ for (int i = 0; i < kTabCount; ++i)
         EqDrawLabel(dl, ImVec2(chipC.x + portfolio::s(20.f), chipC.y - portfolio::s(5.5f)), st.SubtitleText, EqCol(pal.textFaint), portfolio::s(10.f));
 
         ImGui::EndChild();
+    }
+
+    inline bool EqValueRow(const char* label, const char* value)
+    {
+        if (!EqPassFilter(label)) return false;
+        const Palette pal = EqPal();
+        ImDrawList* dl = ImGui::GetWindowDrawList();
+        const ImRect row = EqNextRow();
+        char clean[128];
+        EqStripId(label, clean, IM_ARRAYSIZE(clean));
+        const char* v = value ? value : "";
+        const float ls = portfolio::s(portfolio::row_label_font);
+        const ImVec2 ts = EqTextFont()->CalcTextSizeA(ls, FLT_MAX, 0.0f, clean);
+        EqDrawLabel(dl, ImVec2(row.Min.x + portfolio::s(portfolio::box_pad_x),
+                               row.Min.y + (row.GetHeight() - ts.y) * 0.5f),
+                    clean, EqCol(pal.textDim), ls);
+        const ImVec2 vs = EqLabelSize(v, 12.0f);
+        EqDrawLabel(dl, ImVec2(row.Max.x - portfolio::s(portfolio::box_pad_x) - vs.x,
+                               row.GetCenter().y - vs.y * 0.5f),
+                    v, EqCol(pal.text), 12.0f);
+        return false;
+    }
+
+    inline bool EqActionRow(const char* label)
+    {
+        if (!EqPassFilter(label)) return false;
+        const Palette pal = EqPal();
+        ImDrawList* dl = ImGui::GetWindowDrawList();
+        const ImRect row = EqNextRow();
+        char clean[128];
+        EqStripId(label, clean, IM_ARRAYSIZE(clean));
+        ImGuiID gid = ImGui::GetCurrentWindow()->GetID(label);
+        ImGui::ItemAdd(row, gid);
+        bool hovered = false, held = false;
+        const bool pressed = ImGui::ButtonBehavior(row, gid, &hovered, &held, ImGuiButtonFlags_None);
+        ImGui::KeepAliveID(gid);
+        if (held) { if (EqState()) EqState()->InputActive = true; }
+        EqCardRowIndex()++;
+        const float R = portfolio::s(portfolio::control_round);
+        dl->AddRectFilled(row.Min, row.Max, EqCol(hovered ? pal.hover : pal.cardBg), R);
+        dl->AddRect(row.Min, row.Max, EqColA(pal.cardEdge, hovered ? 1.0f : 0.7f), R, 0, 1.f);
+        const float ls = portfolio::s(portfolio::row_label_font);
+        const ImVec2 ts = EqTextFont()->CalcTextSizeA(ls, FLT_MAX, 0.0f, clean);
+        EqDrawLabel(dl, ImVec2(row.Min.x + (row.GetWidth() - ts.x) * 0.5f,
+                               row.Min.y + (row.GetHeight() - ts.y) * 0.5f),
+                    clean, EqCol(hovered ? pal.text : pal.textDim), ls);
+        if (pressed) EqMarkDirty();
+        return pressed;
     }
 
     inline bool EqColorRow(const char* label, float* rgba)
@@ -916,11 +938,6 @@ for (int i = 0; i < kTabCount; ++i)
         return changed;
     }
 
-    // Accent colour. This row used to draw a circle, call EqPress and throw the
-    // result away, and EqApplyAccentIndex ignored its argument and forced
-    // AccentIndex back to 0 - so the control did nothing at all. It now writes
-    // portfolio::g_accent, which is what accent_u32()/accent_vec4() and so every
-    // accent-coloured pixel in the shell read.
     inline void EqAccentRow()
     {
         float rgb[3] = { portfolio::g_accent.x * 255.0f,
@@ -1118,8 +1135,6 @@ for (int i = 0; i < kTabCount; ++i)
         winSize.y = ImMax(winSize.y, 300.0f);
         if (io.DisplaySize.x != st.LastDispW || io.DisplaySize.y != st.LastDispH)
         {
-            // A rotation or resolution change makes the stored centre
-            // meaningless, so drop it and re-centre on the new viewport.
             st.LastDispW = io.DisplaySize.x;
             st.LastDispH = io.DisplaySize.y;
             st.WinPosInit = false;
@@ -1284,13 +1299,6 @@ for (int i = 0; i < kTabCount; ++i)
             }
         }
 
-        // Drag band spans the full header width, from just under the top edge
-        // down to just above the first sidebar tab. The old rect was only the
-        // topbar to the right of the sidebar, which is almost entirely taken by
-        // the Save pill, the search field and the two icon buttons: every press
-        // there landed on a control and set HeaderControl, so the shell could
-        // not practically be dragged at all. It also covers the wordmark, which
-        // is a natural place to grab on a touch screen.
         const ImVec2 dragMin(p0.x + kPad * 0.35f, p0.y + kPad * 0.35f);
         const ImVec2 dragMax(p1.x - kPad * 0.35f,
                              p0.y + kPad + kBrandH
@@ -1321,12 +1329,6 @@ for (int i = 0; i < kTabCount; ++i)
         const ImVec2 s1(p0.x + kPad + kSideW, p1.y - kPad);
         EqDrawSidebar(st, s0, s1);
 
-        // Start below the whole topbar band, not below h1. h1.y used to be a hardcoded
-        // unscaled 30 while the header controls inside it scale to
-        // topbar_row_y + topbar_row_h = 70 design px, leaving a
-        // (70 - 30 - 14) * factor gap that put the first section header under
-        // the Save pill: 15.5px at factor 0.85. topbar_h is the reference's own
-        // value for where content begins.
         const ImVec2 c0(h0.x, p0.y + kPad + portfolio::s(portfolio::topbar_h));
         const ImVec2 c1(p1.x - kPad, p1.y - kPad);
         ImGui::PushStyleVar(ImGuiStyleVar_Alpha, fade);

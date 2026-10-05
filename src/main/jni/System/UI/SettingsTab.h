@@ -205,34 +205,21 @@ namespace settings_tab
 
     inline void RenderLicenseCard()
     {
-        const float sidePad = 15.0f;
-        auto drawLine = [sidePad](const char *name, const char *value, const ImVec4 &valueColor) {
-            ImGui::SetCursorPosX(sidePad);
-            ImGui::TextColored(c::text::text_active, "%s", name);
-            ImGui::SameLine(0.0f, 15.0f);
-            ImGui::TextColored(valueColor, ": %s", value ? value : "");
-            ContentGap();
-        };
-
         const std::string expiryLabel = BuildRuntimeExpiryLabel();
-        const ImVec4 subColor = (userType == "Premium")
-            ? ImVec4(0.75f, 0.60f, 0.00f, 0.86f)
-            : ImVec4(0.00f, 0.80f, 0.00f, 0.86f);
-
-        drawLine("License", usedKey.c_str(), c::text::text);
-        drawLine("Expiry", expiryLabel.c_str(), c::text::text);
-        drawLine("Subscription", userType.c_str(), subColor);
+        ethnir::EqValueRow("License", usedKey.c_str());
+        ethnir::EqValueRow("Expiry", expiryLabel.c_str());
+        ethnir::EqValueRow("Subscription", userType.c_str());
     }
 
     inline void RenderLogoCard()
     {
         float opacity = GetLogoOpacity();
         float size = GetLogoSizeMultiplier();
-        custom::SliderFloat("Opacity", &opacity, 0.0f, 1.0f, "%.2f");
-        custom::SliderFloat("Size", &size, 0.1f, 2.0f, "%.2f");
-        SetLogoOpacity(opacity);
-        SetLogoSizeMultiplier(size);
-        if (custom::Button("RESET LOGO", ImVec2(ImMax(1.0f, ImGui::GetContentRegionAvail().x), 50.0f)))
+        if (ethnir::RowSlider(ICON_FA_EYE, "Opacity", &opacity, 0.0f, 1.0f, "%.2f"))
+            SetLogoOpacity(opacity);
+        if (ethnir::RowSlider(ICON_FA_EXPAND, "Size", &size, 0.1f, 2.0f, "%.2f"))
+            SetLogoSizeMultiplier(size);
+        if (ethnir::EqActionRow("Reset Logo"))
         {
             SetLogoOpacity(1.0f);
             SetLogoSizeMultiplier(1.0f);
@@ -241,17 +228,16 @@ namespace settings_tab
 
     inline void RenderConfigCard()
     {
-        if (custom::Button("LOAD CONFIG", ImVec2(ImMax(1.0f, ImGui::GetContentRegionAvail().x), 54.0f)))
+        if (ethnir::EqActionRow("Load Config"))
             LoadConfiguration("astral_config");
-        ContentGap(4.0f);
-        if (custom::Button("SAVE CONFIG", ImVec2(ImMax(1.0f, ImGui::GetContentRegionAvail().x), 54.0f)))
+        if (ethnir::EqActionRow("Save Config"))
             SaveConfiguration("astral_config");
     }
 
     inline void RenderEnhancementCard()
     {
-        custom::Checkbox("Clear Display", &Config.ExtraMenu.ClearDisplay);
-        if (custom::Button("RESET GUEST", ImVec2(ImMax(1.0f, ImGui::GetContentRegionAvail().x), 50.0f)))
+        ethnir::RowToggle(ICON_FA_EYE, "Clear Display", &Config.ExtraMenu.ClearDisplay);
+        if (ethnir::EqActionRow("Reset Guest"))
             Config.ExtraMenu.ResetGuest = true;
     }
 }
