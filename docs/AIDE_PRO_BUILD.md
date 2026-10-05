@@ -157,3 +157,25 @@ node site/serve.mjs              # browser preview, http://localhost:4173
 They deliberately are not wired into `assemble`/`preBuild`: AIDE builds this
 project on an Android device where neither `sh` nor `g++` exists, so making
 them a build dependency would break the on-device build.
+
+## 9. GL state handed back to the game
+
+The menu is drawn from an `eglSwapBuffers` hook, inside the game's own frame, and
+two parts of it issue GL calls directly: `realtime_backdrop.h` (the framebuffer
+blit plus the blur passes) and `liquid_glass_shader.h`. The backdrop brackets its
+own passes with `shellGLState` capture and restore; the liquid glass disables
+depth test and cull face and leaves them that way.
+
+Unity's GLES device does **not** query the enable bits, it caches them, so any
+state left flipped is never re-applied: the game keeps believing depth test is on
+while it is off, draws its scene in submission order, and the frame comes out
+black while the menu on top still looks correct. `ImGui_ImplOpenGL3_RenderDrawData`
+cannot cover for this, because it snapshots whatever state it finds — by then
+that state is already the broken one.
+
+`GlStateSnapshot` in `Main.cpp` therefore captures the full state on entry to the
+hook (enables, blend function and equation, viewport, scissor box, framebuffer
+bindings, program, VAO, array/element buffer, active texture unit and its 2D
+binding) and restores it after the draw data is submitted and before the swap.
+Anything that touches GL from inside the hook must stay inside that window, and
+new state it flips has to be added to the snapshot.

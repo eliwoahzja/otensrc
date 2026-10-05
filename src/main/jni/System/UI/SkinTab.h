@@ -199,7 +199,8 @@ inline void RenderSkinCategoryContent(int categoryIndex, bool drawSubTabs = fals
     if (drawSubTabs) {
         const float tabSpacing = 8.0f * c::scale;
         const float tabHeight = 34.0f * c::scale;
-        const float tabWidth = ImMax(32.0f, (ImGui::GetContentRegionAvail().x - tabSpacing * 5.0f) / 6.0f);
+        static const char* const kSubTabLabels[] = { "Character", "Watch", "Deadbox", "Plane", "Weapon", "Camo" };
+        static const int kSubTabCount = IM_ARRAYSIZE(kSubTabLabels);
 
         ImFont* subTabFont = font::inter_semibold;
         if (!subTabFont)
@@ -212,17 +213,17 @@ inline void RenderSkinCategoryContent(int categoryIndex, bool drawSubTabs = fals
         if (subTabFont) ImGui::PushFont(subTabFont);
         ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(tabSpacing, tabSpacing));
 
-        if (custom::Page(skinSubTab == 0, "Character", ImVec2(tabWidth, tabHeight), false, false)) skinSubTab = 0;
-        ImGui::SameLine();
-        if (custom::Page(skinSubTab == 1, "Watch", ImVec2(tabWidth, tabHeight), false, false)) skinSubTab = 1;
-        ImGui::SameLine();
-        if (custom::Page(skinSubTab == 2, "Deadbox", ImVec2(tabWidth, tabHeight), false, false)) skinSubTab = 2;
-        ImGui::SameLine();
-        if (custom::Page(skinSubTab == 3, "Plane", ImVec2(tabWidth, tabHeight), false, false)) skinSubTab = 3;
-        ImGui::SameLine();
-        if (custom::Page(skinSubTab == 4, "Weapon", ImVec2(tabWidth, tabHeight), false, false)) skinSubTab = 4;
-        ImGui::SameLine();
-        if (custom::Page(skinSubTab == 5, "Camo", ImVec2(tabWidth, tabHeight), false, false)) skinSubTab = 5;
+        // The label font is a fixed 16px that does not follow the display factor:
+        // six chips across this column leave 56px each for a 64px label, so ask
+        // for the widest split that fits instead of letting Page() clip them.
+        const float tabAvail = ImGui::GetContentRegionAvail().x;
+        const int subTabPerRow = custom::PageColumnsThatFit(kSubTabLabels, kSubTabCount, tabAvail, tabSpacing);
+        const float tabWidth = ImMax(32.0f, (tabAvail - tabSpacing * (subTabPerRow - 1)) / (float)subTabPerRow);
+
+        for (int i = 0; i < kSubTabCount; ++i) {
+            if (custom::Page(skinSubTab == i, kSubTabLabels[i], ImVec2(tabWidth, tabHeight), false, false)) skinSubTab = i;
+            if (i + 1 < kSubTabCount && (i + 1) % subTabPerRow != 0) ImGui::SameLine();
+        }
 
         ImGui::PopStyleVar();
         if (subTabFont) ImGui::PopFont();

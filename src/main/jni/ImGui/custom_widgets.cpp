@@ -1117,6 +1117,28 @@ namespace custom
         return pressed;
     }
 
+    int PageColumnsThatFit(const char* const* labels, int count, float avail, float spacing)
+    {
+        if (labels == nullptr || count <= 0) return 1;
+        if (spacing < 0.0f) spacing = 0.0f;
+
+        float widest = 0.0f;
+        for (int i = 0; i < count; ++i)
+        {
+            const char* label = labels[i];
+            if (label == nullptr) continue;
+            widest = ImMax(widest, CalcTextSize(label, FindRenderedTextEnd(label), true).x);
+        }
+        if (widest <= 0.0f) return count;
+
+        // A row that already fits comes back unchanged, so a page wide enough
+        // still draws every chip on one line.
+        int columns = count;
+        while (columns > 1 && (avail - spacing * (float)(columns - 1)) / (float)columns < widest)
+            columns = (columns + 1) / 2;
+        return columns;
+    }
+
     struct check_state
     {
         ImVec4 background, text;

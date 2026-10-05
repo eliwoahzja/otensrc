@@ -40,6 +40,12 @@ namespace custom
 
     bool                Page(bool selected, const char* icon, const ImVec2& size, bool allow_icon_font = true, bool show_active_line = true);
 
+    // Widest balanced split of `count` Page() chips that keeps every label inside
+    // its own chip. Chip text is drawn at a fixed pixel size that does not follow
+    // the display factor, so a row sharing the page with another column runs out
+    // of room before its labels do.
+    int                 PageColumnsThatFit(const char* const* labels, int count, float avail, float spacing);
+
     bool                ThemeButton(const char* id_theme, bool dark, const ImVec2& size_arg);
     bool                Button(const char* label, const ImVec2& size_arg);
 

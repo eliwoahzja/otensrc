@@ -242,8 +242,34 @@ namespace ethnir
         return pressed;
     }
 
-    struct ColumnState { bool Active = false; float X0 = 0, X1 = 0, W = 0, TopY = 0; int Col = 0; float Y[2] = { 0, 0 }; };
+    struct ColumnState
+    {
+        bool Active = false;
+        float X0 = 0, X1 = 0, W = 0, TopY = 0;
+        int Col = 0;
+        float Y[2] = { 0, 0 };
+        float RightBefore = 0;   // window content right edge, before the column clamped it
+    };
     inline ColumnState& EqCols() { static ColumnState c; return c; }
+
+    // A column has to narrow the width ImGui reports, not only move the cursor:
+    // tab bodies size their rows and child panes from GetContentRegionAvail(),
+    // and while that handed out the whole page the Skins sub-tab row spread
+    // across both columns. ImGui rebuilds ContentRegionRect on every Begin, so a
+    // clamp left behind by an early return cannot survive into the next frame.
+    inline void EqColumnClip(bool on, ColumnState& c)
+    {
+        ImGuiWindow* w = ImGui::GetCurrentWindow();
+        if (on)
+        {
+            c.RightBefore = w->ContentRegionRect.Max.x;
+            w->ContentRegionRect.Max.x = ImMin(c.RightBefore, c.X0 + c.W);
+        }
+        else
+        {
+            w->ContentRegionRect.Max.x = c.RightBefore;
+        }
+    }
     inline float EqCardWidth()
     {
         ColumnState& c = EqCols();
@@ -289,6 +315,7 @@ namespace ethnir
         c.TopY = p.y;
         c.Col = 0;
         c.Y[0] = c.Y[1] = p.y;
+        EqColumnClip(true, c);
     }
 
     inline void EqNextColumn()
@@ -296,8 +323,10 @@ namespace ethnir
         ColumnState& c = EqCols();
         if (!c.Active || c.Col >= 1) return;
         c.Y[0] = ImGui::GetCursorScreenPos().y;
+        EqColumnClip(false, c);
         c.Col = 1;
         ImGui::SetCursorScreenPos(ImVec2(c.X1, c.TopY));
+        EqColumnClip(true, c);
     }
 
     inline void EqEndColumns()
@@ -305,6 +334,7 @@ namespace ethnir
         ColumnState& c = EqCols();
         if (!c.Active) return;
         c.Y[c.Col] = ImGui::GetCursorScreenPos().y;
+        EqColumnClip(false, c);
         ImGui::SetCursorScreenPos(ImVec2(c.X0, ImMax(c.Y[0], c.Y[1])));
         c.Active = false;
     }

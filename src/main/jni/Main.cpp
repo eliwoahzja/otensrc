@@ -238,8 +238,73 @@ static void EthnirDrawTab(int tab)
 
 EGLBoolean (*old_eglSwapBuffers)(EGLDisplay dpy, EGLSurface surface);
 
+// The liquid glass disables depth test and cull face every frame and never puts
+// them back. Unity's GLES device caches those bits instead of querying them, so
+// the game never re-applies them, draws its scene in submission order, and the
+// frame comes out black while our menu on top still looks right. ImGui's backend
+// cannot cover for it - the state it snapshots is already the broken one - so the
+// whole frame is bracketed: capture on entry, restore before the swap.
+struct GlStateSnapshot
+{
+    GLint     program = 0, vao = 0, arrayBuffer = 0, elementBuffer = 0;
+    GLint     activeTexture = 0, texture2D = 0, drawFbo = 0, readFbo = 0;
+    GLint     viewport[4] = { 0, 0, 0, 0 }, scissor[4] = { 0, 0, 0, 0 };
+    GLint     blendSrcRgb = 0, blendDstRgb = 0, blendSrcAlpha = 0, blendDstAlpha = 0;
+    GLint     blendEqRgb = 0, blendEqAlpha = 0;
+    GLboolean blend = GL_FALSE, cull = GL_FALSE, depth = GL_FALSE;
+    GLboolean scissorTest = GL_FALSE, stencil = GL_FALSE;
+
+    GlStateSnapshot()
+    {
+        glGetIntegerv(GL_CURRENT_PROGRAM, &program);
+        glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &vao);
+        glGetIntegerv(GL_ARRAY_BUFFER_BINDING, &arrayBuffer);
+        glGetIntegerv(GL_ELEMENT_ARRAY_BUFFER_BINDING, &elementBuffer);
+        glGetIntegerv(GL_ACTIVE_TEXTURE, &activeTexture);
+        glGetIntegerv(GL_TEXTURE_BINDING_2D, &texture2D);
+        glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &drawFbo);
+        glGetIntegerv(GL_READ_FRAMEBUFFER_BINDING, &readFbo);
+        glGetIntegerv(GL_VIEWPORT, viewport);
+        glGetIntegerv(GL_SCISSOR_BOX, scissor);
+        glGetIntegerv(GL_BLEND_SRC_RGB, &blendSrcRgb);
+        glGetIntegerv(GL_BLEND_DST_RGB, &blendDstRgb);
+        glGetIntegerv(GL_BLEND_SRC_ALPHA, &blendSrcAlpha);
+        glGetIntegerv(GL_BLEND_DST_ALPHA, &blendDstAlpha);
+        glGetIntegerv(GL_BLEND_EQUATION_RGB, &blendEqRgb);
+        glGetIntegerv(GL_BLEND_EQUATION_ALPHA, &blendEqAlpha);
+        blend       = glIsEnabled(GL_BLEND);
+        cull        = glIsEnabled(GL_CULL_FACE);
+        depth       = glIsEnabled(GL_DEPTH_TEST);
+        scissorTest = glIsEnabled(GL_SCISSOR_TEST);
+        stencil     = glIsEnabled(GL_STENCIL_TEST);
+    }
+
+    void Restore() const
+    {
+        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, (GLuint)drawFbo);
+        glBindFramebuffer(GL_READ_FRAMEBUFFER, (GLuint)readFbo);
+        glViewport(viewport[0], viewport[1], viewport[2], viewport[3]);
+        glScissor(scissor[0], scissor[1], scissor[2], scissor[3]);
+        glBlendEquationSeparate(blendEqRgb, blendEqAlpha);
+        glBlendFuncSeparate(blendSrcRgb, blendDstRgb, blendSrcAlpha, blendDstAlpha);
+        if (blend)       glEnable(GL_BLEND);        else glDisable(GL_BLEND);
+        if (cull)        glEnable(GL_CULL_FACE);    else glDisable(GL_CULL_FACE);
+        if (depth)       glEnable(GL_DEPTH_TEST);   else glDisable(GL_DEPTH_TEST);
+        if (scissorTest) glEnable(GL_SCISSOR_TEST); else glDisable(GL_SCISSOR_TEST);
+        if (stencil)     glEnable(GL_STENCIL_TEST); else glDisable(GL_STENCIL_TEST);
+        glUseProgram((GLuint)program);
+        glBindVertexArray((GLuint)vao);
+        glBindBuffer(GL_ARRAY_BUFFER, (GLuint)arrayBuffer);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, (GLuint)elementBuffer);
+        glActiveTexture((GLenum)activeTexture);
+        glBindTexture(GL_TEXTURE_2D, (GLuint)texture2D);
+    }
+};
+
 EGLBoolean hook_eglSwapBuffers(EGLDisplay dpy, EGLSurface surface)
 {
+    const GlStateSnapshot glStateOnEntry;
+
     eglQuerySurface(dpy, surface, EGL_WIDTH, &g_GlWidth);
     eglQuerySurface(dpy, surface, EGL_HEIGHT, &g_GlHeight);
 
@@ -778,6 +843,8 @@ EGLBoolean hook_eglSwapBuffers(EGLDisplay dpy, EGLSurface surface)
     ImGui::EndFrame();
     ImGui::Render();
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
+    glStateOnEntry.Restore();
     return old_eglSwapBuffers(dpy, surface);
 }
 
