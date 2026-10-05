@@ -26,7 +26,9 @@ namespace ethnir
         int TrafficPressed = -1;
 
         bool  Dark              = true;
-        bool  ShowSettingsPanel = true;
+        // Hidden until the gear icon opens it. It used to default to on, which
+        // is why it overlapped the shell on startup.
+        bool  ShowSettingsPanel = false;
         bool  HelpOpen          = false;
         float AnimSpeed         = 1.0f;
         int   AccentIndex       = 0;

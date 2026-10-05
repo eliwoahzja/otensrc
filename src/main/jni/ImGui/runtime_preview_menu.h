@@ -151,32 +151,78 @@ inline void DrawPopupBackdropFocusLayer(ImDrawList *drawList) {
 #include "../System/UI/SettingsTab.h"
 
 inline bool DrawRuntimeEspColorRow(const char *label, float *color) {
-    if (label == nullptr || color == nullptr) {
-        return false;
-    }
+    if (label == nullptr || color == nullptr) return false;
+    using namespace ethnir;
+
+    if (!EqPassFilter(label)) return false;
+
     auto normalize = [](float v) {
         return (v <= 1.0f) ? ImClamp(v, 0.0f, 1.0f) : ImClamp(v / 255.0f, 0.0f, 1.0f);
     };
-    float col[4] = {
-        normalize(color[0]),
-        normalize(color[1]),
-        normalize(color[2]),
-        normalize(color[3])
-    };
-    const bool changed = custom::ColorEdit4(
-        label,
-        col,
-        ImGuiColorEditFlags_NoInputs |
-        ImGuiColorEditFlags_NoAlpha |
-        ImGuiColorEditFlags_PickerHueWheel
-    );
-    if (changed) {
-        color[0] = col[0] * 255.0f;
-        color[1] = col[1] * 255.0f;
-        color[2] = col[2] * 255.0f;
-        color[3] = 255.0f;
+    const ImVec4 shown(normalize(color[0]), normalize(color[1]), normalize(color[2]), 1.0f);
+
+    const Palette pal = EqPal();
+    ImDrawList *dl = ImGui::GetWindowDrawList();
+    const ImRect row = EqNextRow();
+
+    char clean[128];
+    EqStripId(label, clean, IM_ARRAYSIZE(clean));
+
+    ImGuiID gid = ImGui::GetCurrentWindow()->GetID(label);
+    ImGui::ItemAdd(row, gid);
+    bool hovered = false, held = false;
+    const bool pressed = ImGui::ButtonBehavior(row, gid, &hovered, &held, ImGuiButtonFlags_None);
+    ImGui::KeepAliveID(gid);
+    if (held) { if (EqState()) EqState()->InputActive = true; }
+
+    EqCardRowIndex()++;
+    EqRowHover(dl, row, (hovered || held) ? 0.65f : 0.0f);
+
+    const float labelSize = portfolio::s(portfolio::row_label_font);
+    const ImVec2 ts = EqTextFont()->CalcTextSizeA(labelSize, FLT_MAX, 0.0f, clean);
+    EqDrawLabel(dl, ImVec2(row.Min.x + portfolio::s(portfolio::box_pad_x),
+                           row.Min.y + (row.GetHeight() - ts.y) * 0.5f),
+                clean, EqCol(hovered ? pal.text : pal.textDim), labelSize);
+
+    const float sw = portfolio::s(portfolio::color_swatch_size);
+    const ImVec2 swMin(row.Max.x - portfolio::s(portfolio::box_pad_x) - sw,
+                       row.GetCenter().y - sw * 0.5f);
+    dl->AddRectFilled(swMin, swMin + ImVec2(sw, sw),
+                      ImGui::ColorConvertFloat4ToU32(shown), portfolio::s(4.0f));
+    dl->AddRect(swMin, swMin + ImVec2(sw, sw),
+                EqColA(pal.cardEdge, 1.2f), portfolio::s(4.0f), 0, 1.0f);
+
+    char hex[16];
+    ImFormatString(hex, IM_ARRAYSIZE(hex), "#%02X%02X%02X",
+                   (int)ImClamp(color[0], 0.0f, 255.0f),
+                   (int)ImClamp(color[1], 0.0f, 255.0f),
+                   (int)ImClamp(color[2], 0.0f, 255.0f));
+    const ImVec2 hs = EqLabelSize(hex, 12.0f);
+    EqDrawLabel(dl, ImVec2(swMin.x - portfolio::s(8.0f) - hs.x,
+                           row.GetCenter().y - hs.y * 0.5f),
+                hex, EqCol(pal.textFaint), 12.0f);
+
+    if (pressed) ImGui::OpenPopup("##ethnir_color_pick");
+    ImGui::SetNextWindowPos(ImVec2(row.Min.x, row.Max.y + 4.0f), ImGuiCond_Appearing);
+    ImGui::SetNextWindowSize(ImVec2(portfolio::s(330.0f), 0.0f), ImGuiCond_Appearing);
+    if (ImGui::BeginPopup("##ethnir_color_pick",
+            ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings))
+    {
+        float c[4] = { shown.x, shown.y, shown.z, 1.0f };
+        ImGui::SetNextItemWidth(portfolio::s(310.0f));
+        if (custom::ColorEdit4("##ethnir_color_edit", c,
+                ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoAlpha |
+                ImGuiColorEditFlags_PickerHueWheel))
+        {
+            color[0] = c[0] * 255.0f;
+            color[1] = c[1] * 255.0f;
+            color[2] = c[2] * 255.0f;
+            color[3] = 255.0f;
+            EqMarkDirty();
+        }
+        ImGui::EndPopup();
     }
-    return changed;
+    return false;
 }
 
 inline void CopyLinkedEspColors(float *lineColor, float *boxColor, float *nameColor, float *healthColor, float *distanceColor, float *skeletonColor) {
@@ -233,6 +279,7 @@ inline void RenderEspTab(float childWidth, float childHeight) {
         Config.sColorsESPPLAYER.DistancePLAYER,
         Config.sColorsESPPLAYER.SkeletonPLAYER
     );
+    DrawRuntimeEspColorRow("POV ESP Color", Config.sColorsESPOTHERS.PovOTHERS);
     DrawRuntimeEspColorRow("Bot ESP Color", Config.sColorsESPBOT.LineBOT);
     CopyLinkedEspColors(
         Config.sColorsESPBOT.LineBOT,
