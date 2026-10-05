@@ -294,9 +294,9 @@ EGLBoolean hook_eglSwapBuffers(EGLDisplay dpy, EGLSurface surface)
         iconsConfig.OversampleH = 2.5f;
         iconsConfig.OversampleV = 2.5f;
         iconsConfig.FontDataOwnedByAtlas = false;
-        F107 = io.Fonts->AddFontFromMemoryCompressedTTF(
-            (void*)font_awesome_data1,
-            (int)font_awesome_size1,
+        F107 = io.Fonts->AddFontFromMemoryTTF(
+            (void*)phosphor_data,
+            (int)phosphor_size,
             25.0f,
             &iconsConfig,
             icons_ranges
