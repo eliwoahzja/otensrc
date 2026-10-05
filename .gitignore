@@ -10,3 +10,4 @@ tools/
 
 src/main/obj/
 src/main/libs/
+build/menu-tests/

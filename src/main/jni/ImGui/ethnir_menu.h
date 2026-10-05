@@ -460,7 +460,9 @@ namespace ethnir
         bool hovered = false, held = false;
         const bool pressed = ImGui::ButtonBehavior(row, gid, &hovered, &held, ImGuiButtonFlags_None);
         ImGui::KeepAliveID(gid);
-        if (hovered || held) { if (EqState()) EqState()->InputActive = true; }
+        // InputActive must mean "a finger is down": keying it off hovered left it
+        // stuck after a tap and the auto-save debounce reset every frame.
+        if (held) { if (EqState()) EqState()->InputActive = true; }
         if (pressed) { *v = !*v; EqMarkDirty(); }
 
         ImDrawList* dl = ImGui::GetWindowDrawList();
@@ -488,12 +490,25 @@ namespace ethnir
         const ImVec2 p = ImGui::GetCursorScreenPos();
         const float w = ImGui::GetContentRegionAvail().x;
         const float h = kSliderH;
-        const float trackW = portfolio::s(portfolio::slider_w);
-        const float trackX = p.x + w - trackW;
-        const float trackY = p.y + h * 0.5f;
 
         char clean[128];
         EqStripId(label, clean, IM_ARRAYSIZE(clean));
+        char buf[32];
+        ImFormatString(buf, IM_ARRAYSIZE(buf), fmt, *v);
+        const float labelSize = portfolio::s(portfolio::row_label_font);
+        const ImVec2 ls = EqTextFont()->CalcTextSizeA(labelSize, FLT_MAX, 0.0f, clean);
+        const ImVec2 vs = EqTextFont()->CalcTextSizeA(labelSize, FLT_MAX, 0.0f, buf);
+        const float pad = portfolio::s(portfolio::box_pad_x);
+
+        // A narrow row (the quick-settings panel) has no room for label + value +
+        // full-width track, and the value then draws on top of the label - the
+        // "Animation100%" pile-up - so fall back to the compact track.
+        float trackW = portfolio::s(portfolio::slider_w);
+        const float needed = pad + ls.x + portfolio::s(8.f) + vs.x + portfolio::s(10.f) + trackW;
+        if (needed > w) trackW = portfolio::s(portfolio::compact_slider_w);
+        const float trackX = p.x + w - trackW;
+        const float trackY = p.y + h * 0.5f;
+
         bool hovered = false, held = false;
         EqPress(label, ImVec2(w, h), &hovered, &held);
 
@@ -511,17 +526,16 @@ namespace ethnir
         ImFormatString(id2, IM_ARRAYSIZE(id2), "%s##anim", label);
         const float shown = EqAnim(id2, *v, held ? 40.0f : 18.0f, io.DeltaTime, *v);
 
-        char buf[32];
-        ImFormatString(buf, IM_ARRAYSIZE(buf), fmt, *v);
-        const float labelSize = portfolio::s(portfolio::row_label_font);
-        const ImVec2 vs = EqTextFont()->CalcTextSizeA(labelSize, FLT_MAX, 0.0f, buf);
         ImDrawList* dl = ImGui::GetWindowDrawList();
         if (EqCardRowIndex()++ > 0) EqRowSeparator(dl, p, p + ImVec2(w, h));
         if (hovered || held) dl->AddRectFilled(p, p + ImVec2(w, h), EqColA(pal.text, 0.025f), portfolio::s(portfolio::control_round));
         EqDrawLabel(dl, ImVec2(p.x + portfolio::s(portfolio::box_pad_x), p.y + (h - labelSize) * 0.5f), clean,
                     EqCol(hovered || held ? pal.text : pal.textDim), labelSize);
 
-        EqDrawLabel(dl, ImVec2(trackX - vs.x - portfolio::s(10.f), p.y + (h - labelSize) * 0.5f),
+        // Safety net if the row shrinks past what the compact-track check assumed.
+        const float valueX = ImMax(trackX - vs.x - portfolio::s(10.f),
+                                   pad + ls.x + portfolio::s(8.f));
+        EqDrawLabel(dl, ImVec2(valueX, p.y + (h - labelSize) * 0.5f),
                     buf, EqCol(hovered || held ? pal.text : pal.textDim), labelSize);
 
         const float trackH = portfolio::s(portfolio::slider_track_h);
@@ -1332,7 +1346,7 @@ for (int i = 0; i < kTabCount; ++i)
         st.HelpChipPressedFrame = false;
         EqFilterOn() = true;
 
-        if (st.AutoSave && st.OnSave && !st.Closing)
+        if (st.AutoSave && st.OnSave && !st.Closing && !st.Dragging)
         {
             if (st.Dirty && !st.InputActive)
             {
