@@ -5,6 +5,7 @@
 #include "portfolio_theme.h"
 #include "realtime_backdrop.h"
 #include "Icon.h"
+#include "custom_widgets.hpp"
 #include <functional>
 #include <cmath>
 #include <cstring>
@@ -96,9 +97,6 @@ namespace ethnir
 
     constexpr ImVec4 kSwitchOn(0.204f, 0.780f, 0.349f, 1.0f);
 
-    inline ImU32 PortfolioAccent() { return portfolio::accent_u32(); }
-    inline ImVec4 PortfolioAccentVec(float alpha = 1.f) { return portfolio::accent_vec4(alpha); }
-
     static const char* kMenuBinds[] = { "Num 0", "Num 1", "F1", "F4", "Home", "None" };
     static const int kMenuBindCount = IM_ARRAYSIZE(kMenuBinds);
 
@@ -180,25 +178,6 @@ namespace ethnir
     inline ImVec4 EqAccentVec() { return portfolio::accent_vec4(); }
     inline ImU32 EqAccentA(float a) { return portfolio::accent_u32(a); }
 
-    inline void EqDrawGlassRim(ImDrawList* dl, const ImVec2& p0, const ImVec2& p1, float R, const Palette& pal)
-    {
-        const float w = p1.x - p0.x, h = p1.y - p0.y;
-
-        if (w < 2.0f || h < 2.0f) return;
-        const float t = ImMin(1.6f, ImMin(w, h) * 0.5f);
-        const float x0 = p0.x, y0 = p0.y, x1 = p1.x, y1 = p1.y;
-        const ImU32 hi  = EqColA(pal.glassRim, 0.55f);
-        const ImU32 dim = EqColA(pal.glassRim, 0.16f);
-        const ImU32 off = EqColA(pal.glassRim, 0.0f);
-        const float rx = ImMin(R, (x1 - x0) * 0.5f);
-        const float ry = ImMin(R, (y1 - y0) * 0.5f);
-
-        dl->AddRectFilledMultiColor(ImVec2(x0 + rx, y0), ImVec2(x1 - rx, y0 + t), hi, off, off, hi);
-        dl->AddRectFilledMultiColor(ImVec2(x0, y0 + ry), ImVec2(x0 + t, y1 - ry), hi, hi, dim, dim);
-        dl->AddRectFilledMultiColor(ImVec2(x1 - t, y0 + ry), ImVec2(x1, y1 - ry), dim, dim, off, off);
-        dl->AddRectFilledMultiColor(ImVec2(x0 + rx, y1 - t), ImVec2(x1 - rx, y1), dim, dim, dim, dim);
-    }
-
     inline void EqApplyAccentIndex(int index)
     {
         (void)index;
@@ -221,8 +200,6 @@ namespace ethnir
     }
 
     inline void EqMarkDirty() { MenuState* s = EqState(); if (s) s->Dirty = true; }
-
-    inline float EqBackdropPhase() { MenuState* s = EqState(); return s ? s->BackdropPhase : 0.0f; }
 
     inline bool EqPress(const char* id, const ImVec2& size, bool* outHovered = nullptr, bool* outHeld = nullptr)
     {
@@ -656,63 +633,6 @@ namespace ethnir
         return changed;
     }
 
-    inline bool ColorRow(const char* icon, const char* label, float* rgba )
-    {
-        (void)icon;
-        if (!EqPassFilter(label)) return false;
-        static const unsigned char kPalette[][3] =
-        {
-            { 0, 212, 255 }, { 0, 210, 120 }, { 255, 60, 80 },
-            { 255, 200, 50 }, { 10, 132, 255 }, { 255, 255, 255 }
-        };
-        const int paletteCount = IM_ARRAYSIZE(kPalette);
-
-        const Palette pal = EqPal();
-        const ImVec2 p = ImGui::GetCursorScreenPos();
-        const float w = ImGui::GetContentRegionAvail().x;
-        const float h = kRowH;
-
-        char clean[128];
-        EqStripId(label, clean, IM_ARRAYSIZE(clean));
-        bool hovered = false;
-        const bool pressed = EqPress(label, ImVec2(w, h), &hovered);
-
-        const ImVec4 col(rgba[0] / 255.0f, rgba[1] / 255.0f, rgba[2] / 255.0f, 1.0f);
-        const ImU32 swatch = ImGui::ColorConvertFloat4ToU32(col);
-        ImDrawList* dl = ImGui::GetWindowDrawList();
-        if (EqCardRowIndex()++ > 0) EqRowSeparator(dl, p, p + ImVec2(w, h));
-        if (hovered) dl->AddRectFilled(p, p + ImVec2(w, h), EqColA(pal.text, 0.025f), portfolio::s(portfolio::control_round));
-        EqDrawLabel(dl, ImVec2(p.x + portfolio::s(portfolio::box_pad_x), p.y + (h - portfolio::s(portfolio::row_label_font)) * 0.5f), clean, EqCol(hovered ? pal.text : pal.textDim), portfolio::s(portfolio::row_label_font));
-
-        char hexBuf[16];
-        ImFormatString(hexBuf, IM_ARRAYSIZE(hexBuf), "#%02X%02X%02X", (int)rgba[0], (int)rgba[1], (int)rgba[2]);
-        const ImVec2 hs = EqLabelSize(hexBuf, 12.0f);
-        EqDrawLabel(dl, ImVec2(p.x + w - 32.0f - hs.x, p.y + (h - 12.0f) * 0.5f), hexBuf, EqCol(pal.textFaint), 12.0f);
-        dl->AddRectFilled(ImVec2(p.x + w - 24.0f, p.y + h * 0.5f - 8.0f), ImVec2(p.x + w - 8.0f, p.y + h * 0.5f + 8.0f), swatch, 6.0f);
-        dl->AddRect(ImVec2(p.x + w - 24.0f, p.y + h * 0.5f - 8.0f), ImVec2(p.x + w - 8.0f, p.y + h * 0.5f + 8.0f), EqColA(pal.cardEdge, 1.4f), 6.0f);
-
-        ImGui::SetCursorScreenPos(ImVec2(p.x, p.y + h + 2.0f));
-        if (!pressed) return false;
-
-        int best = 0;
-        float bestDist = FLT_MAX;
-        for (int i = 0; i < paletteCount; ++i)
-        {
-            const float dr = col.x - kPalette[i][0] / 255.0f;
-            const float dg = col.y - kPalette[i][1] / 255.0f;
-            const float db = col.z - kPalette[i][2] / 255.0f;
-            const float d = dr * dr + dg * dg + db * db;
-            if (d < bestDist) { bestDist = d; best = i; }
-        }
-        const int next = (best + 1) % paletteCount;
-        rgba[0] = (float)kPalette[next][0];
-        rgba[1] = (float)kPalette[next][1];
-        rgba[2] = (float)kPalette[next][2];
-        rgba[3] = 255.0f;
-        EqMarkDirty();
-        return true;
-    }
-
     inline bool SegmentedRow(const char* label, int* current, const char* const* items, int count)
     {
         if (count <= 0) return false;
@@ -820,19 +740,6 @@ namespace ethnir
         st.WinPos.y = ImClamp(st.WinPos.y, ImMin(yMin, yMax), ImMax(yMin, yMax));
     }
 
-    inline void EqDrawShellBase(ImDrawList* dl, const ImVec2& p0, const ImVec2& p1, float R, const Palette& pal, ImTextureID backdrop)
-    {
-        if (backdrop != nullptr)
-        {
-            dl->AddImageRounded(backdrop, p0, p1, ImVec2(0.0f, 0.0f), ImVec2(1.0f, 1.0f), IM_COL32(255, 255, 255, 255), R);
-        }
-        else
-        {
-            dl->AddRectFilled(p0, p1, EqCol(pal.base), R);
-        }
-        dl->AddRectFilled(p0, p1, EqCol(pal.scrim), R);
-    }
-
     inline void EqDrawSidebar(MenuState& st, const ImVec2& s0, const ImVec2& s1)
     {
         ImDrawList* dl = ImGui::GetWindowDrawList();
@@ -910,6 +817,96 @@ for (int i = 0; i < kTabCount; ++i)
         ImGui::EndChild();
     }
 
+    inline bool EqColorRow(const char* label, float* rgba)
+    {
+        if (!rgba || !EqPassFilter(label)) return false;
+
+        auto norm = [](float v) {
+            return (v <= 1.0f) ? ImClamp(v, 0.0f, 1.0f) : ImClamp(v / 255.0f, 0.0f, 1.0f);
+        };
+        const ImVec4 shown(norm(rgba[0]), norm(rgba[1]), norm(rgba[2]), 1.0f);
+
+        const Palette pal = EqPal();
+        ImDrawList* dl = ImGui::GetWindowDrawList();
+        const ImRect row = EqNextRow();
+
+        char clean[128];
+        EqStripId(label, clean, IM_ARRAYSIZE(clean));
+
+        ImGuiID gid = ImGui::GetCurrentWindow()->GetID(label);
+        ImGui::ItemAdd(row, gid);
+        bool hovered = false, held = false;
+        const bool pressed = ImGui::ButtonBehavior(row, gid, &hovered, &held, ImGuiButtonFlags_None);
+        ImGui::KeepAliveID(gid);
+        if (held) { if (EqState()) EqState()->InputActive = true; }
+
+        EqCardRowIndex()++;
+        EqRowHover(dl, row, (hovered || held) ? 0.65f : 0.0f);
+
+        const float labelSize = portfolio::s(portfolio::row_label_font);
+        const ImVec2 ts = EqTextFont()->CalcTextSizeA(labelSize, FLT_MAX, 0.0f, clean);
+        EqDrawLabel(dl, ImVec2(row.Min.x + portfolio::s(portfolio::box_pad_x),
+                               row.Min.y + (row.GetHeight() - ts.y) * 0.5f),
+                    clean, EqCol(hovered ? pal.text : pal.textDim), labelSize);
+
+        const float sw = portfolio::s(portfolio::color_swatch_size);
+        const ImVec2 swMin(row.Max.x - portfolio::s(portfolio::box_pad_x) - sw,
+                           row.GetCenter().y - sw * 0.5f);
+        dl->AddRectFilled(swMin, swMin + ImVec2(sw, sw),
+                          ImGui::ColorConvertFloat4ToU32(shown), portfolio::s(4.0f));
+        dl->AddRect(swMin, swMin + ImVec2(sw, sw),
+                    EqColA(pal.cardEdge, 1.2f), portfolio::s(4.0f), 0, 1.0f);
+
+        char hex[16];
+        ImFormatString(hex, IM_ARRAYSIZE(hex), "#%02X%02X%02X",
+                       (int)ImClamp(rgba[0], 0.0f, 255.0f),
+                       (int)ImClamp(rgba[1], 0.0f, 255.0f),
+                       (int)ImClamp(rgba[2], 0.0f, 255.0f));
+        const ImVec2 hs = EqLabelSize(hex, 12.0f);
+        EqDrawLabel(dl, ImVec2(swMin.x - portfolio::s(8.0f) - hs.x,
+                               row.GetCenter().y - hs.y * 0.5f),
+                    hex, EqCol(pal.textFaint), 12.0f);
+
+        bool changed = false;
+        if (pressed) ImGui::OpenPopup("##ethnir_color_pick");
+        ImGui::SetNextWindowPos(ImVec2(row.Min.x, row.Max.y + 4.0f), ImGuiCond_Appearing);
+        ImGui::SetNextWindowSize(ImVec2(portfolio::s(330.0f), 0.0f), ImGuiCond_Appearing);
+        if (ImGui::BeginPopup("##ethnir_color_pick",
+                ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings))
+        {
+            float c[4] = { shown.x, shown.y, shown.z, 1.0f };
+            ImGui::SetNextItemWidth(portfolio::s(310.0f));
+            if (custom::ColorEdit4("##ethnir_color_edit", c,
+                    ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoAlpha |
+                    ImGuiColorEditFlags_PickerHueWheel))
+            {
+                rgba[0] = c[0] * 255.0f;
+                rgba[1] = c[1] * 255.0f;
+                rgba[2] = c[2] * 255.0f;
+                changed = true;
+            }
+            ImGui::EndPopup();
+        }
+        if (changed) EqMarkDirty();
+        return changed;
+    }
+
+    // Accent colour. This row used to draw a circle, call EqPress and throw the
+    // result away, and EqApplyAccentIndex ignored its argument and forced
+    // AccentIndex back to 0 - so the control did nothing at all. It now writes
+    // portfolio::g_accent, which is what accent_u32()/accent_vec4() and so every
+    // accent-coloured pixel in the shell read.
+    inline void EqAccentRow()
+    {
+        float rgb[3] = { portfolio::g_accent.x * 255.0f,
+                         portfolio::g_accent.y * 255.0f,
+                         portfolio::g_accent.z * 255.0f };
+        if (!EqColorRow("Accent color", rgb)) return;
+
+        portfolio::g_accent = ImVec4(rgb[0] / 255.0f, rgb[1] / 255.0f, rgb[2] / 255.0f, 1.0f);
+        main_runtime_theme::ApplyAccentFromHue();
+    }
+
     inline void EqDrawSettingsPanel(MenuState& st)
     {
         const Palette pal = EqPal();
@@ -979,23 +976,8 @@ for (int i = 0; i < kTabCount; ++i)
             if (RowSlider(nullptr, "Animation", &animPct, 50.0f, 200.0f, "%.0f%%"))
                 st.AnimSpeed = animPct / 100.0f;
 
-            ImDrawList* cdl = ImGui::GetWindowDrawList();
-            const float w = ImGui::GetContentRegionAvail().x;
-            const float h = kRowH;
-            const ImVec2 p = ImGui::GetCursorScreenPos();
-            if (EqCardRowIndex()++ > 0) EqRowSeparator(cdl, p, p + ImVec2(w, h));
-            EqDrawLabel(cdl, ImVec2(p.x + portfolio::s(3.f), p.y + (h - portfolio::s(13.f)) * 0.5f), "Accent color", EqCol(pal.textDim), portfolio::s(13.f));
-            const float sw = portfolio::s(16.f);
-            const ImVec2 c(p.x + w - sw - portfolio::s(10.f), p.y + h * 0.5f);
-            char aid[32];
-            ImFormatString(aid, IM_ARRAYSIZE(aid), "##accent");
-            ImGui::SetCursorScreenPos(c - ImVec2(portfolio::s(9), portfolio::s(9)));
-            bool hov = false;
-            EqPress(aid, ImVec2(portfolio::s(18), portfolio::s(18)), &hov);
-            cdl->AddCircleFilled(c, hov ? portfolio::s(7.f) : portfolio::s(6.f), EqAccent(), 24);
-            if (st.AccentIndex == 0)
-                cdl->AddCircle(c, portfolio::s(9.f), EqAccentA(0.9f), 24, portfolio::s(1.6f));
-            ImGui::SetCursorScreenPos(ImVec2(p.x, p.y + h + portfolio::s(2.f)));
+            EqAccentRow();
+
 
             KeybindRow("Menu bind", &st.MenuBind, kMenuBinds, kMenuBindCount);
         }
