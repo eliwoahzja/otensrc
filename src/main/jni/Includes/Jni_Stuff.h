@@ -12,6 +12,10 @@
 
 using json = nlohmann::json;
 extern JavaVM* jvm;
+
+// Panel configuration
+#define PANEL_GAME_ID "XLR8"
+
 std::string g_Token, g_Auth;
 bool bValid = false;
 std::string EXP = " ";
@@ -313,7 +317,7 @@ std::string Login(const char *user_key) {
         return "❌ Failed to initialize network";
     }
 
-    std::string api_url = oxorany("https://kazexprivatepanel.x10.mx/connect");
+    std::string api_url = oxorany("https://xlreyt.x10.mx/connect");
 
     curl_easy_setopt(curl, CURLOPT_URL, api_url.c_str());
     curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
@@ -324,7 +328,7 @@ std::string Login(const char *user_key) {
     curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
 
     char data[4096];
-    sprintf(data, "game=CODMGR&user_key=%s&serial=%s", user_key, UUID.c_str());
+    sprintf(data, "game=%s&user_key=%s&serial=%s", PANEL_GAME_ID, user_key, UUID.c_str());
 
     curl_easy_setopt(curl, CURLOPT_POSTFIELDS, data);
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteMemoryCallback);
