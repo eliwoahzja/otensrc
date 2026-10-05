@@ -5,6 +5,7 @@
 #include "Logo.h"
 #include "../ImGui/imgui_settings.h"
 #include "../ImGui/custom_widgets.hpp"
+#include "../ImGui/ethnir_menu.h"
 
 extern ImFont* F50;
 extern ImFont* F48;

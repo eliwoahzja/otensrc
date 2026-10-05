@@ -12,7 +12,7 @@ namespace portfolio
 
     inline ImVec4 g_glass_veil  = { 14/255.f, 14/255.f, 22/255.f, 80/255.f };
     inline ImVec4 g_glass_tint  = { 0.f,       0.f,       0.f,       160/255.f };
-    inline ImVec4 g_glass_shade = { 14/255.f, 14/255.f, 22/255.f };
+    inline ImVec4 g_glass_shade = { 14/255.f, 14/255.f, 22/255.f, 1.0f };
     inline float g_glass_shade_a0 = 46/255.f;
     inline float g_glass_shade_a1 = 82/255.f;
 

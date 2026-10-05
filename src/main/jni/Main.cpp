@@ -677,7 +677,7 @@ EGLBoolean hook_eglSwapBuffers(EGLDisplay dpy, EGLSurface surface)
         {
             uncollapseOpenAnim = ImClamp(
                 uncollapseOpenAnim + ImGui::GetIO().DeltaTime * 5.0f, 0.0f, 1.0f);
-            float openEase = uncollapseOpenAnim * uncollapseOpenAnim
+            float openEase = uncollapseOpenAnim * uncollapseOpenAnim;
             float openAlpha = 0.2f + 0.8f * openEase;
             ImGui::PushStyleVar(ImGuiStyleVar_Alpha, openAlpha);
 

@@ -159,7 +159,7 @@ namespace ethnir
         {
             portfolio::g_glass_veil      = ImVec4(14/255.f, 14/255.f, 22/255.f, 80/255.f);
             portfolio::g_glass_tint      = ImVec4(0.f, 0.f, 0.f, 160/255.f);
-            portfolio::g_glass_shade     = ImVec4(14/255.f, 14/255.f, 22/255.f);
+            portfolio::g_glass_shade     = ImVec4(14/255.f, 14/255.f, 22/255.f, 1.0f);
             portfolio::g_glass_shade_a0  = 46/255.f;
             portfolio::g_glass_shade_a1  = 82/255.f;
         }
@@ -167,7 +167,7 @@ namespace ethnir
         {
             portfolio::g_glass_veil      = ImVec4(1.f, 1.f, 1.f, 205/255.f);
             portfolio::g_glass_tint      = ImVec4(1.f, 1.f, 1.f, 150/255.f);
-            portfolio::g_glass_shade     = ImVec4(1.f, 1.f, 1.f);
+            portfolio::g_glass_shade     = ImVec4(1.f, 1.f, 1.f, 1.0f);
             portfolio::g_glass_shade_a0  = 70/255.f;
             portfolio::g_glass_shade_a1  = 26/255.f;
         }
