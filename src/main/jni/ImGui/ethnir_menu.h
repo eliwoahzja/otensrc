@@ -53,6 +53,8 @@ namespace ethnir
         bool   Closing  = false;
         ImVec2 WinPos   = ImVec2(0.0f, 0.0f);
         bool   WinPosInit = false;
+        float  LastDispW = 0.f;
+        float  LastDispH = 0.f;
         bool   Dragging   = false;
         ImVec2 PanelPos   = ImVec2(0.0f, 0.0f);
         bool   PanelPosInit = false;
@@ -152,6 +154,29 @@ namespace ethnir
 
     inline MenuState*& EqState() { static MenuState* s = nullptr; return s; }
     inline Palette EqPal() { MenuState* s = EqState(); return (s && !s->Dark) ? EqPalLight() : EqPalDark(); }
+
+    // Keep the glass fill in step with the palette. Dark reproduces the
+    // original near-black tint exactly; light switches to a milky white so the
+    // near-black text EqPalLight() returns stays readable over a game backdrop.
+    inline void EqSyncGlassTheme(bool dark)
+    {
+        if (dark)
+        {
+            portfolio::g_glass_veil      = ImVec4(14/255.f, 14/255.f, 22/255.f, 80/255.f);
+            portfolio::g_glass_tint      = ImVec4(0.f, 0.f, 0.f, 160/255.f);
+            portfolio::g_glass_shade     = ImVec4(14/255.f, 14/255.f, 22/255.f);
+            portfolio::g_glass_shade_a0  = 46/255.f;
+            portfolio::g_glass_shade_a1  = 82/255.f;
+        }
+        else
+        {
+            portfolio::g_glass_veil      = ImVec4(1.f, 1.f, 1.f, 205/255.f);
+            portfolio::g_glass_tint      = ImVec4(1.f, 1.f, 1.f, 150/255.f);
+            portfolio::g_glass_shade     = ImVec4(1.f, 1.f, 1.f);
+            portfolio::g_glass_shade_a0  = 70/255.f;
+            portfolio::g_glass_shade_a1  = 26/255.f;
+        }
+    }
 
     inline ImFont* EqTextFont() { if (font::inter_semibold) return font::inter_semibold; if (F50) return F50; return ImGui::GetFont(); }
     inline ImFont* EqTitleFont() { if (F50) return F50; return EqTextFont(); }
@@ -870,14 +895,14 @@ for (int i = 0; i < kTabCount; ++i)
         bool changed = false;
         if (pressed) ImGui::OpenPopup("##ethnir_color_pick");
         ImGui::SetNextWindowPos(ImVec2(row.Min.x, row.Max.y + 4.0f), ImGuiCond_Appearing);
-        ImGui::SetNextWindowSize(ImVec2(portfolio::s(330.0f), 0.0f), ImGuiCond_Appearing);
+        ImGui::SetNextWindowSize(ImVec2(portfolio::s(370.0f), 0.0f), ImGuiCond_Appearing);
         if (ImGui::BeginPopup("##ethnir_color_pick",
                 ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings))
         {
             float c[4] = { shown.x, shown.y, shown.z, 1.0f };
-            ImGui::SetNextItemWidth(portfolio::s(310.0f));
+            ImGui::SetNextItemWidth(portfolio::s(350.0f));
             if (custom::ColorEdit4("##ethnir_color_edit", c,
-                    ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoAlpha |
+                    ImGuiColorEditFlags_NoAlpha | ImGuiColorEditFlags_AlphaBar |
                     ImGuiColorEditFlags_PickerHueWheel))
             {
                 rgba[0] = c[0] * 255.0f;
@@ -1060,6 +1085,7 @@ for (int i = 0; i < kTabCount; ++i)
 
         ImGuiIO& io = ImGui::GetIO();
         const float dt = io.DeltaTime;
+        EqSyncGlassTheme(st.Dark);
         const Palette pal = EqPal();
 
         if (!st.WasOpen) { st.Appear = 0.0f; st.Fade = 0.0f; st.LastTab = st.ActiveTab; }
@@ -1090,6 +1116,14 @@ for (int i = 0; i < kTabCount; ++i)
         winSize.y = ImMin(winSize.y, io.DisplaySize.y - 12.0f);
         winSize.x = ImMax(winSize.x, 420.0f);
         winSize.y = ImMax(winSize.y, 300.0f);
+        if (io.DisplaySize.x != st.LastDispW || io.DisplaySize.y != st.LastDispH)
+        {
+            // A rotation or resolution change makes the stored centre
+            // meaningless, so drop it and re-centre on the new viewport.
+            st.LastDispW = io.DisplaySize.x;
+            st.LastDispH = io.DisplaySize.y;
+            st.WinPosInit = false;
+        }
         if (!st.WinPosInit)
         {
             const ImVec2 center = ImGui::GetMainViewport()->GetCenter();

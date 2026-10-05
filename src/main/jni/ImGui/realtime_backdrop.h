@@ -240,6 +240,13 @@ namespace backdrop
             g_w = tw; g_h = th;
         }
 
+        // Mobile GPUs are tile-based and keep the back buffer in a
+        // tile-compressed form until the frame is fully resolved. Reading it
+        // without waiting leaves whole tiles undefined, which is what produced
+        // the black rectangles in the backdrop. Force the game's frame to land
+        // before we sample it.
+        glFinish();
+
         glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
         glBindFramebuffer(GL_DRAW_FRAMEBUFFER, g_fbo);
         // Vertical flip on purpose. A GL framebuffer origin is bottom-left, so a

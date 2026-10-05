@@ -10,6 +10,16 @@ namespace portfolio
 
     inline ImVec4 g_accent = { 0x61/255.f, 0x5D/255.f, 0xCE/255.f, 1.f };
 
+    // Glass fill, driven by the active theme. These used to be hardcoded to a
+    // 63%-opaque near-black, which is what made light mode unreadable: the
+    // palette flipped the text to near-black but the panel stayed black behind
+    // it. EqSyncGlassTheme() in ethnir_menu.h drives them.
+    inline ImVec4 g_glass_veil  = { 14/255.f, 14/255.f, 22/255.f, 80/255.f };
+    inline ImVec4 g_glass_tint  = { 0.f,       0.f,       0.f,       160/255.f };
+    inline ImVec4 g_glass_shade = { 14/255.f, 14/255.f, 22/255.f };
+    inline float g_glass_shade_a0 = 46/255.f;
+    inline float g_glass_shade_a1 = 82/255.f;
+
     inline ImVec4 bg            = { 0.f, 0.f, 0.f, 0.50f };
     inline ImVec4 panel         = { 0.f, 0.f, 0.f, 0.50f };
     inline ImVec4 sidebar       = { 0.f, 0.f, 0.f, 0.40f };
@@ -299,11 +309,11 @@ namespace portfolio
             }
 #endif
             dl->AddImageRounded(backdrop, p0, p1, uv_min, uv_max, IM_COL32_WHITE, R);
-            dl->AddRectFilled(p0, p1, IM_COL32(14, 14, 22, 80), R);
+            dl->AddRectFilled(p0, p1, ImGui::ColorConvertFloat4ToU32(g_glass_veil), R);
         }
         else
         {
-            dl->AddRectFilled(p0, p1, IM_COL32(0, 0, 0, 160), R);
+            dl->AddRectFilled(p0, p1, ImGui::ColorConvertFloat4ToU32(g_glass_tint), R);
         }
 
         const float inset = ImMin(R * 0.5f, ImMin(w, h) * 0.08f);
@@ -311,10 +321,10 @@ namespace portfolio
         const ImVec2 ni1 = { p1.x - inset, p1.y - inset };
 
         dl->AddRectFilledMultiColor(ni0, ni1,
-            IM_COL32(14, 14, 22, 46),
-            IM_COL32(14, 14, 22, 46),
-            IM_COL32(14, 14, 22, 82),
-            IM_COL32(14, 14, 22, 82),
+            ImGui::ColorConvertFloat4ToU32(ImVec4(g_glass_shade.x, g_glass_shade.y, g_glass_shade.z, g_glass_shade_a0)),
+            ImGui::ColorConvertFloat4ToU32(ImVec4(g_glass_shade.x, g_glass_shade.y, g_glass_shade.z, g_glass_shade_a0)),
+            ImGui::ColorConvertFloat4ToU32(ImVec4(g_glass_shade.x, g_glass_shade.y, g_glass_shade.z, g_glass_shade_a1)),
+            ImGui::ColorConvertFloat4ToU32(ImVec4(g_glass_shade.x, g_glass_shade.y, g_glass_shade.z, g_glass_shade_a1)),
             ImMin(R - inset, 8.f));
 
         const float rimW = ImMin(inset * 1.5f, 12.f);
