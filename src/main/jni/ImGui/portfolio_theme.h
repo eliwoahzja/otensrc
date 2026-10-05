@@ -39,8 +39,8 @@ namespace portfolio
     inline ImVec4 fg(float alpha)   { return { ink.x,  ink.y,  ink.z,  alpha }; }
     inline ImVec4 wash(float alpha) { return { haze.x, haze.y, haze.z, alpha }; }
 
-    inline constexpr float window_w         = 1160.f;
-    inline constexpr float window_h         = 669.f;
+    inline constexpr float window_w         = 1060.f;
+    inline constexpr float window_h         = 610.f;
     inline constexpr float shell_round      = 14.f;
     inline constexpr float sidebar_w        = 243.f;
     inline constexpr float sidebar_pad      = 24.f;

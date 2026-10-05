@@ -1266,8 +1266,22 @@ for (int i = 0; i < kTabCount; ++i)
             }
         }
 
+        // Drag band spans the full header width, from just under the top edge
+        // down to just above the first sidebar tab. The old rect was only the
+        // topbar to the right of the sidebar, which is almost entirely taken by
+        // the Save pill, the search field and the two icon buttons: every press
+        // there landed on a control and set HeaderControl, so the shell could
+        // not practically be dragged at all. It also covers the wordmark, which
+        // is a natural place to grab on a touch screen.
+        const ImVec2 dragMin(p0.x + kPad * 0.35f, p0.y + kPad * 0.35f);
+        const ImVec2 dragMax(p1.x - kPad * 0.35f,
+                             p0.y + kPad + kBrandH
+                                 + portfolio::s(portfolio::sidebar_tabs_y)
+                                 - portfolio::s(6.f));
+
         if (st.Dragging && !io.MouseDown[0]) st.Dragging = false;
-        if (!st.Dragging && io.MouseClicked[0] && ImGui::IsMouseHoveringRect(h0, h1) && !st.HeaderControl)
+        if (!st.Dragging && io.MouseClicked[0]
+            && ImGui::IsMouseHoveringRect(dragMin, dragMax) && !st.HeaderControl)
         {
             st.Dragging = true;
             st.DragRef  = io.MousePos;

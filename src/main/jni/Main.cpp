@@ -360,137 +360,43 @@ EGLBoolean hook_eglSwapBuffers(EGLDisplay dpy, EGLSurface surface)
 
     if (windowCollapsed)
     {
-        static ImVec2 collapsedLogoPos = ImVec2(-1, -1);
-        static bool collapsedPosInitialized = false;
-        static bool collapsedWasDragging = false;
-        static ImVec2 collapsedDragLastMousePos = ImVec2(0.0f, 0.0f);
-        static float collapsedDragDistance = 0.0f;
-        const float collapsedAlphaSetting = ImClamp(GetLogoOpacity(), 0.0f, 1.0f);
-        const float collapsedScaleSetting = ImClamp(GetLogoSizeMultiplier(), 0.1f, 2.0f);
-        const float pill_w = portfolio::s(158.f) * c::scale * collapsedScaleSetting;
-        const float pill_h = portfolio::s(60.f) * c::scale * collapsedScaleSetting;
-        float line_w = pill_w;
-        float click_h = pill_h;
-        if (!collapsedPosInitialized)
-        {
-            ImVec2 vp = ImGui::GetMainViewport()->GetCenter();
-            collapsedLogoPos = ImVec2(vp.x - pill_w * 0.5f, vp.y - pill_h * 0.5f);
-            collapsedPosInitialized = true;
-        }
+        // Minimised: draw nothing at all. The old version painted a liquid-glass
+        // pill with the astral logo and an FPS readout, which is the floating
+        // artefact we do not want. The restore target is now an invisible hit
+        // area at the top centre of the screen, where a thumb naturally rests
+        // over the game's own top bar. Tapping anywhere in it reopens the menu.
+        const ImVec2 disp = ImGui::GetIO().DisplaySize;
+        const float zw = disp.x * 0.18f;
+        const float zh = disp.y * 0.20f;
+        const ImVec2 zc(disp.x * 0.50f, disp.y * 0.09f);
+        const ImVec2 zmin(zc.x - zw * 0.5f, zc.y - zh * 0.5f);
+
         collapseBarOpacityAnim = 1.0f;
 
-        const float hitboxMargin = portfolio::s(20.f);
-        ImGui::SetNextWindowPos(collapsedLogoPos - ImVec2(hitboxMargin, hitboxMargin), ImGuiCond_Always);
-        ImGui::SetNextWindowSize(ImVec2(line_w + 2*hitboxMargin, click_h + 2*hitboxMargin), ImGuiCond_Always);
+        ImGui::SetNextWindowPos(zmin, ImGuiCond_Always);
+        ImGui::SetNextWindowSize(ImVec2(zw, zh), ImGuiCond_Always);
         ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0, 0, 0, 0));
-        ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0, 0, 0, 0));
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
         ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
-
-        auto getCollapsedTouchPos = [&]() -> ImVec2
-        {
-            return ImGui::GetIO().MousePos;
-        };
-
-        if (ImGui::Begin("##indicator", nullptr,
+        if (ImGui::Begin("##ethnir_restore", nullptr,
             ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize |
             ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoCollapse |
-            ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoSavedSettings))
+            ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoSavedSettings |
+            ImGuiWindowFlags_NoBackground))
         {
-            ImVec2 windowPos = ImGui::GetWindowPos();
-            ImGui::SetCursorPos(ImVec2(hitboxMargin, hitboxMargin));
-            ImGui::InvisibleButton("##restoreclick", ImVec2(line_w, click_h));
-            bool barHovered = ImGui::IsItemHovered();
-            bool barHeld = ImGui::IsItemActive();
-            collapseBarPressAnim = ImLerp(collapseBarPressAnim, barHeld ? 1.0f : 0.0f,
-                                          ImGui::GetIO().DeltaTime * 18.0f);
-            if (ImGui::IsItemActivated())
+            ImGui::InvisibleButton("##ethnir_restore_hit", ImGui::GetContentRegionAvail());
+            if (ImGui::IsItemClicked(0))
             {
-                collapsedWasDragging = false;
-                collapsedDragDistance = 0.0f;
-                collapsedDragLastMousePos = getCollapsedTouchPos();
+                windowCollapsed = false;
+                isMenuVisible = true;
+                uncollapseOpenAnim = 0.0f;
             }
-            if (ImGui::IsItemActive())
-            {
-                ImVec2 currentMousePos = getCollapsedTouchPos();
-                ImVec2 delta = ImVec2(
-                    currentMousePos.x - collapsedDragLastMousePos.x,
-                    currentMousePos.y - collapsedDragLastMousePos.y
-                );
-                collapsedLogoPos.x += delta.x;
-                collapsedLogoPos.y += delta.y;
-                collapsedDragDistance += sqrtf((delta.x * delta.x) + (delta.y * delta.y));
-                collapsedDragLastMousePos = currentMousePos;
-                if (collapsedDragDistance > (portfolio::s(15.f) * c::scale))
-                    collapsedWasDragging = true;
-            }
-            if (ImGui::IsItemDeactivated())
-            {
-                if (!collapsedWasDragging && windowCollapsed)
-                {
-                    windowCollapsed = false;
-                    isMenuVisible = true;
-                    uncollapseOpenAnim = 0.0f;
-                }
-                collapsedWasDragging = false;
-                collapsedDragDistance = 0.0f;
-            }
-            float drawAlpha = ImClamp(collapseBarOpacityAnim * collapsedAlphaSetting, 0.0f, 1.0f);
-            ImDrawList* indicatorDraw = ImGui::GetWindowDrawList();
-            const float pillR = click_h * 0.5f;
-            ImVec2 pillMin = windowPos + ImVec2(hitboxMargin, hitboxMargin);
-            ImVec2 pillMax = ImVec2(pillMin.x + line_w, pillMin.y + click_h);
-
-            const ImTextureID pillBackdrop = backdrop::g_realtimeBackdrop
-                ? (ImTextureID)(intptr_t)backdrop::g_realtimeBackdrop
-                : (runtime_preview_menu::g_ethnirGlassBackdrop.id
-                    ? (ImTextureID)(intptr_t)runtime_preview_menu::g_ethnirGlassBackdrop.id
-                    : nullptr);
-            portfolio::DrawLiquidGlassPanel(indicatorDraw, pillMin, pillMax, pillR, pillBackdrop);
-
-            static GLuint collapsedLogo = 0;
-            if (collapsedLogo == 0)
-                collapsedLogo = LoadAstralTexture(astral_data, sizeof(astral_data));
-
-            const float logoPad = portfolio::s(6.f) * c::scale * collapsedScaleSetting;
-            const float logoSize = portfolio::s(48.f) * c::scale * collapsedScaleSetting;
-            const ImVec2 logoMin(pillMin.x + logoPad,
-                                  pillMin.y + (click_h - logoSize) * 0.5f);
-            const ImVec2 logoMax(logoMin.x + logoSize, logoMin.y + logoSize);
-            if (collapsedLogo != 0) {
-                indicatorDraw->AddImageRounded(
-                    (ImTextureID)(intptr_t)collapsedLogo,
-                    logoMin, logoMax,
-                    ImVec2(0.0f, 0.0f), ImVec2(1.0f, 1.0f),
-                    IM_COL32(255, 255, 255, (int)(255.0f * drawAlpha)),
-                    logoSize * 0.5f
-                );
-            }
-            char fpsText[32] = {};
-            std::snprintf(fpsText, sizeof(fpsText), "%d FPS",
-                          (int)std::lround(ImGui::GetIO().Framerate));
-            ImFont* fpsFont = F50 ? F50 : (font::inter_semibold ? font::inter_semibold : ImGui::GetFont());
-            const float fpsSize = ((fpsFont == F50) ? (portfolio::s(16.f) * c::scale) : (portfolio::s(18.f) * c::scale))
-                                  * collapsedScaleSetting;
-            const ImVec2 fpsSizeVec = fpsFont->CalcTextSizeA(fpsSize, FLT_MAX, 0.0f, fpsText);
-            int fpsVal = (int)std::lround(ImGui::GetIO().Framerate);
-            ImU32 fpsColor = (fpsVal >= 55) ? IM_COL32(100, 220, 120, 255)
-                            : (fpsVal >= 40) ? IM_COL32(0, 212, 255, 255)
-                            : IM_COL32(255, 180, 100, 255);
-            indicatorDraw->AddText(
-                fpsFont, fpsSize,
-                ImVec2(logoMax.x + portfolio::s(14.f) * c::scale * collapsedScaleSetting,
-                        pillMin.y + (click_h - fpsSizeVec.y) * 0.5f),
-                fpsColor,
-                fpsText
-            );
         }
         ImGui::End();
-        ImGui::PopStyleColor(2);
+        ImGui::PopStyleColor();
         ImGui::PopStyleVar(3);
     }
-
     if (isMenuVisible && !windowCollapsed)
     {
         if (!g_LoginTextLoaded && VM != nullptr)
