@@ -226,6 +226,10 @@ std::string getClipboard() {
     std::string result;
     JNIEnv *env;
 
+    if (jvm == nullptr) {
+        return result;
+    }
+
     jvm->AttachCurrentThread(&env, NULL);
 
     auto looperClass = env->FindClass("android/os/Looper");
@@ -266,7 +270,7 @@ std::string getClipboard() {
     env->DeleteLocalRef(mInitialApplication);
     env->DeleteLocalRef(activityThreadClass);
     jvm->DetachCurrentThread();
-    return result.c_str();
+    return result;
 }
 
 std::string Login(const char *user_key) {
@@ -336,56 +340,79 @@ std::string Login(const char *user_key) {
 
     curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
     curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L);
+    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 20L);
+    curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 10L);
 
     CURLcode res = curl_easy_perform(curl);
 
     if (res == CURLE_OK) {
         try {
-            json result = json::parse(chunk.memory);
+            if (!chunk.memory || chunk.size == 0) {
+                errMsg = "Empty server response";
+            } else {
+                std::string raw(chunk.memory, chunk.size);
+                json result = json::parse(raw);
 
-            if (result["status"] == true) {
+                if (result.is_object() && result.contains("status")) {
+                    if (result["status"] == true) {
+                        if (result.is_object() && result.contains("data")) {
+                            std::string token = result["data"].value("token", "");
+                            time_t rng = result["data"].value("rng", (time_t)0);
+                            EXP = result["data"].value("EXP", "");
 
-                std::string token = result["data"]["token"];
-                time_t rng = result["data"]["rng"];
-                EXP = result["data"]["EXP"];
+                            expiryTimestamp = parseExpiryDate(EXP);
 
-                expiryTimestamp = parseExpiryDate(EXP);
+                            if (rng + 30 > time(0)) {
+                                g_Token = token;
+                                bValid = true;
+                                errMsg = "OK";
+                            } else {
+                                errMsg = "Session expired. Please retry.";
+                            }
+                        } else {
+                            errMsg = "Unexpected server response shape";
+                        }
+                    } else {
+                        std::string reason = result.value("reason", "Unknown error");
 
-                if (rng + 30 > time(0)) {
-                    g_Token = token;
-                    bValid = true;
-                    errMsg = "OK";
+                        if (reason == "Invalid key")
+                            errMsg = "❌ Invalid Key";
+                        else if (reason == "Key Expired")
+                            errMsg = "⌛ Key Expired";
+                        else if (reason == "Slot limit reached")
+                            errMsg = "⚠️ Device Limit Reached";
+                        else if (reason == "Key Banned")
+                            errMsg = "🚫 Key Banned";
+                        else if (reason == "Missing key or HWID")
+                            errMsg = "⚠️ Missing Key or Device ID";
+                        else if (reason == "Server under maintenance")
+                            errMsg = "🛠 Server Maintenance";
+                        else
+                            errMsg = "❌ " + reason;
+                    }
                 } else {
-                    errMsg = "Session expired. Please retry.";
+                    errMsg = "Unexpected server response: " + raw;
                 }
-
             }
-
-            else {
-                std::string reason = result.value("reason", "Unknown error");
-
-                if (reason == "Invalid key")
-                    errMsg = "❌ Invalid Key";
-                else if (reason == "Key Expired")
-                    errMsg = "⌛ Key Expired";
-                else if (reason == "Slot limit reached")
-                    errMsg = "⚠️ Device Limit Reached";
-                else if (reason == "Key Banned")
-                    errMsg = "🚫 Key Banned";
-                else if (reason == "Missing key or HWID")
-                    errMsg = "⚠️ Missing Key or Device ID";
-                else if (reason == "Server under maintenance")
-                    errMsg = "🛠 Server Maintenance";
-                else
-                    errMsg = "❌ " + reason;
-            }
-
+        } catch (const json::parse_error &e) {
+            std::string raw(chunk.memory ? chunk.memory : "");
+            errMsg = "Parse error: " + raw;
         } catch (...) {
-            errMsg = "⚠️ Server response error";
+            if (chunk.memory && chunk.size > 0) {
+                errMsg = "⚠️ Server response error: " + std::string(chunk.memory);
+            } else {
+                errMsg = "⚠️ Server response error";
+            }
         }
 
     } else {
-        errMsg = "🌐 Network error. Check your connection.";
+        long http_code = 0;
+        curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
+        if (http_code == 0L) {
+            errMsg = "🌐 Network error. Check your connection.";
+        } else {
+            errMsg = "Server error " + std::to_string(http_code);
+        }
     }
 
     curl_easy_cleanup(curl);
