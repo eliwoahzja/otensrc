@@ -78,6 +78,12 @@ ndk-build -C src NDK_PROJECT_PATH=. NDK_APPLICATION_MK=src/main/jni/Application.
 
 The output shared library lands in `src/main/libs/arm64-v8a/`.
 
+Note: AIDE Pro's `ndkBuild` task does **not** pass `NDK_APPLICATION_MK`, so
+`src/main/jni/Application.mk` (and its `APP_STL := c++_static`) is not read for
+the in-IDE build. `Android.mk` therefore locates the NDK's `libc++_static.a` and
+`libc++abi.a` itself and links them explicitly, so the C++ runtime does not
+depend on `Application.mk` being loaded.
+
 ## 4. Launcher activity (this is what made the app close on open)
 
 `src/main/AndroidManifest.xml` declared the launcher as
