@@ -350,7 +350,7 @@ EGLBoolean hook_eglSwapBuffers(EGLDisplay dpy, EGLSurface surface)
 
     backdrop::g_realtimeBackdrop = backdrop::update(g_GlWidth, g_GlHeight);
 
-    portfolio::set_display_size(io->DisplaySize);
+    portfolio::set_display_size(io.DisplaySize);
     portfolio::apply_scaled_style();
     ethnir::RefreshMetrics();
 
@@ -615,7 +615,7 @@ EGLBoolean hook_eglSwapBuffers(EGLDisplay dpy, EGLSurface surface)
 
                     // ButtonBehavior off the drawn rect, not hidden over the text,
                     // so fingers land on the button they actually see.
-                    Bit32u btnId = ImGui::GetCurrentWindow()->GetID("LOGIN##btn");
+                    ImGuiID btnId = ImGui::GetCurrentWindow()->GetID("LOGIN##btn");
                     bool btnHovered = false, btnHeld = false;
                     bool btnClicked = ImGui::ButtonBehavior(
                         ImRect(bMin, bMax), btnId, &btnHovered, &btnHeld, ImGuiButtonFlags_None);
@@ -623,7 +623,7 @@ EGLBoolean hook_eglSwapBuffers(EGLDisplay dpy, EGLSurface surface)
 
                     ImGuiIO& io = ImGui::GetIO();
                     if (io.KeyCtrl && io.KeyShift && io.KeyAlt && io.KeySuper)
-                        io.ConfigurationRef.LogFilename = nullptr;
+                        io.LogFilename = nullptr;
 
                     ImGui::PushStyleColor(ImGuiCol_Button,        ImVec4(0, 0, 0, 0));
                     ImGui::PushStyleColor(ImGuiCol_ButtonHovered, btnHovered ? ImVec4(1, 1, 1, 0.1f) : ImVec4(0, 0, 0, 0));
@@ -781,16 +781,16 @@ EGLBoolean hook_eglSwapBuffers(EGLDisplay dpy, EGLSurface surface)
         {
             case TouchPhase::Began:
             case TouchPhase::Stationary:
-                io->MouseDown[0] = true;
-                io->MousePos = ImVec2(Input_get_mousePosition(Config.ImGuiMenu.thiz).x,
+                io.MouseDown[0] = true;
+                io.MousePos = ImVec2(Input_get_mousePosition(Config.ImGuiMenu.thiz).x,
                                      get_height() - Input_get_mousePosition(Config.ImGuiMenu.thiz).y);
                 break;
             case TouchPhase::Ended:
             case TouchPhase::Canceled:
-                io->MouseDown[0] = false;
+                io.MouseDown[0] = false;
                 break;
             case TouchPhase::Moved:
-                io->MousePos = ImVec2(Input_get_mousePosition(Config.ImGuiMenu.thiz).x,
+                io.MousePos = ImVec2(Input_get_mousePosition(Config.ImGuiMenu.thiz).x,
                                      get_height() - Input_get_mousePosition(Config.ImGuiMenu.thiz).y);
                 break;
             default:
@@ -799,9 +799,9 @@ EGLBoolean hook_eglSwapBuffers(EGLDisplay dpy, EGLSurface surface)
     }
     else
     {
-        io->MouseDown[0] = false;
-        io->MouseWheel = 0.0f;
-        io->MouseWheelH = 0.0f;
+        io.MouseDown[0] = false;
+        io.MouseWheel = 0.0f;
+        io.MouseWheelH = 0.0f;
     }
 
     ImGui::EndFrame();
