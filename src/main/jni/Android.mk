@@ -57,8 +57,10 @@ ifeq ($(LOCAL_MODULE),libV2)
 endif
 LOCAL_CFLAGS           := -Wno-error=format-security -fvisibility=hidden -ffunction-sections -fdata-sections -w
 LOCAL_CFLAGS           += -fno-rtti -fno-exceptions -fpermissive
+LOCAL_CFLAGS           += $(if $(filter arm64-v8a,$(TARGET_ARCH_ABI)),-mno-outline-atomics)
 LOCAL_CPPFLAGS         := -Wno-error=format-security -fvisibility=hidden -ffunction-sections -fdata-sections -w -Werror -s -std=c++17 -DETHNIR_LIQUID_SHADER
 LOCAL_CPPFLAGS         += -Wno-error=c++11-narrowing -fms-extensions -fno-rtti -fno-exceptions -fpermissive
+LOCAL_CPPFLAGS         += $(if $(filter arm64-v8a,$(TARGET_ARCH_ABI)),-mno-outline-atomics)
 
 LOCAL_LDFLAGS          += -Wl,--gc-sections,--strip-all, -llog
 LOCAL_ARM_MODE         := arm
@@ -88,6 +90,23 @@ LOCAL_C_INCLUDES += $(LOCAL_PATH)/curl/openssl-android-$(TARGET_ARCH_ABI)/includ
 LOCAL_C_INCLUDES += $(LOCAL_PATH)/libzip
 
 LOCAL_LDLIBS           := -llog -landroid -lz -lEGL -lGLESv2 -lGLESv3
+LOCAL_LDLIBS           += -static-libstdc++ -Wl,--start-group
+NDK_CXX_STATIC := $(firstword $(wildcard $(NDK_UNIFIED_SYSROOT_PATH)/usr/lib/*/libc++_static.a) $(wildcard $(NDK_UNIFIED_SYSROOT_PATH)/usr/lib/*/*/libc++_static.a) $(wildcard $(NDK_ROOT)/toolchains/llvm/prebuilt/*/sysroot/usr/lib/*/libc++_static.a) $(wildcard $(NDK_ROOT)/toolchains/llvm/prebuilt/*/sysroot/usr/lib/*/*/libc++_static.a))
+ifneq ($(strip $(NDK_CXX_STATIC)),)
+LOCAL_LDLIBS           += $(NDK_CXX_STATIC)
+else
+LOCAL_LDLIBS           += -lc++_static
+endif
+NDK_CXXABI := $(firstword $(wildcard $(NDK_UNIFIED_SYSROOT_PATH)/usr/lib/*/libc++abi.a) $(wildcard $(NDK_UNIFIED_SYSROOT_PATH)/usr/lib/*/*/libc++abi.a) $(wildcard $(NDK_ROOT)/toolchains/llvm/prebuilt/*/sysroot/usr/lib/*/libc++abi.a) $(wildcard $(NDK_ROOT)/toolchains/llvm/prebuilt/*/sysroot/usr/lib/*/*/libc++abi.a))
+ifneq ($(strip $(NDK_CXXABI)),)
+LOCAL_LDLIBS           += $(NDK_CXXABI)
+endif
+LOCAL_LDLIBS           += -Wl,--end-group
+NDK_BUILTINS_ARCH := $(if $(filter arm64-v8a,$(TARGET_ARCH_ABI)),aarch64,$(TARGET_ARCH))
+NDK_BUILTINS := $(firstword $(wildcard $(NDK_TOOLCHAIN_LIB_DIR)/libclang_rt.builtins-$(NDK_BUILTINS_ARCH)-android.a) $(wildcard $(NDK_ROOT)/toolchains/llvm/prebuilt/*/lib*/clang/*/lib/linux/libclang_rt.builtins-$(NDK_BUILTINS_ARCH)-android.a))
+ifneq ($(strip $(NDK_BUILTINS)),)
+LOCAL_LDLIBS           += $(NDK_BUILTINS)
+endif
 LOCAL_STATIC_LIBRARIES := libcurl libssl libcrypto libdobby libfoxcheats libxhook libctorHook
 
 LOCAL_CPP_FEATURES                      := exceptions

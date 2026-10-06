@@ -70,7 +70,7 @@ cd /path/to/repo
 export ANDROID_NDK_HOME=/data/user/0/com.aide.plus/no_backup/ndksupport-*/android-ndk-aide
 export PATH="$ANDROID_NDK_HOME/ndk-build:$PATH"
 
-ndk-build -C src NDK_PROJECT_PATH=. NDK_APPLICATION_MK=src/main/jni/Android.mk \
+ndk-build -C src NDK_PROJECT_PATH=. NDK_APPLICATION_MK=src/main/jni/Application.mk \
            APP_BUILD_SCRIPT=src/main/jni/Android.mk \
            NDK_OUT=src/main/obj NDK_LIBS_OUT=src/main/libs \
            APP_ABI=arm64-v8a
