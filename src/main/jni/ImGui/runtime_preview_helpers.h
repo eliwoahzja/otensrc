@@ -111,10 +111,16 @@ inline ChildFrame BeginContentChild(const char *id, const ImVec2 &size, ImGuiWin
 
 inline void EndContentChild(const ChildFrame &frame) {
     custom::EndChild();
+    // EndChild()/ItemSize() leave the cursor on the window's content origin
+    // rather than on the column the card was opened in, so without this the
+    // second card of a column starts at the left column's x. The Config tab is
+    // where it showed: ENHANCEMENT was painted straight over LOGO SETTINGS.
+    ethnir::EqColumnSyncX();
 }
 
 inline void ContentGap(float height = 10.0f) {
     ImGui::Dummy(ImVec2(0.0f, height));
+    ethnir::EqColumnSyncX();
 }
 
 inline bool DrawActionButton(const char *id, const char *label, float h = 50.0f) {

@@ -46,6 +46,11 @@ namespace custom
     // of room before its labels do.
     int                 PageColumnsThatFit(const char* const* labels, int count, float avail, float spacing);
 
+    // Full-width segmented control sized to `height`. `current` is 0-based; the
+    // only indices the caller may set are 0..(count-1). Selected label is drawn in
+    // the accent colour; the unselected labels are drawn in their hovered colour.
+    bool                Segmented(const char* label, int* current, const char* const* items, int count, float height);
+
     bool                ThemeButton(const char* id_theme, bool dark, const ImVec2& size_arg);
     bool                Button(const char* label, const ImVec2& size_arg);
 

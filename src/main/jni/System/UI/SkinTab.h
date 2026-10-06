@@ -197,36 +197,10 @@ inline void RenderSkinCategoryContent(int categoryIndex, bool drawSubTabs = fals
     int skin_tab = skinSubTab;
 
     if (drawSubTabs) {
-        const float tabSpacing = 8.0f * c::scale;
-        const float tabHeight = 34.0f * c::scale;
         static const char* const kSubTabLabels[] = { "Character", "Watch", "Deadbox", "Plane", "Weapon", "Camo" };
         static const int kSubTabCount = IM_ARRAYSIZE(kSubTabLabels);
 
-        ImFont* subTabFont = font::inter_semibold;
-        if (!subTabFont)
-            subTabFont = F50;
-        if (!subTabFont)
-        {
-            ImGuiIO& io = ImGui::GetIO();
-            subTabFont = io.FontDefault;
-        }
-        if (subTabFont) ImGui::PushFont(subTabFont);
-        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(tabSpacing, tabSpacing));
-
-        // The label font is a fixed 16px that does not follow the display factor:
-        // six chips across this column leave 56px each for a 64px label, so ask
-        // for the widest split that fits instead of letting Page() clip them.
-        const float tabAvail = ImGui::GetContentRegionAvail().x;
-        const int subTabPerRow = custom::PageColumnsThatFit(kSubTabLabels, kSubTabCount, tabAvail, tabSpacing);
-        const float tabWidth = ImMax(32.0f, (tabAvail - tabSpacing * (subTabPerRow - 1)) / (float)subTabPerRow);
-
-        for (int i = 0; i < kSubTabCount; ++i) {
-            if (custom::Page(skinSubTab == i, kSubTabLabels[i], ImVec2(tabWidth, tabHeight), false, false)) skinSubTab = i;
-            if (i + 1 < kSubTabCount && (i + 1) % subTabPerRow != 0) ImGui::SameLine();
-        }
-
-        ImGui::PopStyleVar();
-        if (subTabFont) ImGui::PopFont();
+        custom::Segmented("SkinSubTab", &skinSubTab, kSubTabLabels, kSubTabCount, 34.0f * c::scale);
         skin_tab = skinSubTab;
     }
 

@@ -2695,4 +2695,105 @@ namespace custom
         return SliderScalar(label, ImGuiDataType_S32, v, &v_min, &v_max, format, flags);
     }
 
+    bool Segmented(const char* label, int* current, const char* const* items, int count, float height)
+    {
+        ImGuiWindow* window = GetCurrentWindow();
+        if (window->SkipItems) return false;
+        if (items == nullptr || count <= 0) return false;
+        if (current == nullptr) return false;
+
+        ImGuiContext& g = *ImGui::GetCurrentContext();
+        const ImGuiStyle& style = g.Style;
+        const ImGuiID id = window->GetID(label);
+        const ImVec2 pos = window->DC.CursorPos;
+        const float avail = GetContentRegionAvail().x;
+        const float control_h = ImMax(height, 0.0f);
+        const float gap = style.ItemSpacing.y;
+        const float segGap = ImMax(gap, 0.0f);
+
+        int widest = 0;
+        for (int i = 0; i < count; ++i)
+            widest = ImMax(widest, (int)CalcTextSize(items[i], nullptr, true).x);
+        const float min_cell_w = ImMax((float)widest, 16.0f);
+        const float cell_w = ImMax(min_cell_w, (avail - (count - 1) * segGap) / (float)count);
+
+        const ImVec2 size(ImMax(avail, cell_w * (float)count + (count - 1) * segGap), control_h);
+        const ImRect bb(pos, pos + size);
+        ItemSize(size);
+        if (!ItemAdd(bb, id)) return false;
+
+        static std::map<ImGuiID, float> thumb;
+        auto ti = thumb.find(id);
+        if (ti == thumb.end()) {
+            thumb.insert({id, (float)(*current)});
+            ti = thumb.find(id);
+        }
+
+        ImDrawList* draw = GetWindowDrawList();
+        bool any_pressed = false;
+
+        for (int i = 0; i < count; ++i)
+        {
+            const ImVec2 cell_min(pos.x + i * (cell_w + segGap), pos.y);
+            const ImVec2 cell_max(cell_min.x + cell_w, cell_min.y + control_h);
+            const bool selected = (i == *current);
+            char cell_id[64];
+            ImFormatString(cell_id, IM_ARRAYSIZE(cell_id), "%s##cell%d", label, i);
+            ImGui::PushID(cell_id);
+
+            ImGui::InvisibleButton("", ImVec2(cell_w, control_h));
+            bool seg_hovered = ImGui::IsItemHovered();
+            bool seg_pressed_now = false;
+            if (seg_hovered && ImGui::IsMouseClicked(0)) {
+                *current = i;
+                thumb[i] = (float)i;
+                any_pressed = true;
+                seg_pressed_now = true;
+            }
+
+            const ImVec4 bg_inactive = c::page::background;
+            const ImVec4 bg_active = c::page::background_active;
+            draw->AddRectFilled(
+                cell_min, cell_max,
+                ImGui::GetColorU32(ImLerp(bg_inactive, bg_active, selected ? 1.0f : 0.0f)),
+                ImMax(2.0f, c::page::rounding * c::scale));
+
+            const ImVec2 txt_min(cell_min.x + (cell_w - ImGui::CalcTextSize(items[i], nullptr, true).x) * 0.5f,
+                                 cell_min.y + (control_h - ImGui::CalcTextSize(items[i], nullptr, true).y) * 0.5f);
+            draw->AddText(ImGui::GetFont(), ImGui::GetFontSize(), txt_min,
+                          ImGui::GetColorU32(selected ? c::accent : seg_hovered && !seg_pressed_now ? c::page::text_hov : c::page::text),
+                          items[i]);
+
+            ImGui::PopID();
+        }
+
+        // Thumb leading edge travels with selection.
+        {
+            const float t = ti->second;
+            const int ti_idx = ImClamp((int)ImFloor(t + 0.5f), 0, count - 1);
+            const ImVec2 thumb_min(pos.x + ti_idx * (cell_w + segGap) + (cell_w * 0.5f), pos.y);
+            const ImVec2 thumb_max(thumb_min.x + (cell_w * 0.5f), thumb_min.y + control_h);
+            draw->AddRectFilled(thumb_min, thumb_max, ImGui::GetColorU32(c::accent),
+                                ImMax(2.0f, c::page::rounding * c::scale));
+        }
+
+        // Drive thumb toward current.
+        float& tv = ti->second;
+        const float target = (float)(*current);
+        const float k = 220.0f;
+        const float d = 25.0f;
+        const float dt = g.IO.DeltaTime;
+        if (dt > 0.0f) {
+            // critically damped spring toward target; never overshoot in this
+            // damping regime so the thumb settles smoothly like a UIKit picker.
+            const float remain = target - tv;
+            const float v = (0.0f != remain) ? remain : 0.0f;
+            tv += (v + k * remain * dt - d * (tv - (tv - v * dt)));
+            tv = target - (target - tv) * ImSaturate((k * dt) / (d + k * dt + 1.0f));
+        }
+
+        ImGui::SetCursorScreenPos(pos + ImVec2(0, control_h + style.ItemSpacing.y));
+        return any_pressed;
+    }
+
 }

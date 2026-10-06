@@ -11,6 +11,7 @@
 #include <cstring>
 #include <cctype>
 #include <cstdio>
+#include <map>
 
 namespace ethnir
 {
@@ -58,6 +59,10 @@ namespace ethnir
         bool   PanelPosInit = false;
         bool   PanelDragging = false;
         float  SaveFlash  = 0.0f;
+
+        float  TabShift   = 0.0f;   // px the newly picked tab slides in from
+        float  PillY      = 0.0f;   // the sliding "selected" highlight in the sidebar
+        bool   PillInit   = false;
 
         float  DragScaleX = 1.0f;
         float  DragScaleY = 1.0f;
@@ -191,6 +196,51 @@ namespace ethnir
         return nv;
     }
 
+    // Springs, not exponential decay. iOS motion settles *through* the target
+    // with a little overshoot, and an exponential can only ever creep up on it,
+    // so everything that should feel like UIKit - the panel unfolding, the tab
+    // push, a toggle knob, the segmented thumb - is driven from here. Velocity
+    // lives beside the value in the same storage, so no caller needs state.
+    inline ImGuiID EqSpringVelId(const char* key) { return ImHashStr("##ethnir_vel", 0, ImGui::GetID(key)); }
+
+    inline void EqSpringSet(const char* key, float value, float velocity = 0.0f)
+    {
+        ImGuiStorage* stg = ImGui::GetStateStorage();
+        stg->SetFloat(ImGui::GetID(key), value);
+        stg->SetFloat(EqSpringVelId(key), velocity);
+    }
+
+    // stiffness/damping are plain units. Critically damped is
+    // damping = 2*sqrt(stiffness); stay below that and it overshoots like UIKit.
+    inline float EqSpring(const char* key, float target, float stiffness, float damping, float dt, float initial = 0.0f)
+    {
+        ImGuiStorage* stg = ImGui::GetStateStorage();
+        const ImGuiID id = ImGui::GetID(key);
+        const ImGuiID vid = EqSpringVelId(key);
+        float y = stg->GetFloat(id, initial);
+        if (dt <= 0.0f) return y;
+        float v = stg->GetFloat(vid, 0.0f);
+        // Explicit Euler goes unstable once stiffness * h^2 gets large, which is
+        // exactly what a stuttering frame produces, so sub-step the integration.
+        const int steps = ImClamp((int)(dt / 0.010f) + 1, 1, 4);
+        const float h = dt / (float)steps;
+        for (int i = 0; i < steps; ++i)
+        {
+            v += (-stiffness * (y - target) - damping * v) * h;
+            y += v * h;
+        }
+        stg->SetFloat(id, y);
+        stg->SetFloat(vid, v);
+        return y;
+    }
+
+    // How far a spring still is from its target, 0..1. Drives the small squash
+    // a UIKit knob shows while it is travelling.
+    inline float EqSpringTravel(float value, float target)
+    {
+        return ImSaturate(ImFabs(value - target));
+    }
+
     inline ImVec4 EqMix(const ImVec4& a, const ImVec4& b, float t) { return ImVec4(ImLerp(a.x, b.x, t), ImLerp(a.y, b.y, t), ImLerp(a.z, b.z, t), ImLerp(a.w, b.w, t)); }
     inline ImU32 EqCol(const ImVec4& c) { return ImGui::GetColorU32(c); }
     inline ImU32 EqColA(const ImVec4& c, float a) { return ImGui::GetColorU32(ImVec4(c.x, c.y, c.z, c.w * a)); }
@@ -257,18 +307,37 @@ namespace ethnir
     // and while that handed out the whole page the Skins sub-tab row spread
     // across both columns. ImGui rebuilds ContentRegionRect on every Begin, so a
     // clamp left behind by an early return cannot survive into the next frame.
+    inline float EqColumnRight(const ColumnState& c) { return (c.Col == 0 ? c.X0 : c.X1) + c.W; }
+
     inline void EqColumnClip(bool on, ColumnState& c)
     {
         ImGuiWindow* w = ImGui::GetCurrentWindow();
         if (on)
         {
             c.RightBefore = w->ContentRegionRect.Max.x;
-            w->ContentRegionRect.Max.x = ImMin(c.RightBefore, c.X0 + c.W);
+            // Each column narrows to *its own* right edge. Clamping both to the
+            // left column's edge (X0 + W) left the right column with a
+            // negative GetContentRegionAvail(), and every row that sizes itself
+            // from that - combos, sliders, colour swatches, the hex readout -
+            // then drew a negative-width rect marching left across the other
+            // column.
+            w->ContentRegionRect.Max.x = ImMin(c.RightBefore, EqColumnRight(c));
         }
         else
         {
             w->ContentRegionRect.Max.x = c.RightBefore;
         }
+    }
+
+    // ItemSize()/EndChild() put the cursor back on the window's content origin,
+    // not on the column it was in, so the second card opened in the right column
+    // began at the left column's x and landed on top of the first card there.
+    // Re-assert the column x every time a child pane closes.
+    inline void EqColumnSyncX()
+    {
+        ColumnState& c = EqCols();
+        if (!c.Active) return;
+        ImGui::SetCursorScreenPos(ImVec2(c.Col == 0 ? c.X0 : c.X1, ImGui::GetCursorScreenPos().y));
     }
     inline float EqCardWidth()
     {
@@ -339,10 +408,41 @@ namespace ethnir
         c.Active = false;
     }
 
+    // Decode the first UTF-8 codepoint and step past it. Icon fonts are all
+    // private-use codepoints, so they arrive here as multi-byte sequences.
+    inline unsigned int EqDecodeCodepoint(const char*& s)
+    {
+        unsigned int c = (unsigned int)(unsigned char)*s;
+        if (c < 0x80) { if (c) ++s; return c; }
+        const int len = ImTextCharFromUtf8(&c, s, nullptr);
+        if (len <= 0) { ++s; return 0; }
+        s += len;
+        return c;
+    }
+
     inline void EqDrawGlyph(ImDrawList* dl, const char* glyph, ImVec2 center, float size, ImU32 col)
     {
-        if (!glyph) return;
+        if (!glyph || !*glyph) return;
         ImFont* f = EqIconFont();
+        if (!f || f->FontSize <= 0.0f) return;
+
+        // Centre on the glyph's ink box rather than on the line box.
+        // CalcTextSizeA reports the same line height for every single glyph, but
+        // an icon font puts its artwork well above the baseline, so centring the
+        // line box leaves every icon low in its hitbox. RenderText places the
+        // ink at pos + (X0,Y0)..(X1,Y1), so those same numbers give the centre
+        // the eye actually sees.
+        const char* p = glyph;
+        const unsigned int cp = EqDecodeCodepoint(p);
+        const ImFontGlyph* g = cp ? f->FindGlyph((ImWchar)cp) : nullptr;
+        if (g)
+        {
+            const float k = size / f->FontSize;
+            const ImVec2 ink((g->X0 + g->X1) * 0.5f * k, (g->Y0 + g->Y1) * 0.5f * k);
+            dl->AddText(f, size, ImVec2(center.x - ink.x, center.y - ink.y), col, glyph);
+            return;
+        }
+
         const ImVec2 ts = f->CalcTextSizeA(size, FLT_MAX, 0.0f, glyph);
         dl->AddText(f, size, ImVec2(center.x - ts.x * 0.5f, center.y - ts.y * 0.5f), col, glyph);
     }
@@ -394,7 +494,11 @@ namespace ethnir
 
     inline void EqDrawSwitch(ImDrawList* dl, const char* id, bool on, ImVec2 center, float dt, bool hovered)
     {
-        const float active = EqAnim(id, on ? 1.0f : 0.0f, 16.0f, dt, on ? 1.0f : 0.0f);
+        char key[176];
+        ImFormatString(key, IM_ARRAYSIZE(key), "%s##eqsw", id);
+        const float spring = EqSpring(key, on ? 1.0f : 0.0f, 430.0f, 27.0f, dt, on ? 1.0f : 0.0f);
+        const float active = ImSaturate(spring);
+        const float travel = EqSpringTravel(spring, on ? 1.0f : 0.0f);
         const Palette pal = EqPal();
 
         const float w = ImFloor(portfolio::s(portfolio::toggle_w) + 0.5f);
@@ -403,8 +507,11 @@ namespace ethnir
         const ImVec2 mx(mn.x + w, mn.y + h);
         const float round = portfolio::s(portfolio::toggle_round);
 
-        const ImVec4 track = on ? portfolio::control
-                                : EqMix(pal.track, portfolio::control_hover, hovered ? 1.0f : 0.0f);
+        // The track follows the knob rather than the boolean, so the fill
+        // crossfades over the same quarter second the knob takes to travel
+        // instead of snapping the instant it is tapped.
+        const ImVec4 idle = EqMix(pal.track, portfolio::control_hover, hovered ? 1.0f : 0.0f);
+        const ImVec4 track = EqMix(idle, portfolio::control, active);
         dl->AddRectFilled(mn, mx, EqCol(track), round);
 
         if (active > 0.01f)
@@ -416,9 +523,12 @@ namespace ethnir
         const ImVec4 knob = EqMix(EqMix(pal.textDim, portfolio::circle_checkbox_hover, hovered ? 1.0f : 0.0f),
                                   portfolio::accent_vec4(), active);
         const float knob_x = mn.x + portfolio::s(portfolio::toggle_knob_inset)
-                           + portfolio::s(portfolio::toggle_knob_travel) * active;
-        dl->AddCircleFilled(ImVec2(knob_x, center.y),
-                            portfolio::s(portfolio::toggle_knob_r), EqCol(knob), 24);
+                           + portfolio::s(portfolio::toggle_knob_travel) * ImClamp(spring, -0.06f, 1.06f);
+        // A knob still travelling swells a little, the way the switch in
+        // Settings does; it settles back the moment the spring stops.
+        const float r = portfolio::s(portfolio::toggle_knob_r) * (1.0f + 0.30f * travel);
+        dl->AddCircleFilled(ImVec2(knob_x, center.y), r * 0.78f, EqColA(EqAccentVec(), 0.26f * travel), 24);
+        dl->AddCircleFilled(ImVec2(knob_x, center.y), r, EqCol(knob), 24);
     }
 
     inline int& EqCardRowIndex() { static int i = 0; return i; }
@@ -437,6 +547,7 @@ namespace ethnir
 
     inline void BeginGroupCard(const char* id)
     {
+        EqColumnSyncX();
         ImGui::PushStyleColor(ImGuiCol_ChildBg, portfolio::box);
         ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, portfolio::s(portfolio::box_round));
         ImGui::PushStyleVar(ImGuiStyleVar_ChildBorderSize, 0.0f);
@@ -462,6 +573,7 @@ namespace ethnir
         ImGui::PopStyleVar(4);
         ImGui::PopStyleColor();
         ImGui::SetCursorScreenPos(ImGui::GetCursorScreenPos() + ImVec2(0.0f, portfolio::s(12.f)));
+        EqColumnSyncX();
     }
 
     inline bool RowToggle(const char* icon, const char* label, bool* v)
@@ -531,13 +643,17 @@ namespace ethnir
         {
             const float t = ImSaturate((io.MousePos.x - trackX) / trackW);
             const float nv = v_min + t * (v_max - v_min);
-            changed = (nv != *v);
-            if (changed) EqMarkDirty();
+            // The dragged value has to be written back, not merely reported:
+            // without the assignment every slider in the menu flagged the config
+            // dirty and auto-saved while the knob itself never moved.
+            if (nv != *v) { *v = nv; changed = true; EqMarkDirty(); }
         }
 
         char id2[160];
         ImFormatString(id2, IM_ARRAYSIZE(id2), "%s##anim", label);
-        const float shown = EqAnim(id2, *v, held ? 40.0f : 18.0f, io.DeltaTime, *v);
+        // Track the finger one-to-one while it is down and ease only on release,
+        // so the knob never feels like it is lagging behind the touch.
+        const float shown = held ? *v : EqAnim(id2, *v, 18.0f, io.DeltaTime, *v);
 
         ImDrawList* dl = ImGui::GetWindowDrawList();
         if (EqCardRowIndex()++ > 0) EqRowSeparator(dl, p, p + ImVec2(w, h));
@@ -669,6 +785,7 @@ namespace ethnir
     {
         if (count <= 0) return false;
         if (!EqPassFilter(label)) return false;
+        ImGuiIO& io = ImGui::GetIO();
         const Palette pal = EqPal();
         const ImVec2 p = ImGui::GetCursorScreenPos();
         const float w = ImGui::GetContentRegionAvail().x;
@@ -693,24 +810,39 @@ namespace ethnir
         bool changed = false;
         const float ty = p.y + (h - segH) * 0.5f;
         dl->AddRectFilled(ImVec2(trackX - 3.0f, ty), ImVec2(trackX + trackW + 3.0f, ty + segH), EqColA(pal.switchOff, 0.8f), segH * 0.5f);
+
         for (int i = 0; i < count; ++i)
         {
             const ImVec2 smin(trackX + i * (segW + segGap), ty);
-            const ImVec2 smax = smin + ImVec2(segW, segH);
             char sid[192];
             ImFormatString(sid, IM_ARRAYSIZE(sid), "%s##seg%d", label, i);
             ImGui::SetCursorScreenPos(smin);
-            const bool sel = (*current == i);
             bool segHovered = false;
             const bool segPressed = EqPress(sid, ImVec2(segW, segH), &segHovered);
-            if (segHovered && !sel)
-                dl->AddRectFilled(smin, smax, EqCol(pal.hover), segH * 0.5f);
-            if (segPressed && !sel) { *current = i; changed = true; EqMarkDirty(); }
-            if (*current == i)
-                dl->AddRectFilled(smin, smax, EqColA(pal.text, 0.14f), segH * 0.5f);
+            if (segHovered && *current != i)
+                dl->AddRectFilled(smin, smin + ImVec2(segW, segH), EqCol(pal.hover), segH * 0.5f);
+            if (segPressed && *current != i) { *current = i; changed = true; EqMarkDirty(); }
+        }
+
+        // One thumb that slides to the selection instead of a highlight that
+        // blinks from cell to cell. It is the most recognisable detail of a
+        // UIKit segmented control, so it moves on a spring too.
+        char tid[192];
+        ImFormatString(tid, IM_ARRAYSIZE(tid), "%s##segThumb", label);
+        const float thumb = ImClamp(EqSpring(tid, (float)*current, 210.0f, 25.0f, io.DeltaTime, (float)*current),
+                                    -0.08f, (float)(count - 1) + 0.08f);
+        const ImVec2 tmin(trackX + thumb * (segW + segGap), ty);
+        const ImVec2 tmax(tmin.x + segW, ty + segH);
+        dl->AddRectFilled(tmin, tmax, EqColA(pal.text, 0.16f), segH * 0.5f);
+        dl->AddRect(tmin + ImVec2(0.5f, 0.5f), tmax - ImVec2(0.5f, 0.5f),
+                    EqColA(EqAccentVec(), 0.30f), segH * 0.5f, 0, 1.0f);
+
+        for (int i = 0; i < count; ++i)
+        {
+            const float sx = trackX + i * (segW + segGap);
             const ImVec2 ts = EqLabelSize(items[i], 11.5f);
-            EqDrawLabel(dl, ImVec2(smin.x + (segW - ts.x) * 0.5f, ty + (segH - 11.5f) * 0.5f),
-                        items[i], EqCol(sel ? pal.text : pal.textDim), 11.5f);
+            EqDrawLabel(dl, ImVec2(sx + (segW - ts.x) * 0.5f, ty + (segH - 11.5f) * 0.5f),
+                        items[i], EqCol(*current == i ? pal.text : pal.textDim), 11.5f);
         }
         ImGui::SetCursorScreenPos(ImVec2(p.x, p.y + h + 2.0f));
         return changed;
@@ -781,9 +913,25 @@ namespace ethnir
         dl->AddRectFilled(s0, s1, EqCol(pal.side), portfolio::s(portfolio::shell_round));
         dl->AddRect(s0 + ImVec2(0.5f, 0.5f), s1 - ImVec2(0.5f, 0.5f), EqCol(pal.sideEdge), portfolio::s(portfolio::shell_round));
 
+        const float dt = ImGui::GetIO().DeltaTime;
         const float itemTop = s0.y + portfolio::s(portfolio::sidebar_tabs_y);
         const float itemPitch = portfolio::s(portfolio::sidebar_tab_h + portfolio::sidebar_tabs_gap);
         const float itemH = portfolio::s(portfolio::sidebar_tab_h);
+
+        // The selected highlight is one pill that slides between entries rather
+        // than a gradient that fades out on one row while fading in on the next.
+        int activeIdx = 0;
+        for (int i = 0; i < kTabCount; ++i)
+            if (kTabs[i].tab == st.ActiveTab) activeIdx = i;
+        if (!st.PillInit) { st.PillY = itemTop + (float)activeIdx * itemPitch; st.PillInit = true; }
+        st.PillY = EqSpring("##ethnir_nav_pill", itemTop + (float)activeIdx * itemPitch, 330.0f, 27.0f, dt, st.PillY);
+        {
+            const ImVec2 pmin(s0.x, st.PillY);
+            const ImVec2 pmax(pmin.x + portfolio::s(portfolio::sidebar_tab_w), pmin.y + itemH);
+            dl->AddRectFilledMultiColor(pmin, pmax, EqAccentA(0.30f), EqAccentA(0.0f),
+                                        EqAccentA(0.0f), EqAccentA(0.30f), portfolio::s(portfolio::shell_round));
+            dl->AddRectFilled(pmin, ImVec2(pmin.x + portfolio::s(3.f), pmax.y), EqAccentA(1.0f));
+        }
 
 for (int i = 0; i < kTabCount; ++i)
         {
@@ -796,21 +944,13 @@ for (int i = 0; i < kTabCount; ++i)
             bool hov = false;
             const bool pressed = EqPress(id, tmax - tmin, &hov);
             const bool act = (kTabs[i].tab == st.ActiveTab);
-            if (pressed && !act) { st.ActiveTab = kTabs[i].tab; st.Fade = 0.0f; }
+                if (pressed && !act) { st.ActiveTab = kTabs[i].tab; st.Fade = 0.0f; st.TabShift = 0.0f; }
 
             char hid[36];
             ImFormatString(hid, IM_ARRAYSIZE(hid), "##ethnir_hot%d", i);
-            const float dt = ImGui::GetIO().DeltaTime;
             const float sel  = EqAnim(hid, act ? 1.0f : 0.0f, 22.0f, dt, act ? 1.0f : 0.0f);
             const float hotA = EqAnim(hid + 1, (hov && !act) ? 1.0f : 0.0f, 24.0f, dt, 0.0f);
 
-            if (sel > 0.01f)
-            {
-                const ImU32 gs = EqAccentA(0.28f * sel);
-                const ImU32 ge = EqAccentA(0.0f);
-                dl->AddRectFilledMultiColor(tmin, tmax, gs, ge, ge, gs, portfolio::s(portfolio::shell_round));
-                dl->AddRectFilled(tmin, ImVec2(tmin.x + portfolio::s(3.f), tmax.y), EqAccentA(sel));
-            }
             if (!act && hotA > 0.01f)
             {
                 const ImU32 hs = EqCol(portfolio::fg(0.068f * hotA));
@@ -894,15 +1034,51 @@ for (int i = 0; i < kTabCount; ++i)
         return pressed;
     }
 
+    struct EqColorPick
+    {
+        bool  Open = false;
+        int   Drag = -1;   // -1 idle, 0 sat/value, 1 hue, 2..4 red/green/blue
+        float H = 0.0f, S = 1.0f, V = 1.0f;
+        bool  Init = false;
+    };
+
+    inline std::map<ImGuiID, EqColorPick>& EqColorPicks()
+    {
+        static std::map<ImGuiID, EqColorPick> picks;
+        return picks;
+    }
+
+    inline void EqHsvToRgb255(const EqColorPick& c, float* out255)
+    {
+        float r = 0.0f, g = 0.0f, b = 0.0f;
+        ImGui::ColorConvertHSVtoRGB(c.H, c.S, c.V, r, g, b);
+        out255[0] = r * 255.0f; out255[1] = g * 255.0f; out255[2] = b * 255.0f;
+    }
+
+    // Whether the sheet under `label` is expanded. Lets a host (and the
+    // regression suite) assert the picker actually opened, which the old popup
+    // never exposed.
+    inline bool EqColorRowOpen(const char* label)
+    {
+        ImGuiContext* g = ImGui::GetCurrentContext();
+        if (!g || g->CurrentWindow == nullptr) return false;
+        const auto it = EqColorPicks().find(g->CurrentWindow->GetID(label));
+        return it != EqColorPicks().end() && it->second.Open;
+    }
+
+    // The colour editor is an inline sheet, not a popup: the row unfolds and the
+    // card grows with it. A popup had to be positioned against the row by hand,
+    // sized by hand, and every row in a card shared one popup id, so several
+    // pickers could open on top of each other and ImGui's packed R/G/B inputs
+    // ran straight out of the panel they were meant to sit inside.
     inline bool EqColorRow(const char* label, float* rgba)
     {
         if (!rgba || !EqPassFilter(label)) return false;
 
+        ImGuiIO& io = ImGui::GetIO();
         auto norm = [](float v) {
             return (v <= 1.0f) ? ImClamp(v, 0.0f, 1.0f) : ImClamp(v / 255.0f, 0.0f, 1.0f);
         };
-        const ImVec4 shown(norm(rgba[0]), norm(rgba[1]), norm(rgba[2]), 1.0f);
-
         const Palette pal = EqPal();
         ImDrawList* dl = ImGui::GetWindowDrawList();
         const ImRect row = EqNextRow();
@@ -910,27 +1086,46 @@ for (int i = 0; i < kTabCount; ++i)
         char clean[128];
         EqStripId(label, clean, IM_ARRAYSIZE(clean));
 
-        ImGuiID gid = ImGui::GetCurrentWindow()->GetID(label);
+        const ImGuiID gid = ImGui::GetCurrentWindow()->GetID(label);
         ImGui::ItemAdd(row, gid);
         bool hovered = false, held = false;
         const bool pressed = ImGui::ButtonBehavior(row, gid, &hovered, &held, ImGuiButtonFlags_None);
         ImGui::KeepAliveID(gid);
         if (held) { if (EqState()) EqState()->InputActive = true; }
 
+        EqColorPick& cp = EqColorPicks()[gid];
+        if (!cp.Init)
+        {
+            ImGui::ColorConvertRGBtoHSV(norm(rgba[0]), norm(rgba[1]), norm(rgba[2]), cp.H, cp.S, cp.V);
+            cp.Init = true;
+        }
+        if (pressed) cp.Open = !cp.Open;
+
+        char openKey[192];
+        ImFormatString(openKey, IM_ARRAYSIZE(openKey), "%s##colorOpen", label);
+        const float reveal = ImSaturate(EqSpring(openKey, cp.Open ? 1.0f : 0.0f, 300.0f, 26.0f, io.DeltaTime, 0.0f));
+
+        float shown[3] = { norm(rgba[0]), norm(rgba[1]), norm(rgba[2]) };
+        if (cp.Drag < 0)
+            ImGui::ColorConvertRGBtoHSV(shown[0], shown[1], shown[2], cp.H, cp.S, cp.V);
+
         EqCardRowIndex()++;
         EqRowHover(dl, row, (hovered || held) ? 0.65f : 0.0f);
+        if (reveal > 0.01f)
+            dl->AddRectFilled(row.Min, row.Max, EqAccentA(0.05f * reveal), portfolio::s(portfolio::control_round));
 
         const float labelSize = portfolio::s(portfolio::row_label_font);
         const ImVec2 ts = EqTextFont()->CalcTextSizeA(labelSize, FLT_MAX, 0.0f, clean);
         EqDrawLabel(dl, ImVec2(row.Min.x + portfolio::s(portfolio::box_pad_x),
                                row.Min.y + (row.GetHeight() - ts.y) * 0.5f),
-                    clean, EqCol(hovered ? pal.text : pal.textDim), labelSize);
+                    clean, EqCol(hovered || cp.Open ? pal.text : pal.textDim), labelSize);
 
         const float sw = portfolio::s(portfolio::color_swatch_size);
         const ImVec2 swMin(row.Max.x - portfolio::s(portfolio::box_pad_x) - sw,
                            row.GetCenter().y - sw * 0.5f);
         dl->AddRectFilled(swMin, swMin + ImVec2(sw, sw),
-                          ImGui::ColorConvertFloat4ToU32(shown), portfolio::s(4.0f));
+                          ImGui::ColorConvertFloat4ToU32(ImVec4(shown[0], shown[1], shown[2], 1.0f)),
+                          portfolio::s(4.0f));
         dl->AddRect(swMin, swMin + ImVec2(sw, sw),
                     EqColA(pal.cardEdge, 1.2f), portfolio::s(4.0f), 0, 1.0f);
 
@@ -940,30 +1135,157 @@ for (int i = 0; i < kTabCount; ++i)
                        (int)ImClamp(rgba[1], 0.0f, 255.0f),
                        (int)ImClamp(rgba[2], 0.0f, 255.0f));
         const ImVec2 hs = EqLabelSize(hex, 12.0f);
-        EqDrawLabel(dl, ImVec2(swMin.x - portfolio::s(8.0f) - hs.x,
-                               row.GetCenter().y - hs.y * 0.5f),
+        const float hexX = swMin.x - portfolio::s(8.0f) - hs.x;
+        EqDrawLabel(dl, ImVec2(hexX, row.GetCenter().y - hs.y * 0.5f),
                     hex, EqCol(pal.textFaint), 12.0f);
 
-        bool changed = false;
-        if (pressed) ImGui::OpenPopup("##ethnir_color_pick");
-        ImGui::SetNextWindowPos(ImVec2(row.Min.x, row.Max.y + 4.0f), ImGuiCond_Appearing);
-        ImGui::SetNextWindowSize(ImVec2(portfolio::s(370.0f), 0.0f), ImGuiCond_Appearing);
-        if (ImGui::BeginPopup("##ethnir_color_pick",
-                ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings))
+        // Chevron flips over as the sheet unfolds, so the row says whether it
+        // is open without any extra label.
         {
-            float c[4] = { shown.x, shown.y, shown.z, 1.0f };
-            ImGui::SetNextItemWidth(portfolio::s(350.0f));
-            if (custom::ColorEdit4("##ethnir_color_edit", c,
-                    ImGuiColorEditFlags_NoAlpha | ImGuiColorEditFlags_AlphaBar |
-                    ImGuiColorEditFlags_PickerHueWheel))
+            const float chx = hexX - portfolio::s(13.0f);
+            const float cy = row.GetCenter().y;
+            const float ch = ImLerp(2.2f, -2.2f, reveal);
+            const ImU32 cc = EqColA(pal.textFaint, 0.9f);
+            dl->AddLine(ImVec2(chx - 4.0f, cy - ch), ImVec2(chx, cy + ch), cc, 1.4f);
+            dl->AddLine(ImVec2(chx, cy + ch), ImVec2(chx + 4.0f, cy - ch), cc, 1.4f);
+        }
+
+        ImGui::SetCursorScreenPos(ImVec2(row.Min.x, row.Max.y + 2.0f));
+        if (reveal <= 0.01f)
+            return false;
+
+        const float pad    = portfolio::s(12.f);
+        const float cardW  = ImGui::GetContentRegionAvail().x;
+        const float innerW = ImMax(40.0f, cardW - pad * 2.0f);
+        const float svH    = ImMin(innerW, portfolio::s(126.f));
+        const float hueH   = portfolio::s(14.f);
+        const float gap    = portfolio::s(10.f);
+        const float chanH  = portfolio::s(28.f);
+        const float panelH = pad + svH + gap + hueH + gap + chanH * 3.0f + pad;
+        const ImVec2 panMin(row.Min.x, row.Max.y + 2.0f);
+        const ImVec2 panMax(panMin.x + cardW, panMin.y + panelH);
+
+        // Clip to the still-unfolding height, so the sheet wipes open the way a
+        // UIKit disclosure does instead of popping in at full size.
+        dl->PushClipRect(panMin, ImVec2(panMax.x, panMin.y + panelH * reveal + 1.0f), true);
+        dl->AddRectFilled(panMin, panMax, EqCol(pal.cardBg), portfolio::s(portfolio::box_round));
+        dl->AddRect(panMin + ImVec2(0.5f, 0.5f), panMax - ImVec2(0.5f, 0.5f),
+                    EqColA(pal.cardEdge, 1.0f), portfolio::s(portfolio::box_round), 0, 1.0f);
+
+        const ImVec2 svMin(panMin.x + pad, panMin.y + pad);
+        const ImVec2 svMax(svMin.x + innerW, svMin.y + svH);
+        float hueR = 0.0f, hueG = 0.0f, hueB = 0.0f;
+        ImGui::ColorConvertHSVtoRGB(cp.H, 1.0f, 1.0f, hueR, hueG, hueB);
+        dl->AddRectFilledMultiColor(svMin, svMax, IM_COL32_WHITE,
+            ImGui::ColorConvertFloat4ToU32(ImVec4(hueR, hueG, hueB, 1.0f)),
+            IM_COL32_BLACK, IM_COL32_BLACK);
+        dl->AddRect(svMin, svMax, EqColA(pal.cardEdge, 1.0f), portfolio::s(6.f), 0, 1.0f);
+
+        ImGui::SetCursorScreenPos(svMin);
+        ImGui::InvisibleButton("##eqsv", svMax - svMin);
+        if (ImGui::IsItemActive()) cp.Drag = 0;
+        if (cp.Drag == 0 && io.MouseDown[0])
+        {
+            cp.S = ImSaturate((io.MousePos.x - svMin.x) / ImMax(1.0f, innerW));
+            cp.V = ImSaturate(1.0f - (io.MousePos.y - svMin.y) / ImMax(1.0f, svH));
+        }
+        const ImVec2 svDot(svMin.x + cp.S * innerW, svMin.y + (1.0f - cp.V) * svH);
+        dl->AddCircle(svDot, portfolio::s(7.0f), IM_COL32(255, 255, 255, 235), 24, 2.0f);
+        dl->AddCircle(svDot, portfolio::s(8.5f), IM_COL32(0, 0, 0, 90), 24, 1.0f);
+
+        const ImVec2 hueMin(svMin.x, svMax.y + gap);
+        const ImVec2 hueMax(hueMin.x + innerW, hueMin.y + hueH);
+        const int hueSteps = 6;
+        for (int i = 0; i < hueSteps; ++i)
+        {
+            const float t0 = (float)i / (float)hueSteps;
+            const float t1 = (float)(i + 1) / (float)hueSteps;
+            float r0 = 0.0f, g0 = 0.0f, b0 = 0.0f, r1 = 0.0f, g1 = 0.0f, b1 = 0.0f;
+            ImGui::ColorConvertHSVtoRGB(t0, 1.0f, 1.0f, r0, g0, b0);
+            ImGui::ColorConvertHSVtoRGB(t1, 1.0f, 1.0f, r1, g1, b1);
+            const ImU32 c0 = ImGui::ColorConvertFloat4ToU32(ImVec4(r0, g0, b0, 1.0f));
+            const ImU32 c1 = ImGui::ColorConvertFloat4ToU32(ImVec4(r1, g1, b1, 1.0f));
+            dl->AddRectFilledMultiColor(ImVec2(hueMin.x + innerW * t0, hueMin.y),
+                                        ImVec2(hueMin.x + innerW * t1, hueMax.y), c0, c1, c1, c0);
+        }
+        ImGui::SetCursorScreenPos(hueMin);
+        ImGui::InvisibleButton("##eqhue", hueMax - hueMin);
+        if (ImGui::IsItemActive()) cp.Drag = 1;
+        if (cp.Drag == 1 && io.MouseDown[0])
+            cp.H = ImSaturate((io.MousePos.x - hueMin.x) / ImMax(1.0f, innerW));
+        {
+            const float hx = hueMin.x + cp.H * innerW;
+            const float k = portfolio::s(3.f);
+            dl->AddRectFilled(ImVec2(hx - k, hueMin.y - k), ImVec2(hx + k, hueMax.y + k),
+                              IM_COL32(255, 255, 255, 235), k);
+            dl->AddRect(ImVec2(hx - k, hueMin.y - k), ImVec2(hx + k, hueMax.y + k),
+                        IM_COL32(0, 0, 0, 110), k, 0, 1.0f);
+        }
+
+        // R/G/B on three separate lines. ImGui's packed inputs are what produced
+        // the overlapping numbers in the old popup, so they are gone: one label,
+        // one track and one value per channel, each on its own row.
+        static const char* kChan[3] = { "R", "G", "B" };
+        float rgb[3] = { 0.0f, 0.0f, 0.0f };
+        ImGui::ColorConvertHSVtoRGB(cp.H, cp.S, cp.V, rgb[0], rgb[1], rgb[2]);
+        const float chanTop = hueMax.y + gap;
+        for (int i = 0; i < 3; ++i)
+        {
+            const ImVec2 cmin(panMin.x + pad, chanTop + chanH * (float)i);
+            const float trackX = cmin.x + portfolio::s(16.f);
+            const float trackW = ImMax(20.0f, innerW - portfolio::s(16.f) - portfolio::s(44.f));
+            const float cy = cmin.y + chanH * 0.5f;
+
+            const ImVec2 cs = EqLabelSize(kChan[i], 11.5f);
+            EqDrawLabel(dl, ImVec2(cmin.x, cy - cs.y * 0.5f), kChan[i], EqCol(pal.textDim), 11.5f);
+
+            char cid[200];
+            ImFormatString(cid, IM_ARRAYSIZE(cid), "%s##eqc%d", label, i);
+            ImGui::SetCursorScreenPos(ImVec2(trackX - 6.0f, cmin.y));
+            bool chov = false, chold = false;
+            EqPress(cid, ImVec2(trackW + 12.0f, chanH), &chov, &chold);
+            if (chold) cp.Drag = 2 + i;
+            if (cp.Drag == 2 + i && io.MouseDown[0])
             {
-                rgba[0] = c[0] * 255.0f;
-                rgba[1] = c[1] * 255.0f;
-                rgba[2] = c[2] * 255.0f;
+                float nr = rgb[0], ng = rgb[1], nb = rgb[2];
+                const float t = ImSaturate((io.MousePos.x - trackX) / ImMax(1.0f, trackW));
+                if (i == 0) nr = t; else if (i == 1) ng = t; else nb = t;
+                ImGui::ColorConvertRGBtoHSV(nr, ng, nb, cp.H, cp.S, cp.V);
+            }
+
+            const float trackH = portfolio::s(6.f);
+            dl->AddRectFilled(ImVec2(trackX, cy - trackH * 0.5f), ImVec2(trackX + trackW, cy + trackH * 0.5f),
+                              EqCol(EqMix(pal.track, portfolio::control_hover, chov ? 0.35f : 0.0f)), trackH * 0.5f);
+            dl->AddRectFilled(ImVec2(trackX, cy - trackH * 0.5f),
+                              ImVec2(trackX + trackW * rgb[i], cy + trackH * 0.5f),
+                              EqAccentA(0.9f), trackH * 0.5f);
+            dl->AddCircleFilled(ImVec2(trackX + trackW * rgb[i], cy),
+                                portfolio::s(5.5f), IM_COL32(252, 253, 255, 250), 20);
+
+            char vb[8];
+            ImFormatString(vb, IM_ARRAYSIZE(vb), "%d", (int)(rgb[i] * 255.0f + 0.5f));
+            const ImVec2 vs = EqLabelSize(vb, 11.5f);
+            EqDrawLabel(dl, ImVec2(trackX + trackW + portfolio::s(34.f) - vs.x, cy - vs.y * 0.5f),
+                        vb, EqCol(pal.text), 11.5f);
+        }
+
+        dl->PopClipRect();
+
+        if (io.MouseReleased[0]) cp.Drag = -1;
+
+        bool changed = false;
+        if (cp.Drag >= 0)
+        {
+            float out[3] = { 0.0f, 0.0f, 0.0f };
+            EqHsvToRgb255(cp, out);
+            if (out[0] != rgba[0] || out[1] != rgba[1] || out[2] != rgba[2])
+            {
+                rgba[0] = out[0]; rgba[1] = out[1]; rgba[2] = out[2];
                 changed = true;
             }
-            ImGui::EndPopup();
         }
+
+        ImGui::SetCursorScreenPos(ImVec2(row.Min.x, panMin.y + panelH * reveal + portfolio::s(4.f)));
         if (changed) EqMarkDirty();
         return changed;
     }
@@ -1126,6 +1448,8 @@ for (int i = 0; i < kTabCount; ++i)
             st.WinPosInit = false;
             st.Appear = 0.0f;
             st.Fade = 1.0f;
+            st.TabShift = 0.0f;
+            st.PillInit = false;
             EqFilterOn() = true;
             return;
         }
@@ -1135,22 +1459,36 @@ for (int i = 0; i < kTabCount; ++i)
         EqSyncGlassTheme(st.Dark);
         const Palette pal = EqPal();
 
-        if (!st.WasOpen) { st.Appear = 0.0f; st.Fade = 0.0f; st.LastTab = st.ActiveTab; }
+        if (!st.WasOpen)
+        {
+            st.Appear = 0.0f;
+            st.Fade = 0.0f;
+            st.TabShift = 0.0f;
+            st.LastTab = st.ActiveTab;
+            EqSpringSet("##ethnir_appear", 0.0f);
+        }
         st.WasOpen = true;
         bool finishClose = false;
-        if (st.Closing)
-        {
-
-            st.Appear = ImMax(0.0f, st.Appear - dt / 0.16f);
-            if (st.Appear <= 0.0f) finishClose = true;
-        }
-        else
-        {
-            st.Appear = ImMin(1.0f, st.Appear + dt / 0.20f);
-        }
+        // One spring drives the whole entrance, so the panel scales up from 96%
+        // and settles with the small overshoot UIKit gives a presented view
+        // controller, instead of easing linearly into place.
+        const float appearSpring = EqSpring("##ethnir_appear", st.Closing ? 0.0f : 1.0f, 290.0f, 24.0f,
+                                           dt, st.Closing ? 1.0f : 0.0f);
+        st.Appear = ImClamp(appearSpring, 0.0f, 1.0f);
+        if (st.Closing && appearSpring <= 0.004f) finishClose = true;
         const float appear = EqEase(st.Appear);
+        const float bounce = ImClamp(appearSpring, 0.0f, 1.10f);
 
-        if (st.LastTab != st.ActiveTab) { st.LastTab = st.ActiveTab; st.Fade = 0.0f; }
+        if (st.LastTab != st.ActiveTab)
+        {
+            // New tab slides in from the side it was picked from, the way a UIKit
+            // tab bar pushes the incoming view instead of cross-fading it.
+            const float dir = (st.ActiveTab >= st.LastTab) ? 1.0f : -1.0f;
+            st.LastTab = st.ActiveTab;
+            st.Fade = 0.0f;
+            st.TabShift = dir * portfolio::s(26.f);
+        }
+        st.TabShift = EqDamp(st.TabShift, 0.0f, 13.0f, dt);
         st.Fade = ImMin(1.0f, st.Fade + dt / 0.16f);
         const float fade = EqEase(st.Fade);
         if (st.SaveFlash > 0.0f) st.SaveFlash = ImMax(0.0f, st.SaveFlash - dt);
@@ -1181,7 +1519,7 @@ for (int i = 0; i < kTabCount; ++i)
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
         ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 0));
         ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0, 0, 0, 0));
-        ImGui::SetNextWindowPos(st.WinPos + ImVec2(0.0f, (1.0f - appear) * 22.0f), ImGuiCond_Always);
+        ImGui::SetNextWindowPos(st.WinPos + ImVec2(0.0f, (1.0f - bounce) * 22.0f), ImGuiCond_Always);
         ImGui::SetNextWindowSize(winSize, ImGuiCond_Always);
         ImGui::Begin("##ethnir_shell", nullptr,
                      ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse |
@@ -1196,7 +1534,7 @@ for (int i = 0; i < kTabCount; ++i)
 
         {
             const ImVec2 mid = (p0 + p1) * 0.5f;
-            const float sc = 0.94f + 0.06f * appear;
+            const float sc = 0.96f + 0.04f * bounce;
             const ImVec2 b0 = mid + (p0 - mid) * sc;
             const ImVec2 b1 = mid + (p1 - mid) * sc;
 
@@ -1370,7 +1708,7 @@ for (int i = 0; i < kTabCount; ++i)
         ImGui::PushStyleColor(ImGuiCol_ScrollbarGrab, ImVec4(1, 1, 1, 0.20f));
         ImGui::SetCursorScreenPos(c0);
         ImGui::BeginChild("##ethnir_content", c1 - c0, false, ImGuiWindowFlags_NoBackground);
-        ImGui::SetCursorScreenPos(ImGui::GetCursorScreenPos() + ImVec2(0.0f, (1.0f - fade) * 8.0f));
+        ImGui::SetCursorScreenPos(ImGui::GetCursorScreenPos() + ImVec2(st.TabShift, (1.0f - fade) * 8.0f));
 
         const bool filtering = st.Search[0] != 0;
         const bool tabFilters = st.ActiveTab >= 0 && st.ActiveTab <= 3;
