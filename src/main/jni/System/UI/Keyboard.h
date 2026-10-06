@@ -209,9 +209,30 @@ inline void RenderVirtualKeyboard(const char* id, char* searchQuery, size_t quer
     );
 
     ImDrawList* draw = ImGui::GetWindowDrawList();
+    if (draw == nullptr) {
+        ImGui::End();
+        ImGui::PopStyleColor();
+        ImGui::PopStyleVar(3);
+        return;
+    }
+
     const ImVec2 origin = ImGui::GetCursorScreenPos();
+    if (origin.x < 0.0f || origin.y < 0.0f) {
+        ImGui::End();
+        ImGui::PopStyleColor();
+        ImGui::PopStyleVar(3);
+        return;
+    }
+
     const float content_w = ImGui::GetContentRegionAvail().x;
     const float content_h = ImGui::GetContentRegionAvail().y;
+
+    if (content_w <= 0.0f || content_h <= 0.0f) {
+        ImGui::End();
+        ImGui::PopStyleColor();
+        ImGui::PopStyleVar(3);
+        return;
+    }
 
     const float key_spacing_x = 8.0f;
     const float key_spacing_y = 10.0f;

@@ -409,15 +409,27 @@ EGLBoolean hook_eglSwapBuffers(EGLDisplay dpy, EGLSurface surface)
 
         runtime_preview_menu::EnsureTexturesLoaded();
 
-        ImVec2 viewportCenter = ImGui::GetMainViewport()->GetCenter();
+        ImVec2 viewportCenter;
+        bool centerOnViewport = false;
+        if (VM != nullptr)
+        {
+            viewportCenter = ImGui::GetMainViewport()->GetCenter();
+            centerOnViewport = true;
+        }
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
 
+        // Keep the login overlay dormant until JNI is ready. Before that point
+        // many ImGui functions, the clipboard path and the keyboard render can
+        // be called with a half-initialized context and have crashed the app.
+        // Once isLogin becomes false and the overlay has already drawn once it
+        // keeps showing until the user logs in successfully.
         if (!isLogin && !ui_loading::IsActive())
         {
             const ImVec2 login_size = ImVec2(500, 560);
-            ImGui::SetNextWindowPos(viewportCenter, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
+            if (centerOnViewport)
+                ImGui::SetNextWindowPos(viewportCenter, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
             ImGui::SetNextWindowSize(login_size, ImGuiCond_Always);
-            ImGui::SetNextWindowBgAlpha(0.0f);
+                ImGui::SetNextWindowBgAlpha(0.0f);
             if (ImGui::Begin(OBFUSCATE("Kaelex Login"), nullptr,
                 ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoSavedSettings |
                 ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoTitleBar |
