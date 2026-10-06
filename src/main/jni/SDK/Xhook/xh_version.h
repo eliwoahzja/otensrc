@@ -1,7 +1,3 @@
-#ifndef XH_VERSION_H
-#define XH_VERSION_H 1
-
-// XHook — https://github.com/iQiyi/xHook
 // Copyright (c) 2018-present, iQIYI, Inc. All rights reserved.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -21,3 +17,25 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
+//
+
+// Created by caikelun on 2018-04-11.
+
+#ifndef XH_VERSION_H
+#define XH_VERSION_H 1
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+unsigned int xh_version();
+
+const char *xh_version_str();
+
+const char *xh_version_str_full();
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif
