@@ -27,6 +27,7 @@
 #include "MainFeatureIncludes.h"
 #include "ImGui/ethnir_menu.h"
 #include "ImGui/runtime_preview_menu.h"
+#include "SDK/Xhook/xhook.h"
 
 class _BYTE;
 class _BOOL4;

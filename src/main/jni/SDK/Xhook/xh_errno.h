@@ -1,7 +1,3 @@
-#ifndef XH_ERRNO_H
-#define XH_ERRNO_H 1
-
-// XHook — https://github.com/iQiyi/xHook
 // Copyright (c) 2018-present, iQIYI, Inc. All rights reserved.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -21,3 +17,21 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
+//
+
+// Created by caikelun on 2018-04-11.
+
+#ifndef XH_ERRNO_H
+#define XH_ERRNO_H 1
+
+#define XH_ERRNO_UNKNOWN 1001
+#define XH_ERRNO_INVAL   1002
+#define XH_ERRNO_NOMEM   1003
+#define XH_ERRNO_REPEAT  1004
+#define XH_ERRNO_NOTFND  1005
+#define XH_ERRNO_BADMAPS 1006
+#define XH_ERRNO_FORMAT  1007
+#define XH_ERRNO_ELFINIT 1008
+#define XH_ERRNO_SEGVERR 1009
+
+#endif

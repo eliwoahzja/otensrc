@@ -1,7 +1,3 @@
-#include <android/log.h>
-#include "xh_log.h"
-
-// XHook — https://github.com/iQiyi/xHook
 // Copyright (c) 2018-present, iQIYI, Inc. All rights reserved.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -21,3 +17,11 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
+//
+
+// Created by caikelun on 2018-04-11.
+
+#include <android/log.h>
+#include "xh_log.h"
+
+android_LogPriority xh_log_priority = ANDROID_LOG_WARN;
