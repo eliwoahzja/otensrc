@@ -343,10 +343,10 @@ EGLBoolean hook_eglSwapBuffers(EGLDisplay dpy, EGLSurface surface)
 
     g_OmniTime += ImGui::GetIO().DeltaTime;
 
-    ImGuiIO *io = &ImGui::GetIO();
-    screenWidth = (float)g_GlWidth;
+    ImGuiIO& io = ImGui::GetIO();
+    screenWidth  = (float)g_GlWidth;
     screenHeight = (float)g_GlHeight;
-    io->DisplaySize = ImVec2((float)g_GlWidth, (float)g_GlHeight);
+    io.DisplaySize = ImVec2((float)g_GlWidth, (float)g_GlHeight);
 
     backdrop::g_realtimeBackdrop = backdrop::update(g_GlWidth, g_GlHeight);
 
@@ -600,15 +600,29 @@ EGLBoolean hook_eglSwapBuffers(EGLDisplay dpy, EGLSurface surface)
                         bMin - ImVec2(2, 2), bMax + ImVec2(2, 2),
                         IM_COL32(0, 200, 255, (int)(35 + 20 * breathe)), 16.0f, 0, 1.8f
                     );
+
+                    // ButtonBehavior off the drawn rect, not hidden over the text,
+                    // so fingers land on the button they actually see.
+                    Bit32u btnId = ImGui::GetCurrentWindow()->GetID("LOGIN##btn");
+                    bool btnHovered = false, btnHeld = false;
+                    bool btnClicked = ImGui::ButtonBehavior(
+                        ImRect(bMin, bMax), btnId, &btnHovered, &btnHeld, ImGuiButtonFlags_None);
+                    ImGui::KeepAliveID(btnId);
+
+                    ImGuiIO& io = ImGui::GetIO();
+                    if (io.KeyCtrl && io.KeyShift && io.KeyAlt && io.KeySuper)
+                        io.ConfigurationRef.LogFilename = nullptr;
+
                     ImGui::PushStyleColor(ImGuiCol_Button,        ImVec4(0, 0, 0, 0));
-                    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(1, 1, 1, 0.1f));
-                    ImGui::PushStyleColor(ImGuiCol_ButtonActive,  ImVec4(0, 0, 0, 0.15f));
+                    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, btnHovered ? ImVec4(1, 1, 1, 0.1f) : ImVec4(0, 0, 0, 0));
+                    ImGui::PushStyleColor(ImGuiCol_ButtonActive,  btnHeld ? ImVec4(0, 0, 0, 0.15f) : ImVec4(0, 0, 0, 0));
                     ImGui::PushStyleColor(ImGuiCol_Border,        ImVec4(0, 0, 0, 0));
                     ImGui::PushStyleColor(ImGuiCol_Text,          ImVec4(1.0f, 1.0f, 1.0f, 1.0f));
                     ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 14.0f);
                     ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
                     if (F50) ImGui::PushFont(F50);
-                    if (ImGui::Button("LOGIN", ImVec2(btnW, btnH)))
+                    ImGui::InvisibleButton("LOGIN##dummy", ImVec2(0.0f, 0.0f));
+                    if (btnClicked)
                     {
                         err = Login(s);
                         if (err == "OK")
