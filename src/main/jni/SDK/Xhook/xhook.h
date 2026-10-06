@@ -1,3 +1,7 @@
+#ifndef XHOOK_H
+#define XHOOK_H 1
+
+// XHook — https://github.com/iQiyi/xHook
 // Copyright (c) 2018-present, iQIYI, Inc. All rights reserved.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -17,37 +21,3 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
-//
-
-// Created by caikelun on 2018-04-11.
-
-#ifndef XHOOK_H
-#define XHOOK_H 1
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-#define XHOOK_EXPORT __attribute__((visibility("default")))
-
-int xhook_register(const char  *pathname_regex_str,  
-                   const char  *symbol,  
-                   void        *new_func,  
-                   void       **old_func);
-
-int xhook_ignore(const char *pathname_regex_str,  
-                 const char *symbol);
-
-int xhook_refresh(int async);
-
-void xhook_clear();
-
-void xhook_enable_debug(int flag);
-
-void xhook_enable_sigsegv_protection(int flag);
-
-#ifdef __cplusplus
-}
-#endif
-
-#endif
