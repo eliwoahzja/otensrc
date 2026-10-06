@@ -196,11 +196,8 @@ namespace ethnir
         return nv;
     }
 
-    // Springs, not exponential decay. iOS motion settles *through* the target
-    // with a little overshoot, and an exponential can only ever creep up on it,
-    // so everything that should feel like UIKit - the panel unfolding, the tab
-    // push, a toggle knob, the segmented thumb - is driven from here. Velocity
-    // lives beside the value in the same storage, so no caller needs state.
+    // Spring state keeps its velocity beside the value in the same storage, so
+    // no caller has to hold any.
     inline ImGuiID EqSpringVelId(const char* key) { return ImHashStr("##ethnir_vel", 0, ImGui::GetID(key)); }
 
     inline void EqSpringSet(const char* key, float value, float velocity = 0.0f)
@@ -210,8 +207,7 @@ namespace ethnir
         stg->SetFloat(EqSpringVelId(key), velocity);
     }
 
-    // stiffness/damping are plain units. Critically damped is
-    // damping = 2*sqrt(stiffness); stay below that and it overshoots like UIKit.
+    // Critically damped is damping = 2*sqrt(stiffness); below that it overshoots.
     inline float EqSpring(const char* key, float target, float stiffness, float damping, float dt, float initial = 0.0f)
     {
         ImGuiStorage* stg = ImGui::GetStateStorage();
@@ -220,8 +216,7 @@ namespace ethnir
         float y = stg->GetFloat(id, initial);
         if (dt <= 0.0f) return y;
         float v = stg->GetFloat(vid, 0.0f);
-        // Explicit Euler goes unstable once stiffness * h^2 gets large, which is
-        // exactly what a stuttering frame produces, so sub-step the integration.
+        // Sub-step: explicit Euler goes unstable once stiffness * h^2 gets large.
         const int steps = ImClamp((int)(dt / 0.010f) + 1, 1, 4);
         const float h = dt / (float)steps;
         for (int i = 0; i < steps; ++i)
@@ -234,8 +229,7 @@ namespace ethnir
         return y;
     }
 
-    // How far a spring still is from its target, 0..1. Drives the small squash
-    // a UIKit knob shows while it is travelling.
+    // How far a spring still is from its target, 0..1.
     inline float EqSpringTravel(float value, float target)
     {
         return ImSaturate(ImFabs(value - target));
@@ -303,10 +297,7 @@ namespace ethnir
     inline ColumnState& EqCols() { static ColumnState c; return c; }
 
     // A column has to narrow the width ImGui reports, not only move the cursor:
-    // tab bodies size their rows and child panes from GetContentRegionAvail(),
-    // and while that handed out the whole page the Skins sub-tab row spread
-    // across both columns. ImGui rebuilds ContentRegionRect on every Begin, so a
-    // clamp left behind by an early return cannot survive into the next frame.
+    // rows and child panes size themselves from GetContentRegionAvail().
     inline float EqColumnRight(const ColumnState& c) { return (c.Col == 0 ? c.X0 : c.X1) + c.W; }
 
     inline void EqColumnClip(bool on, ColumnState& c)
@@ -315,12 +306,8 @@ namespace ethnir
         if (on)
         {
             c.RightBefore = w->ContentRegionRect.Max.x;
-            // Each column narrows to *its own* right edge. Clamping both to the
-            // left column's edge (X0 + W) left the right column with a
-            // negative GetContentRegionAvail(), and every row that sizes itself
-            // from that - combos, sliders, colour swatches, the hex readout -
-            // then drew a negative-width rect marching left across the other
-            // column.
+            // Each column narrows to its own right edge; sharing the left
+            // column's edge gives the right one a negative avail.
             w->ContentRegionRect.Max.x = ImMin(c.RightBefore, EqColumnRight(c));
         }
         else
@@ -329,10 +316,8 @@ namespace ethnir
         }
     }
 
-    // ItemSize()/EndChild() put the cursor back on the window's content origin,
-    // not on the column it was in, so the second card opened in the right column
-    // began at the left column's x and landed on top of the first card there.
-    // Re-assert the column x every time a child pane closes.
+    // ItemSize()/EndChild() put the cursor back on the content origin, so
+    // re-assert the column x after a child pane closes.
     inline void EqColumnSyncX()
     {
         ColumnState& c = EqCols();
@@ -408,43 +393,11 @@ namespace ethnir
         c.Active = false;
     }
 
-    // Decode the first UTF-8 codepoint and step past it. Icon fonts are all
-    // private-use codepoints, so they arrive here as multi-byte sequences.
-    inline unsigned int EqDecodeCodepoint(const char*& s)
-    {
-        unsigned int c = (unsigned int)(unsigned char)*s;
-        if (c < 0x80) { if (c) ++s; return c; }
-        const int len = ImTextCharFromUtf8(&c, s, nullptr);
-        if (len <= 0) { ++s; return 0; }
-        s += len;
-        return c;
-    }
-
+    // Icons are centred on their ink box, not on the line box (see
+    // portfolio::glyph_ink_center for why icon fonts need that).
     inline void EqDrawGlyph(ImDrawList* dl, const char* glyph, ImVec2 center, float size, ImU32 col)
     {
-        if (!glyph || !*glyph) return;
-        ImFont* f = EqIconFont();
-        if (!f || f->FontSize <= 0.0f) return;
-
-        // Centre on the glyph's ink box rather than on the line box.
-        // CalcTextSizeA reports the same line height for every single glyph, but
-        // an icon font puts its artwork well above the baseline, so centring the
-        // line box leaves every icon low in its hitbox. RenderText places the
-        // ink at pos + (X0,Y0)..(X1,Y1), so those same numbers give the centre
-        // the eye actually sees.
-        const char* p = glyph;
-        const unsigned int cp = EqDecodeCodepoint(p);
-        const ImFontGlyph* g = cp ? f->FindGlyph((ImWchar)cp) : nullptr;
-        if (g)
-        {
-            const float k = size / f->FontSize;
-            const ImVec2 ink((g->X0 + g->X1) * 0.5f * k, (g->Y0 + g->Y1) * 0.5f * k);
-            dl->AddText(f, size, ImVec2(center.x - ink.x, center.y - ink.y), col, glyph);
-            return;
-        }
-
-        const ImVec2 ts = f->CalcTextSizeA(size, FLT_MAX, 0.0f, glyph);
-        dl->AddText(f, size, ImVec2(center.x - ts.x * 0.5f, center.y - ts.y * 0.5f), col, glyph);
+        portfolio::draw_glyph_centered(dl, EqIconFont(), size, center, col, glyph);
     }
 
     inline void EqDrawLabel(ImDrawList* dl, ImVec2 pos, const char* text, ImU32 col, float size)
@@ -507,9 +460,8 @@ namespace ethnir
         const ImVec2 mx(mn.x + w, mn.y + h);
         const float round = portfolio::s(portfolio::toggle_round);
 
-        // The track follows the knob rather than the boolean, so the fill
-        // crossfades over the same quarter second the knob takes to travel
-        // instead of snapping the instant it is tapped.
+        // The fill follows the knob rather than the boolean, so it crossfades
+        // over the spring instead of snapping on the tap.
         const ImVec4 idle = EqMix(pal.track, portfolio::control_hover, hovered ? 1.0f : 0.0f);
         const ImVec4 track = EqMix(idle, portfolio::control, active);
         dl->AddRectFilled(mn, mx, EqCol(track), round);
@@ -524,8 +476,7 @@ namespace ethnir
                                   portfolio::accent_vec4(), active);
         const float knob_x = mn.x + portfolio::s(portfolio::toggle_knob_inset)
                            + portfolio::s(portfolio::toggle_knob_travel) * ImClamp(spring, -0.06f, 1.06f);
-        // A knob still travelling swells a little, the way the switch in
-        // Settings does; it settles back the moment the spring stops.
+        // A travelling knob swells slightly and settles when the spring stops.
         const float r = portfolio::s(portfolio::toggle_knob_r) * (1.0f + 0.30f * travel);
         dl->AddCircleFilled(ImVec2(knob_x, center.y), r * 0.78f, EqColA(EqAccentVec(), 0.26f * travel), 24);
         dl->AddCircleFilled(ImVec2(knob_x, center.y), r, EqCol(knob), 24);
@@ -643,16 +594,14 @@ namespace ethnir
         {
             const float t = ImSaturate((io.MousePos.x - trackX) / trackW);
             const float nv = v_min + t * (v_max - v_min);
-            // The dragged value has to be written back, not merely reported:
-            // without the assignment every slider in the menu flagged the config
-            // dirty and auto-saved while the knob itself never moved.
+            // Write the dragged value back: without the assignment the knob
+            // never moved and every slider still flagged the config dirty.
             if (nv != *v) { *v = nv; changed = true; EqMarkDirty(); }
         }
 
         char id2[160];
         ImFormatString(id2, IM_ARRAYSIZE(id2), "%s##anim", label);
-        // Track the finger one-to-one while it is down and ease only on release,
-        // so the knob never feels like it is lagging behind the touch.
+        // Follow the finger while it is down, ease only on release.
         const float shown = held ? *v : EqAnim(id2, *v, 18.0f, io.DeltaTime, *v);
 
         ImDrawList* dl = ImGui::GetWindowDrawList();
@@ -825,8 +774,7 @@ namespace ethnir
         }
 
         // One thumb that slides to the selection instead of a highlight that
-        // blinks from cell to cell. It is the most recognisable detail of a
-        // UIKit segmented control, so it moves on a spring too.
+        // blinks from cell to cell.
         char tid[192];
         ImFormatString(tid, IM_ARRAYSIZE(tid), "%s##segThumb", label);
         const float thumb = ImClamp(EqSpring(tid, (float)*current, 210.0f, 25.0f, io.DeltaTime, (float)*current),
@@ -918,8 +866,7 @@ namespace ethnir
         const float itemPitch = portfolio::s(portfolio::sidebar_tab_h + portfolio::sidebar_tabs_gap);
         const float itemH = portfolio::s(portfolio::sidebar_tab_h);
 
-        // The selected highlight is one pill that slides between entries rather
-        // than a gradient that fades out on one row while fading in on the next.
+        // The selected highlight is one pill that slides between entries.
         int activeIdx = 0;
         for (int i = 0; i < kTabCount; ++i)
             if (kTabs[i].tab == st.ActiveTab) activeIdx = i;
@@ -1055,9 +1002,7 @@ for (int i = 0; i < kTabCount; ++i)
         out255[0] = r * 255.0f; out255[1] = g * 255.0f; out255[2] = b * 255.0f;
     }
 
-    // Whether the sheet under `label` is expanded. Lets a host (and the
-    // regression suite) assert the picker actually opened, which the old popup
-    // never exposed.
+    // Whether the sheet under `label` is expanded.
     inline bool EqColorRowOpen(const char* label)
     {
         ImGuiContext* g = ImGui::GetCurrentContext();
@@ -1067,10 +1012,7 @@ for (int i = 0; i < kTabCount; ++i)
     }
 
     // The colour editor is an inline sheet, not a popup: the row unfolds and the
-    // card grows with it. A popup had to be positioned against the row by hand,
-    // sized by hand, and every row in a card shared one popup id, so several
-    // pickers could open on top of each other and ImGui's packed R/G/B inputs
-    // ran straight out of the panel they were meant to sit inside.
+    // card grows with it.
     inline bool EqColorRow(const char* label, float* rgba)
     {
         if (!rgba || !EqPassFilter(label)) return false;
@@ -1139,8 +1081,7 @@ for (int i = 0; i < kTabCount; ++i)
         EqDrawLabel(dl, ImVec2(hexX, row.GetCenter().y - hs.y * 0.5f),
                     hex, EqCol(pal.textFaint), 12.0f);
 
-        // Chevron flips over as the sheet unfolds, so the row says whether it
-        // is open without any extra label.
+        // Chevron flips over as the sheet unfolds.
         {
             const float chx = hexX - portfolio::s(13.0f);
             const float cy = row.GetCenter().y;
@@ -1165,8 +1106,7 @@ for (int i = 0; i < kTabCount; ++i)
         const ImVec2 panMin(row.Min.x, row.Max.y + 2.0f);
         const ImVec2 panMax(panMin.x + cardW, panMin.y + panelH);
 
-        // Clip to the still-unfolding height, so the sheet wipes open the way a
-        // UIKit disclosure does instead of popping in at full size.
+        // Clip to the still-unfolding height so the sheet wipes open.
         dl->PushClipRect(panMin, ImVec2(panMax.x, panMin.y + panelH * reveal + 1.0f), true);
         dl->AddRectFilled(panMin, panMax, EqCol(pal.cardBg), portfolio::s(portfolio::box_round));
         dl->AddRect(panMin + ImVec2(0.5f, 0.5f), panMax - ImVec2(0.5f, 0.5f),
@@ -1222,9 +1162,7 @@ for (int i = 0; i < kTabCount; ++i)
                         IM_COL32(0, 0, 0, 110), k, 0, 1.0f);
         }
 
-        // R/G/B on three separate lines. ImGui's packed inputs are what produced
-        // the overlapping numbers in the old popup, so they are gone: one label,
-        // one track and one value per channel, each on its own row.
+        // One label, one track and one value per channel, each on its own row.
         static const char* kChan[3] = { "R", "G", "B" };
         float rgb[3] = { 0.0f, 0.0f, 0.0f };
         ImGui::ColorConvertHSVtoRGB(cp.H, cp.S, cp.V, rgb[0], rgb[1], rgb[2]);
@@ -1469,9 +1407,8 @@ for (int i = 0; i < kTabCount; ++i)
         }
         st.WasOpen = true;
         bool finishClose = false;
-        // One spring drives the whole entrance, so the panel scales up from 96%
-        // and settles with the small overshoot UIKit gives a presented view
-        // controller, instead of easing linearly into place.
+        // One spring drives the whole entrance: the panel scales up from 96%
+        // and settles with a little overshoot.
         const float appearSpring = EqSpring("##ethnir_appear", st.Closing ? 0.0f : 1.0f, 290.0f, 24.0f,
                                            dt, st.Closing ? 1.0f : 0.0f);
         st.Appear = ImClamp(appearSpring, 0.0f, 1.0f);
@@ -1481,8 +1418,7 @@ for (int i = 0; i < kTabCount; ++i)
 
         if (st.LastTab != st.ActiveTab)
         {
-            // New tab slides in from the side it was picked from, the way a UIKit
-            // tab bar pushes the incoming view instead of cross-fading it.
+            // New tab slides in from the side it was picked from.
             const float dir = (st.ActiveTab >= st.LastTab) ? 1.0f : -1.0f;
             st.LastTab = st.ActiveTab;
             st.Fade = 0.0f;
@@ -1515,7 +1451,7 @@ for (int i = 0; i < kTabCount; ++i)
         }
         EqClampMenuPos(st, winSize, io);
 
-        ImGui::PushStyleVar(ImGuiStyleVar_Alpha, appear);
+        ImGui::PushStyleVar(ImGuiStyleVar_Alpha, appear * main_runtime_theme::MenuOpacity());
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
         ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 0));
         ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0, 0, 0, 0));
@@ -1699,7 +1635,7 @@ for (int i = 0; i < kTabCount; ++i)
 
         const ImVec2 c0(h0.x, p0.y + kPad + portfolio::s(portfolio::topbar_h));
         const ImVec2 c1(p1.x - kPad, p1.y - kPad);
-        ImGui::PushStyleVar(ImGuiStyleVar_Alpha, fade);
+        ImGui::PushStyleVar(ImGuiStyleVar_Alpha, fade * main_runtime_theme::MenuOpacity());
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(2, 2));
         ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 0));
         ImGui::PushStyleVar(ImGuiStyleVar_ScrollbarSize, 4.0f);
@@ -1744,6 +1680,9 @@ for (int i = 0; i < kTabCount; ++i)
 
         ImGui::End();
 
+        // The gear panel and the help card are separate windows, so they need the
+        // menu opacity pushed again to fade with the shell.
+        ImGui::PushStyleVar(ImGuiStyleVar_Alpha, main_runtime_theme::MenuOpacity());
         if (st.ShowSettingsPanel && !st.Closing) EqDrawSettingsPanel(st);
         if (st.HelpOpen && !st.Closing)
         {
@@ -1751,6 +1690,7 @@ for (int i = 0; i < kTabCount; ++i)
             if (ImGui::IsMouseClicked(0) && !st.HelpChipPressedFrame && !helpHovered)
                 st.HelpOpen = false;
         }
+        ImGui::PopStyleVar();
         st.HelpChipPressedFrame = false;
         EqFilterOn() = true;
 

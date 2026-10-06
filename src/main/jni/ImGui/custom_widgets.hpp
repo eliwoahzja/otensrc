@@ -41,14 +41,11 @@ namespace custom
     bool                Page(bool selected, const char* icon, const ImVec2& size, bool allow_icon_font = true, bool show_active_line = true);
 
     // Widest balanced split of `count` Page() chips that keeps every label inside
-    // its own chip. Chip text is drawn at a fixed pixel size that does not follow
-    // the display factor, so a row sharing the page with another column runs out
-    // of room before its labels do.
+    // its own chip.
     int                 PageColumnsThatFit(const char* const* labels, int count, float avail, float spacing);
 
-    // Full-width segmented control sized to `height`. `current` is 0-based; the
-    // only indices the caller may set are 0..(count-1). Selected label is drawn in
-    // the accent colour; the unselected labels are drawn in their hovered colour.
+    // Full-width segmented control sized to `height`, `current` 0-based. Every
+    // cell is its own touch target, and the accent pill slides to the selection.
     bool                Segmented(const char* label, int* current, const char* const* items, int count, float height);
 
     bool                ThemeButton(const char* id_theme, bool dark, const ImVec2& size_arg);

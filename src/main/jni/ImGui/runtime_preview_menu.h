@@ -391,10 +391,10 @@ inline void RenderSettingsTab(float contentWidth, float contentHeight) {
         EndContentChild(licenseChild);
     }
     {
-        const ChildFrame logoChild = BeginContentChild(
-            "LOGO SETTINGS##RUNTIME_LOGO_SETTINGS", ImVec2(childWidth, bottomChildHeight));
-        settings_tab::RenderLogoCard();
-        EndContentChild(logoChild);
+        const ChildFrame appearanceChild = BeginContentChild(
+            "APPEARANCE##RUNTIME_APPEARANCE", ImVec2(childWidth, bottomChildHeight));
+        settings_tab::RenderAppearanceCard();
+        EndContentChild(appearanceChild);
     }
     ethnir::EqNextColumn();
     ethnir::SectionLabel("CONFIGURATION");

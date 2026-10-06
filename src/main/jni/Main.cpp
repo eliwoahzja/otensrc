@@ -48,12 +48,6 @@ float jumpHeightMultiplier = 1.0f;
 bool RedWallhackShow = false;
 char logintext[4096];
 
-static bool camoOff       = true;
-static bool camoDiamond   = false;
-static bool camoRedSprite = false;
-#define ID_DIAMOND    0x1D37F758
-#define ID_RED_SPRITE 0x1D37F77E
-
 float menu[4] = { 0.0f / 255.0f, 212.0f / 255.0f, 255.0f / 255.0f, 1.0f };
 
 float g_LastLogoOpacity = 1.0f;
@@ -154,69 +148,14 @@ static void DrawOmniShimmer(ImDrawList* dl, ImVec2 panelMin, ImVec2 panelMax, fl
     }
 }
 
+// The browser gets the whole content width, and the camo injector lives behind
+// the Camo sub-tab instead of in a second column beside it.
 static void RenderSkinsTabContent(float contentWidth, float contentHeight)
 {
     (void)contentWidth;
     (void)contentHeight;
-    ethnir::EqBeginColumns();
     ethnir::SectionLabel("SKINS");
     RenderSkinCategoryContent(skinSubTab, true);
-    ethnir::EqNextColumn();
-    ethnir::SectionLabel("CAMO MODIFIER");
-    ethnir::BeginGroupCard("eth_camo");
-    if (ethnir::RowToggle(nullptr, "Default / OFF", &camoOff)) {
-        if (camoOff) {
-            camoDiamond = false;
-            camoRedSprite = false;
-            for (const auto& getitem : itemData) {
-                if (getitem.itemName.find("[MYTHIC]") != std::string::npos ||
-                    getitem.itemName.find("[LEGENDARY]") != std::string::npos) {
-                    for (auto conf : weaponConfInstance) {
-                        if (!conf) continue;
-                        weaponconfFields = (WeaponConfFields*)((uintptr_t)conf + 0x20);
-                        if (weaponconfFields->ID == getitem.WeaponConf[2])
-                            weaponconfFields->DefWeaponSkinID = 0;
-                    }
-                }
-            }
-        }
-    }
-    if (ethnir::RowToggle(nullptr, "Diamond Camo", &camoDiamond)) {
-        if (camoDiamond) {
-            camoOff = false; camoRedSprite = false;
-            for (const auto& getitem : itemData) {
-                if (getitem.itemName.find("[MYTHIC]") != std::string::npos ||
-                    getitem.itemName.find("[LEGENDARY]") != std::string::npos) {
-                    for (auto conf : weaponConfInstance) {
-                        if (!conf) continue;
-                        weaponconfFields = (WeaponConfFields*)((uintptr_t)conf + 0x20);
-                        if (weaponconfFields->ID == getitem.WeaponConf[2])
-                            weaponconfFields->DefWeaponSkinID = ID_DIAMOND;
-                    }
-                }
-            }
-        } else { camoOff = true; }
-    }
-    if (ethnir::RowToggle(nullptr, "Red Sprite Camo", &camoRedSprite)) {
-        if (camoRedSprite) {
-            camoOff = false; camoDiamond = false;
-            for (const auto& getitem : itemData) {
-                if (getitem.itemName.find("[MYTHIC]") != std::string::npos ||
-                    getitem.itemName.find("[LEGENDARY]") != std::string::npos) {
-                    for (auto conf : weaponConfInstance) {
-                        if (!conf) continue;
-                        weaponconfFields = (WeaponConfFields*)((uintptr_t)conf + 0x20);
-                        if (weaponconfFields->ID == getitem.WeaponConf[2])
-                            weaponconfFields->DefWeaponSkinID = ID_RED_SPRITE;
-                    }
-                }
-            }
-        } else { camoOff = true; }
-    }
-    ImGui::Dummy(ImVec2(0, 4));
-    ImGui::TextDisabled("Only applies to [M] Mythic and [L] Legendary weapon skins.");
-    ethnir::EndGroupCard();
-    ethnir::EqEndColumns();
 }
 
 static void EthnirDrawTab(int tab)
@@ -238,12 +177,11 @@ static void EthnirDrawTab(int tab)
 
 EGLBoolean (*old_eglSwapBuffers)(EGLDisplay dpy, EGLSurface surface);
 
-// The liquid glass disables depth test and cull face every frame and never puts
-// them back. Unity's GLES device caches those bits instead of querying them, so
-// the game never re-applies them, draws its scene in submission order, and the
-// frame comes out black while our menu on top still looks right. ImGui's backend
-// cannot cover for it - the state it snapshots is already the broken one - so the
-// whole frame is bracketed: capture on entry, restore before the swap.
+// The liquid glass disables depth test and cull face without restoring them, and
+// Unity's GLES device caches those bits instead of querying them, so the game
+// frame comes out black. ImGui's backend cannot cover for it - the state it
+// snapshots is already broken - so the whole frame is bracketed: capture on
+// entry, restore before the swap.
 struct GlStateSnapshot
 {
     GLint     program = 0, vao = 0, arrayBuffer = 0, elementBuffer = 0;

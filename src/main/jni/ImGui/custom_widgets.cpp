@@ -2699,100 +2699,113 @@ namespace custom
     {
         ImGuiWindow* window = GetCurrentWindow();
         if (window->SkipItems) return false;
-        if (items == nullptr || count <= 0) return false;
-        if (current == nullptr) return false;
+        if (items == nullptr || count <= 0 || current == nullptr) return false;
 
-        ImGuiContext& g = *ImGui::GetCurrentContext();
+        ImGuiContext& g = *GImGui;
         const ImGuiStyle& style = g.Style;
         const ImGuiID id = window->GetID(label);
         const ImVec2 pos = window->DC.CursorPos;
-        const float avail = GetContentRegionAvail().x;
-        const float control_h = ImMax(height, 0.0f);
-        const float gap = style.ItemSpacing.y;
-        const float segGap = ImMax(gap, 0.0f);
+        const float control_scale = c::scale * c::widget_scale;
+        const float control_h = ImMax(height, 1.0f);
+        const float cell_gap = 2.0f * c::scale;
+        const float avail = ImMax(GetContentRegionAvail().x, 1.0f);
+        const float rounding = ImMax(3.0f, 4.5f * control_scale);
 
-        int widest = 0;
-        for (int i = 0; i < count; ++i)
-            widest = ImMax(widest, (int)CalcTextSize(items[i], nullptr, true).x);
-        const float min_cell_w = ImMax((float)widest, 16.0f);
-        const float cell_w = ImMax(min_cell_w, (avail - (count - 1) * segGap) / (float)count);
-
-        const ImVec2 size(ImMax(avail, cell_w * (float)count + (count - 1) * segGap), control_h);
+        // Cells share the row exactly: the control never grows past the width it
+        // was handed, and a long label shrinks instead of pushing it over.
+        const float cell_w = ImMax((avail - cell_gap * (float)(count - 1)) / (float)count, 1.0f);
+        const ImVec2 size(avail, control_h);
         const ImRect bb(pos, pos + size);
         ItemSize(size);
         if (!ItemAdd(bb, id)) return false;
 
-        static std::map<ImGuiID, float> thumb;
-        auto ti = thumb.find(id);
-        if (ti == thumb.end()) {
-            thumb.insert({id, (float)(*current)});
-            ti = thumb.find(id);
+        const int sel = ImClamp(*current, 0, count - 1);
+        struct seg_state { float x; float v; };
+        static std::map<ImGuiID, seg_state> anim;
+        auto it = anim.find(id);
+        if (it == anim.end())
+        {
+            seg_state fresh = { (float)sel, 0.0f };
+            it = anim.insert({ id, fresh }).first;
         }
 
-        ImDrawList* draw = GetWindowDrawList();
-        bool any_pressed = false;
+        // Underdamped spring for the pill, sub-stepped for long frames.
+        const float dt = ImClamp(g.IO.DeltaTime, 0.0f, 0.05f);
+        const float target = (float)sel;
+        const int steps = ImClamp((int)(dt / 0.010f) + 1, 1, 4);
+        const float step = dt / (float)steps;
+        for (int i = 0; i < steps; ++i)
+        {
+            it->second.v += (-260.0f * (it->second.x - target) - 26.0f * it->second.v) * step;
+            it->second.x += it->second.v * step;
+        }
 
+        ImFont* font = GetFont();
+        const float font_size = GetFontSize();
+        ImDrawList* draw = GetWindowDrawList();
+
+        draw->AddRectFilled(bb.Min, bb.Max, GetColorU32(c::page::background), rounding);
+
+        const float pill_x = pos.x + it->second.x * (cell_w + cell_gap);
+        const ImVec2 pill_min(pill_x, pos.y);
+        const ImVec2 pill_max(pill_x + cell_w, pos.y + control_h);
+        draw->PushClipRect(bb.Min, bb.Max, true);
+        draw->AddRectFilled(pill_min, pill_max, GetColorU32(AccentShade(0.10f, 0.98f)), rounding);
+        draw->AddRect(pill_min + ImVec2(0.5f, 0.5f), pill_max - ImVec2(0.5f, 0.5f),
+                      GetColorU32(AccentLift(0.08f), 0.34f), rounding, 0, 1.0f * control_scale);
+        draw->PopClipRect();
+        draw->AddRect(bb.Min + ImVec2(0.5f, 0.5f), bb.Max - ImVec2(0.5f, 0.5f),
+                      GetColorU32(c::widget::outlinecolor, 0.55f), rounding, 0, 1.0f * control_scale);
+
+        bool any_pressed = false;
         for (int i = 0; i < count; ++i)
         {
-            const ImVec2 cell_min(pos.x + i * (cell_w + segGap), pos.y);
+            const ImVec2 cell_min(pos.x + (float)i * (cell_w + cell_gap), pos.y);
             const ImVec2 cell_max(cell_min.x + cell_w, cell_min.y + control_h);
-            const bool selected = (i == *current);
-            char cell_id[64];
-            ImFormatString(cell_id, IM_ARRAYSIZE(cell_id), "%s##cell%d", label, i);
-            ImGui::PushID(cell_id);
 
-            ImGui::InvisibleButton("", ImVec2(cell_w, control_h));
-            bool seg_hovered = ImGui::IsItemHovered();
-            bool seg_pressed_now = false;
-            if (seg_hovered && ImGui::IsMouseClicked(0)) {
+            // ButtonBehavior off the cell rect: one hit box per visible segment,
+            // with no cursor movement to stack them on the first cell.
+            char cell_id[96];
+            ImFormatString(cell_id, IM_ARRAYSIZE(cell_id), "%s##seg%d", label, i);
+            const ImGuiID cid = window->GetID(cell_id);
+            ImRect hit(cell_min, cell_max);
+            // Generous vertical slop, but only a sliver sideways: cells sit shoulder
+            // to shoulder, so a wide horizontal pad would hand a tap to the wrong
+            // neighbour.
+            hit.Expand(ImVec2(4.0f * c::scale, portfolio::touch_pad_y()));
+            bool hovered = false, held = false;
+            const bool pressed = ButtonBehavior(hit, cid, &hovered, &held, ImGuiButtonFlags_None);
+            KeepAliveID(cid);
+            if (pressed)
+            {
                 *current = i;
-                thumb[i] = (float)i;
                 any_pressed = true;
-                seg_pressed_now = true;
             }
 
-            const ImVec4 bg_inactive = c::page::background;
-            const ImVec4 bg_active = c::page::background_active;
-            draw->AddRectFilled(
-                cell_min, cell_max,
-                ImGui::GetColorU32(ImLerp(bg_inactive, bg_active, selected ? 1.0f : 0.0f)),
-                ImMax(2.0f, c::page::rounding * c::scale));
+            const bool selected = (i == sel);
+            if (!selected && (hovered || held))
+                draw->AddRectFilled(cell_min, cell_max,
+                                    portfolio::ga(IM_COL32(255, 255, 255, held ? 26 : 10)), rounding);
 
-            const ImVec2 txt_min(cell_min.x + (cell_w - ImGui::CalcTextSize(items[i], nullptr, true).x) * 0.5f,
-                                 cell_min.y + (control_h - ImGui::CalcTextSize(items[i], nullptr, true).y) * 0.5f);
-            draw->AddText(ImGui::GetFont(), ImGui::GetFontSize(), txt_min,
-                          ImGui::GetColorU32(selected ? c::accent : seg_hovered && !seg_pressed_now ? c::page::text_hov : c::page::text),
-                          items[i]);
+            const char* text = items[i];
+            float text_size = font_size;
+            const float max_text_w = ImMax(cell_w - 10.0f * c::scale, 1.0f);
+            ImVec2 ts = font->CalcTextSizeA(text_size, FLT_MAX, 0.0f, text);
+            if (ts.x > max_text_w)
+            {
+                text_size = ImMax(text_size * (max_text_w / ts.x), 1.0f);
+                ts = font->CalcTextSizeA(text_size, FLT_MAX, 0.0f, text);
+            }
 
-            ImGui::PopID();
+            const ImVec4 label_col = selected ? c::text::text_active
+                                              : (hovered || held) ? c::text::text_hov : c::text::text;
+            draw->AddText(font, text_size,
+                          ImVec2(cell_min.x + (cell_w - ts.x) * 0.5f,
+                                 cell_min.y + (control_h - font_size) * 0.5f),
+                          GetColorU32(label_col), text);
         }
 
-        // Thumb leading edge travels with selection.
-        {
-            const float t = ti->second;
-            const int ti_idx = ImClamp((int)ImFloor(t + 0.5f), 0, count - 1);
-            const ImVec2 thumb_min(pos.x + ti_idx * (cell_w + segGap) + (cell_w * 0.5f), pos.y);
-            const ImVec2 thumb_max(thumb_min.x + (cell_w * 0.5f), thumb_min.y + control_h);
-            draw->AddRectFilled(thumb_min, thumb_max, ImGui::GetColorU32(c::accent),
-                                ImMax(2.0f, c::page::rounding * c::scale));
-        }
-
-        // Drive thumb toward current.
-        float& tv = ti->second;
-        const float target = (float)(*current);
-        const float k = 220.0f;
-        const float d = 25.0f;
-        const float dt = g.IO.DeltaTime;
-        if (dt > 0.0f) {
-            // critically damped spring toward target; never overshoot in this
-            // damping regime so the thumb settles smoothly like a UIKit picker.
-            const float remain = target - tv;
-            const float v = (0.0f != remain) ? remain : 0.0f;
-            tv += (v + k * remain * dt - d * (tv - (tv - v * dt)));
-            tv = target - (target - tv) * ImSaturate((k * dt) / (d + k * dt + 1.0f));
-        }
-
-        ImGui::SetCursorScreenPos(pos + ImVec2(0, control_h + style.ItemSpacing.y));
+        SetCursorScreenPos(pos + ImVec2(0, control_h + style.ItemSpacing.y));
         return any_pressed;
     }
 

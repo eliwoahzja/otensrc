@@ -111,10 +111,8 @@ inline ChildFrame BeginContentChild(const char *id, const ImVec2 &size, ImGuiWin
 
 inline void EndContentChild(const ChildFrame &frame) {
     custom::EndChild();
-    // EndChild()/ItemSize() leave the cursor on the window's content origin
-    // rather than on the column the card was opened in, so without this the
-    // second card of a column starts at the left column's x. The Config tab is
-    // where it showed: ENHANCEMENT was painted straight over LOGO SETTINGS.
+    // EndChild()/ItemSize() leave the cursor on the content origin rather than on
+    // the column the card was opened in.
     ethnir::EqColumnSyncX();
 }
 

@@ -66,7 +66,7 @@ namespace portfolio
     inline constexpr float topbar_row_h       = 49.f;
     inline constexpr float topbar_save_w      = 138.f;
     inline constexpr float topbar_search_w    = 434.f;
-    inline constexpr float topbar_icon_size   = 24.f;
+    inline constexpr float topbar_icon_size   = 19.f;
     inline constexpr float topbar_gear_margin = 30.f;
     inline constexpr float content_pad_x      = 19.f;
     inline constexpr float column_w           = 434.f;
@@ -238,6 +238,46 @@ namespace portfolio
     inline ImVec4 accent_vec4(float alpha = 1.f) { return { g_accent.x, g_accent.y, g_accent.z, alpha }; }
     inline ImU32 accent_u32(float alpha = 1.f) { return ImGui::GetColorU32(accent_vec4(alpha)); }
 
+    // Raw IM_COL32 constants bypass ImGui's style alpha, so the glass chrome has
+    // to fold it in by hand to fade with the rest of the menu.
+    inline ImU32 ga(ImU32 col)
+    {
+        const int a = (int)((col >> IM_COL32_A_SHIFT) & 0xFF);
+        const int scaled = (int)((float)a * ImGui::GetStyle().Alpha + 0.5f);
+        return (col & ~IM_COL32_A_MASK) | ((ImU32)scaled << IM_COL32_A_SHIFT);
+    }
+
+    // How far the middle of a single glyph's ink sits from the top-left of its
+    // line box. Icon fonts park their artwork well above the baseline, so a glyph
+    // centred on the line box reads low in its button; centred on this it sits
+    // where the eye expects.
+    inline ImVec2 glyph_ink_center(ImFont* font, float size, const char* glyph)
+    {
+        if (!font || font->FontSize <= 0.0f || !glyph || !*glyph)
+            return ImVec2(size * 0.5f, size * 0.5f);
+
+        unsigned int cp = 0;
+        if (ImTextCharFromUtf8(&cp, glyph, nullptr) <= 0)
+            return ImVec2(size * 0.5f, size * 0.5f);
+
+        const ImFontGlyph* g = font->FindGlyph((ImWchar)cp);
+        if (g)
+        {
+            const float k = size / font->FontSize;
+            return ImVec2((g->X0 + g->X1) * 0.5f * k, (g->Y0 + g->Y1) * 0.5f * k);
+        }
+
+        const ImVec2 ts = font->CalcTextSizeA(size, FLT_MAX, 0.0f, glyph);
+        return ImVec2(ts.x * 0.5f, ts.y * 0.5f);
+    }
+
+    inline void draw_glyph_centered(ImDrawList* dl, ImFont* font, float size, const ImVec2& center, ImU32 col, const char* glyph)
+    {
+        if (!dl || !font || !glyph || !*glyph) return;
+        const ImVec2 ink = glyph_ink_center(font, size, glyph);
+        dl->AddText(font, size, ImVec2(center.x - ink.x, center.y - ink.y), col, glyph);
+    }
+
     inline void draw_accent_rect(ImDrawList* dl, const ImVec2& p0, const ImVec2& p1,
         float rounding, float strength, int layers = 4)
     {
@@ -280,7 +320,7 @@ namespace portfolio
         const float h = p1.y - p0.y;
         if (w < 4.f || h < 4.f) return;
 
-        dl->AddShadowRect(p0, p1, IM_COL32(0, 0, 0, 120), 40.f, ImVec2(0, 16), 0, R);
+        dl->AddShadowRect(p0, p1, ga(IM_COL32(0, 0, 0, 120)), 40.f, ImVec2(0, 16), 0, R);
 
         if (backdrop)
         {
@@ -297,7 +337,7 @@ namespace portfolio
             if (liquid::draw(dl, (GLuint)(intptr_t)backdrop, lp))
             {
                 dl->AddRect(p0 + ImVec2(0.5f, 0.5f), p1 - ImVec2(0.5f, 0.5f),
-                            IM_COL32(255, 255, 255, 26), R, 0, 1.f);
+                            ga(IM_COL32(255, 255, 255, 26)), R, 0, 1.f);
                 return;
             }
 #endif
@@ -369,23 +409,23 @@ namespace portfolio
         dl->AddRectFilledMultiColor(
             { p0.x + R, p0.y + 0.5f },
             { p1.x - R, p0.y + 1.5f },
-            IM_COL32(255, 255, 255, (int)(highlightAlpha * 255)),
+            ga(IM_COL32(255, 255, 255, (int)(highlightAlpha * 255))),
             IM_COL32(255, 255, 255, 0),
             IM_COL32(255, 255, 255, 0),
-            IM_COL32(255, 255, 255, (int)(highlightAlpha * 255))
+            ga(IM_COL32(255, 255, 255, (int)(highlightAlpha * 255)))
         );
 
         dl->AddRectFilledMultiColor(
             { p0.x + R + 4, p0.y + 8 },
             { p1.x - R - 4, p0.y + 16 },
-            IM_COL32(255, 255, 255, 15),
+            ga(IM_COL32(255, 255, 255, 15)),
             IM_COL32(255, 255, 255, 0),
             IM_COL32(255, 255, 255, 0),
-            IM_COL32(255, 255, 255, 15)
+            ga(IM_COL32(255, 255, 255, 15))
         );
 
         dl->AddRect(p0 + ImVec2(0.5f, 0.5f), p1 - ImVec2(0.5f, 0.5f),
-            IM_COL32(255, 255, 255, 33), R, 0, 1.f);
+            ga(IM_COL32(255, 255, 255, 33)), R, 0, 1.f);
 
         const float accentRimAlpha = 0.04f;
         const float cornerR = R;
@@ -406,9 +446,9 @@ namespace portfolio
         ImFont* textFont, float textSize,
         bool hovered, bool pressed, bool active)
     {
-        ImU32 bgCol = pressed ? IM_COL32(0, 0, 0, 120) : (hovered ? IM_COL32(255, 255, 255, 30) : IM_COL32(255, 255, 255, 15));
-        ImU32 borderCol = active ? accent_u32(0.6f) : (hovered ? IM_COL32(255, 255, 255, 60) : IM_COL32(255, 255, 255, 25));
-        ImU32 textCol = hovered || active ? IM_COL32_WHITE : IM_COL32(255, 255, 255, 200);
+        ImU32 bgCol = pressed ? ga(IM_COL32(0, 0, 0, 120)) : (hovered ? ga(IM_COL32(255, 255, 255, 30)) : ga(IM_COL32(255, 255, 255, 15)));
+        ImU32 borderCol = active ? accent_u32(0.6f) : (hovered ? ga(IM_COL32(255, 255, 255, 60)) : ga(IM_COL32(255, 255, 255, 25)));
+        ImU32 textCol = hovered || active ? ga(IM_COL32_WHITE) : ga(IM_COL32(255, 255, 255, 200));
 
         dl->AddRectFilled(p0, p1, bgCol, R);
         dl->AddRect(p0 + ImVec2(0.5f, 0.5f), p1 - ImVec2(0.5f, 0.5f), borderCol, R, 0, 1.f);
@@ -416,8 +456,8 @@ namespace portfolio
         dl->AddRectFilledMultiColor(
             { p0.x + R, p0.y + 0.5f },
             { p1.x - R, p0.y + 1.5f },
-            IM_COL32(255, 255, 255, 60), IM_COL32(255, 255, 255, 0),
-            IM_COL32(255, 255, 255, 0), IM_COL32(255, 255, 255, 60)
+            ga(IM_COL32(255, 255, 255, 60)), IM_COL32(255, 255, 255, 0),
+            IM_COL32(255, 255, 255, 0), ga(IM_COL32(255, 255, 255, 60))
         );
 
         const float cx = (p0.x + p1.x) * 0.5f;
@@ -429,8 +469,7 @@ namespace portfolio
         float x = cx - totalW * 0.5f;
         if (icon && iconFont)
         {
-
-            dl->AddText(iconFont, iconSize, ImVec2(x, cy - iconSize * 0.5f), textCol, icon);
+            draw_glyph_centered(dl, iconFont, iconSize, ImVec2(x + iconSize * 0.5f, cy), textCol, icon);
             x += iconSize + gap;
         }
         if (label && textFont)
@@ -440,8 +479,8 @@ namespace portfolio
     inline void DrawLiquidGlassSearchField(ImDrawList* dl, const ImVec2& p0, const ImVec2& p1, float R,
         bool focused, bool hovered)
     {
-        ImU32 bgCol     = focused ? IM_COL32(255, 255, 255, 25) : (hovered ? IM_COL32(255, 255, 255, 15) : IM_COL32(255, 255, 255, 10));
-        ImU32 borderCol = focused ? accent_u32(0.55f) : (hovered ? IM_COL32(255, 255, 255, 40) : IM_COL32(255, 255, 255, 15));
+        ImU32 bgCol     = focused ? ga(IM_COL32(255, 255, 255, 25)) : (hovered ? ga(IM_COL32(255, 255, 255, 15)) : ga(IM_COL32(255, 255, 255, 10)));
+        ImU32 borderCol = focused ? accent_u32(0.55f) : (hovered ? ga(IM_COL32(255, 255, 255, 40)) : ga(IM_COL32(255, 255, 255, 15)));
 
         dl->AddRectFilled(p0, p1, bgCol, R);
         dl->AddRect(p0 + ImVec2(0.5f, 0.5f), p1 - ImVec2(0.5f, 0.5f), borderCol, R, 0, 1.f);
@@ -449,8 +488,8 @@ namespace portfolio
         dl->AddRectFilledMultiColor(
             { p0.x + R, p0.y + 0.5f },
             { p1.x - R, p0.y + 1.5f },
-            IM_COL32(255, 255, 255, 50), IM_COL32(255, 255, 255, 0),
-            IM_COL32(255, 255, 255, 0), IM_COL32(255, 255, 255, 50)
+            ga(IM_COL32(255, 255, 255, 50)), IM_COL32(255, 255, 255, 0),
+            IM_COL32(255, 255, 255, 0), ga(IM_COL32(255, 255, 255, 50))
         );
     }
 }

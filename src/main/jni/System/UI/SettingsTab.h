@@ -212,18 +212,35 @@ namespace settings_tab
         ethnir::EqValueRow("Subscription", userType.c_str());
     }
 
-    inline void RenderLogoCard()
+    // These drive the menu window itself, not the watermark: Size scales every
+    // portfolio::s() metric, Opacity fades the shell's style alpha.
+    inline void RenderAppearanceCard()
     {
-        float opacity = GetLogoOpacity();
-        float size = GetLogoSizeMultiplier();
-        if (ethnir::RowSlider(ICON_FA_EYE, "Opacity", &opacity, 0.0f, 1.0f, "%.2f"))
-            SetLogoOpacity(opacity);
-        if (ethnir::RowSlider(ICON_FA_EXPAND, "Size", &size, 0.1f, 2.0f, "%.2f"))
-            SetLogoSizeMultiplier(size);
-        if (ethnir::EqActionRow("Reset Logo"))
+        // Opacity only recolours, so it applies under the finger. Size moves every
+        // metric the row itself is laid out with, so it is committed on release:
+        // applying it mid-drag would slide the track out from under the drag.
+        static float pendingSize = -1.0f;
+
+        float opacity = main_runtime_theme::MenuOpacity();
+        ethnir::RowSlider(ICON_FA_EYE, "Opacity", &opacity,
+                          main_runtime_theme::kMenuOpacityMin, 1.0f, "%.2f");
+        main_runtime_theme::SetMenuOpacity(opacity);
+
+        float size = (pendingSize > 0.0f) ? pendingSize : main_runtime_theme::MenuScalePercent();
+        if (ethnir::RowSlider(ICON_FA_EXPAND, "Size", &size,
+                              main_runtime_theme::kMenuScaleMin, main_runtime_theme::kMenuScaleMax, "%.0f%%"))
+            pendingSize = size;
+        if (pendingSize > 0.0f && !ImGui::IsMouseDown(0))
         {
-            SetLogoOpacity(1.0f);
-            SetLogoSizeMultiplier(1.0f);
+            main_runtime_theme::SetMenuScalePercent(pendingSize);
+            pendingSize = -1.0f;
+        }
+
+        if (ethnir::EqActionRow("Reset Appearance"))
+        {
+            pendingSize = -1.0f;
+            main_runtime_theme::SetMenuOpacity(1.0f);
+            main_runtime_theme::SetMenuScalePercent(100.0f);
         }
     }
 

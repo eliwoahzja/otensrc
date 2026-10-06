@@ -151,6 +151,19 @@ namespace main_runtime_theme
 
     inline ImU32 g_accentRgbOverride = IM_COL32(0x61, 0x5D, 0xCE, 0xFF);
 
+    // Menu appearance, driven by the Config page sliders: opacity rides on the
+    // shell's style alpha, size on the fit factor every portfolio::s() uses.
+    inline float g_menuOpacity = 1.0f;
+    inline constexpr float kMenuOpacityMin = 0.30f;
+    inline constexpr float kMenuScaleMin   = 55.0f;
+    inline constexpr float kMenuScaleMax   = 130.0f;
+
+    inline float MenuOpacity() { return g_menuOpacity; }
+    inline void  SetMenuOpacity(float alpha) { g_menuOpacity = ImClamp(alpha, kMenuOpacityMin, 1.0f); }
+
+    inline float MenuScalePercent() { return portfolio::manual_factor * 100.0f; }
+    inline void  SetMenuScalePercent(float percent) { portfolio::set_percent(ImClamp(percent, kMenuScaleMin, kMenuScaleMax)); }
+
     inline ImVec4 GetAccentVec4(float alpha = 1.0f)
     {
         return portfolio::accent_vec4(alpha);
