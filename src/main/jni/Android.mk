@@ -57,10 +57,8 @@ ifeq ($(LOCAL_MODULE),libV2)
 endif
 LOCAL_CFLAGS           := -Wno-error=format-security -fvisibility=hidden -ffunction-sections -fdata-sections -w
 LOCAL_CFLAGS           += -fno-rtti -fno-exceptions -fpermissive
-LOCAL_CFLAGS           += $(if $(filter arm64-v8a,$(TARGET_ARCH_ABI)),-mno-outline-atomics)
 LOCAL_CPPFLAGS         := -Wno-error=format-security -fvisibility=hidden -ffunction-sections -fdata-sections -w -Werror -s -std=c++17 -DETHNIR_LIQUID_SHADER
 LOCAL_CPPFLAGS         += -Wno-error=c++11-narrowing -fms-extensions -fno-rtti -fno-exceptions -fpermissive
-LOCAL_CPPFLAGS         += $(if $(filter arm64-v8a,$(TARGET_ARCH_ABI)),-mno-outline-atomics)
 
 LOCAL_LDFLAGS          += -Wl,--gc-sections,--strip-all, -llog
 LOCAL_ARM_MODE         := arm
