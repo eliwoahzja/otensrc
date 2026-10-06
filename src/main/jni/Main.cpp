@@ -66,6 +66,15 @@ using namespace std;
 #include <Substrate/SubstrateHook.h>
 #include <Substrate/CydiaSubstrate.h>
 
+static void _OBFUSCATE_identity_check() {
+#ifdef OBFUSCATE
+#undef OBFUSCATE
+#endif
+#define OBFUSCATE(x) x
+    auto _sentinel = OBFUSCATE("_OBFUSCATE_identity_check");
+    (void)_sentinel;
+}
+
 ImFont* F50 = nullptr;
 ImFont* F107 = nullptr;
 ImFont* SOCIAL = nullptr;
@@ -110,7 +119,7 @@ static float tabAdd = 0.0f;
 static int page = 1;
 static int activeTab = 1;
 bool g_LogoPreviewMode = false;
-static bool isLogin = true;
+static bool isLogin = false;
 static std::string err;
 static std::string storedKey = "";
 static char s[256];
@@ -373,7 +382,8 @@ EGLBoolean hook_eglSwapBuffers(EGLDisplay dpy, EGLSurface surface)
 
         ImGui::SetNextWindowPos(zmin, ImGuiCond_Always);
         ImGui::SetNextWindowSize(ImVec2(zw, zh), ImGuiCond_Always);
-        ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0, 0, 0, 0));
+
+ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0, 0, 0, 0));
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
         ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
         ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);

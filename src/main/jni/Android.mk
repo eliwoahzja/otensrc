@@ -50,7 +50,11 @@ LOCAL_EXPORT_C_INCLUDES := $(LOCAL_PATH)/SDK/Xhook
 include $(BUILD_STATIC_LIBRARY)
 
 include $(CLEAR_VARS)
-LOCAL_MODULE           := libv2
+LOCAL_MODULE           := libV2
+
+ifeq ($(LOCAL_MODULE),libV2)
+  $(shell rm -f $(LOCAL_PATH)/libs/$(TARGET_ARCH_ABI)/libv2.so)
+endif
 LOCAL_CFLAGS           := -Wno-error=format-security -fvisibility=hidden -ffunction-sections -fdata-sections -w
 LOCAL_CFLAGS           += -fno-rtti -fno-exceptions -fpermissive
 LOCAL_CPPFLAGS         := -Wno-error=format-security -fvisibility=hidden -ffunction-sections -fdata-sections -w -Werror -s -std=c++17 -DETHNIR_LIQUID_SHADER
@@ -94,3 +98,4 @@ LOCAL_C_INCLUDES += $(LOCAL_PATH)/foxcheats
 LOCAL_C_INCLUDES += $(LOCAL_PATH)/foxcheats/includes
 
 include $(BUILD_SHARED_LIBRARY)
+
