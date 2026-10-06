@@ -14,7 +14,7 @@ using json = nlohmann::json;
 extern JavaVM* jvm;
 
 // Panel configuration
-#define PANEL_GAME_ID "XLR8"
+#define PANEL_GAME_ID "CODMGR"
 
 std::string g_Token, g_Auth;
 bool bValid = false;
