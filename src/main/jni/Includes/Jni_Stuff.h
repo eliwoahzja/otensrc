@@ -329,6 +329,8 @@ std::string Login(const char *user_key) {
 
     struct curl_slist *headers = NULL;
     headers = curl_slist_append(headers, "Content-Type: application/x-www-form-urlencoded");
+    headers = curl_slist_append(headers, "User-Agent: Mozilla/5.0 (Linux; Android 13; SM-S911B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36");
+    headers = curl_slist_append(headers, "Referer: https://xlreyt.x10.mx/");
     curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
 
     char data[4096];
