@@ -110,7 +110,7 @@ static float tabAdd = 0.0f;
 static int page = 1;
 static int activeTab = 1;
 bool g_LogoPreviewMode = false;
-static bool isLogin = true;
+static bool isLogin = false;
 static std::string err;
 static std::string storedKey = "";
 static char s[256];
